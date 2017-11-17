@@ -1,0 +1,17 @@
+# Compiled artifacts
+/target
+/classes
+/checkouts
+pom.xml
+pom.xml.asc
+*.jar
+*.class
+
+# REPL things
+/.lein-*
+/.nrepl-port
+.hgignore
+.hg/
+
+# Sensitive info
+resources/token.txt

@@ -34,6 +34,13 @@
         (t/is (= {:url "wss://fake.gateway.api/" :shards 1}
                  (get-websocket-gateway! (api-url "/gateway/bot") "TEST_TOKEN")))))))
 
+(t/deftest events
+  (t/testing "Are event keywords created properly?"
+    (t/is (= (event-keyword "READY")
+             :ready))
+    (t/is (= (event-keyword "GUILD_CREATE")
+             :guild-create))))
+
 (declare ^:dynamic *recv*)
 
 (defn- ws-srv
@@ -54,41 +61,53 @@
 (def ^:private uri "ws://localhost:9009/")
 
 (t/deftest websockets
-  (t/testing "Does the websocket handshake the server?\n"
-    (let [t "VALID_TOKEN"
-          success (atom 0)
-          heartbeats (atom 0)]
-      (with-redefs [*recv* (fn [_ conn msg]
-                             (let [msg (json/read-str msg)
-                                   op (get msg "op")
-                                   d (get msg "d")
-                                   token (get d "token")
-                                   [shard-id shard-count] (get d "shard")]
-                               (if (and (= op 2) (= token t)
-                                        (= shard-id 0) (= shard-count 1))
-                                 (swap! success inc)
-                                 (if (and (= op 1) (or (= d nil) (= d 5)))
-                                   (do (swap! heartbeats inc)
-                                       (println "Sending ACK")
-                                       (send! conn (json/write-str {"op" 11})))
-                                   (if (= op 50)
-                                     (send! conn (json/write-str {"op" 1 "d" 5})))))))]
-        (t/is (= @success 0))
-        (let [socket-state (atom {:keep-alive true :ack? true})]
-          (swap! socket-state assoc :socket (connect-websocket {:url uri :shards 1} t [0 1] socket-state))
-          (Thread/sleep 100)
-          ;; FIXME: Sometimes this test fails beacuse of timings in the heartbeats
-          (t/is (= @success 1))
-          (t/testing "\tDoes the websocket perform heartbeats?\n"
-            (t/is (= (:hb-interval @socket-state) 5000))
+  (let [t "VALID_TOKEN"
+        success (atom 0)
+        heartbeats (atom 0)]
+    (with-redefs [*recv* (fn [_ conn msg]
+                           (let [msg (json/read-str msg)
+                                 op (get msg "op")
+                                 d (get msg "d")
+                                 token (get d "token")
+                                 [shard-id shard-count] (get d "shard")]
+                             (if (and (= op 2) (= token t)
+                                      (= shard-id 0) (= shard-count 1))
+                               (swap! success inc)
+                               (if (and (= op 1) (or (= d nil) (= d 5)))
+                                 (do (swap! heartbeats inc)
+                                     (println "Sending ACK")
+                                     (send! conn (json/write-str {"op" 11})))
+                                 (if (= op 50)
+                                   (send! conn (json/write-str {"op" 1 "d" 5}))
+                                   (if (= op 51)
+                                     (send! conn (json/write-str {"op" 0 "d" {"v" 6
+                                                                              "session_id" 1}
+                                                                  "s" 5 "t" "READY"}))))))))]
+      (t/is (= @success 0))
+      (let [socket-state (atom {:keep-alive true :ack? true})
+            event-channel (a/chan)]
+        (swap! socket-state assoc :socket
+               (connect-websocket {:url uri :shards 1} t 0 event-channel socket-state))
+        (Thread/sleep 100)
+        (t/is (= @success 1))
+        (t/testing "\tDoes the websocket perform heartbeats?\n"
+          (t/is (= (:hb-interval @socket-state) 5000))
+          (Thread/sleep 5100)
+          (t/is (>= @heartbeats 2)))
+        ;; TODO: figure out why I can't send-msg from here
+        (t/testing "\tDoes the websocket send heartbeats back when prompted?\n"
+          (let [beats @heartbeats]
+            (ws/send-msg (:socket @socket-state) (json/write-str {"op" 50}))
+            (Thread/sleep 10)
+            (t/is (= @heartbeats (inc beats)))))
+        (t/testing "\tDoes the websocket push events onto its channel?"
+          (ws/send-msg (:socket @socket-state) (json/write-str {"op" 51}))
+          (let [[result port] (a/alts!! [event-channel (a/timeout 1000)])]
+            (t/is (= (:type result)
+                     :ready))))
+        (t/testing "Does the hearbeat stop when the connection is closed?"
+          (let [beats @heartbeats]
+            (swap! socket-state assoc :keep-alive false)
+            (ws/close (:socket @socket-state))
             (Thread/sleep 5100)
-            (t/is (>= @heartbeats 2)))
-          ;; TODO: figure out why I can't send-msg from here
-          (t/testing "\tDoes the websocket send heartbeats back when prompted?\n"
-            (let [beats @heartbeats]
-                (ws/send-msg (:socket @socket-state) (json/write-str {"op" 50}))
-                (Thread/sleep 10)
-                (t/is (= @heartbeats (inc beats)))))
-          (t/testing "Does the hearbeat stop when the connection is closed?")
-          (swap! socket-state assoc :keep-alive false)
-          (ws/close (:socket @socket-state)))))))
+            (t/is (= @heartbeats beats))))))))

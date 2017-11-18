@@ -2,7 +2,8 @@
   (:require [org.httpkit.client :as http]
             [clojure.data.json :as json]
             [gniazdo.core :as ws]
-            [clojure.core.async :as a]))
+            [clojure.core.async :as a]
+            [clojure.string :as str]))
 
 (defn api-url
   [gateway]
@@ -18,12 +19,16 @@
     (when (:url result)
       result)))
 
+(defn event-keyword
+  [s]
+  (keyword (str/replace (str/lower-case s) #"_" "-")))
+
 (defn heartbeat
   [socket s]
   (ws/send-msg socket (json/write-str {"op" 1 "d" s})))
 
 (defn connect-websocket
-  [gateway token [shard-id shard-count] socket-state]
+  [gateway token shard-id event-channel socket-state]
   (ws/connect (:url gateway)
     :on-connect (fn [_] ;; TODO: Start sending heartbeats
                   (a/go-loop [continue true]
@@ -40,6 +45,7 @@
                   (let [msg (json/read-str msg)
                         op (get msg "op")]
                     (case op
+                      ;; This is the initial payload that is sent, the "Hello" payload
                       10 (let [d (get msg "d")
                                interval (get d "heartbeat_interval")]
                            (ws/send-msg (:socket @socket-state) (json/write-str
@@ -51,13 +57,23 @@
                                                                         "$device" "discljord"}
                                                                        "compress" false
                                                                        "large_threshold" 250
-                                                                       "shard" [shard-id shard-count]
+                                                                       "shard" [shard-id (:shards gateway)]
                                                                        "presence"
                                                                        (:presence @socket-state)}}))
                            (swap! socket-state #(assoc (assoc % :hb-interval interval) :ack? true)))
-                      11 (swap! socket-state assoc :ack? true)
+                      ;; These payloads occur when the server requests a heartbeat
                       1 (do (println "Sending heartbeat from server response")
-                            (swap! socket-state assoc :ack? false)
                             (heartbeat (:socket @socket-state) (:seq @socket-state)))
+                      ;; This is the server's response to a heartbeat
+                      11 (swap! socket-state assoc :ack? true)
+                      ;; This is the payload that contains events to be responded to
+                      0 (a/go (let [t (event-keyword (get msg "t"))
+                                    d (get msg "d")
+                                    s (get msg "s")]
+                                (println "type" t "data" d "seq" s)
+                                (swap! socket-state assoc :seq s)
+                                (a/>! event-channel {:type t :data d})))
+                      ;; This is what happens if there was a unknown payload
                       (println "Unhandled response from server:" op))))
-    :on-close (fn [stop-code msg])))
+    :on-close (fn [stop-code msg]
+                )))

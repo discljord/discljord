@@ -1,5 +1,5 @@
-(ns discljord-functional.connections-test
-  (:require [discljord-functional.connections :refer :all]
+(ns discljord.connections-test
+  (:require [discljord.connections :refer :all]
             [clojure.data.json :as json]
             [clojure.core.async :as a]
             [org.httpkit.fake :as fake]
@@ -66,8 +66,11 @@
                                (if (and (= op 2) (= token t)
                                         (= shard-id 0) (= shard-count 1))
                                  (swap! success inc)
-                                 (if (and (= op 1) (= d nil))
-                                   (swap! success inc)))))]
+                                 (if (and (= op 1) (or (= d nil) (= d 5)))
+                                   (do (swap! success inc)
+                                       (send! conn (json/write-str {"op" 11})))
+                                   (if (= op 50)
+                                     (send! conn (json/write-str {"op" 1 "d" 5})))))))]
         (t/is (= @success 0))
         (let [socket-state (atom {:keep-alive true})]
           (swap! socket-state assoc :socket (connect-websocket {:url uri :shards 1} t [0 1] socket-state))
@@ -78,4 +81,9 @@
             (t/is (= (:hb-interval @socket-state) 1000))
             (Thread/sleep 1000)
             (t/is (= @success 2)))
+          #_(t/testing "\tDoes the websocket send heartbeats back when prompted?\n"
+            (println (:socket @socket-state))
+            (ws/send-msg (:socket @socket-state) (json/write-str {"op" 50}))
+            (Thread/sleep 100)
+            (t/is (= @success 3)))
           (t/testing "Does the hearbeat stop when the connection is closed?"))))))

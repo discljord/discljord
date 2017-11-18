@@ -1,4 +1,4 @@
-(defproject discljord-functional "0.1.0-SNAPSHOT"
+(defproject discljord "0.1.0-SNAPSHOT"
   :description "FIXME: write description"
   :url "http://example.com/FIXME"
   :license {:name "Eclipse Public License"
@@ -9,6 +9,5 @@
                  [http-kit.fake "0.2.2"]
                  [stylefruits/gniazdo "1.0.1"]
                  [org.clojure/core.async "0.3.442"]]
-  :main ^:skip-aot discljord-functional.core
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}})

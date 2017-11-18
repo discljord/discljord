@@ -1,4 +1,4 @@
-(ns discljord-functional.connections
+(ns discljord.connections
   (:require [org.httpkit.client :as http]
             [clojure.data.json :as json]
             [gniazdo.core :as ws]

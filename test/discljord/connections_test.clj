@@ -46,7 +46,7 @@
 (defn- ws-srv
   [req]
   (with-channel req conn
-    (send! conn (json/write-str {"op" 10 "d" {"heartbeat_interval" 5000}}))
+    (send! conn (json/write-str {"op" 10 "d" {"heartbeat_interval" 1000}}))
     (on-receive conn (partial *recv* req conn))))
 
 (t/use-fixtures
@@ -63,26 +63,35 @@
 (t/deftest websockets
   (let [t "VALID_TOKEN"
         success (atom 0)
-        heartbeats (atom 0)]
+        heartbeats (atom 0)
+        reconnects (atom 0)]
     (with-redefs [*recv* (fn [_ conn msg]
                            (let [msg (json/read-str msg)
                                  op (get msg "op")
                                  d (get msg "d")
                                  token (get d "token")
                                  [shard-id shard-count] (get d "shard")]
+                             (println "op code" op "data" d)
                              (if (and (= op 2) (= token t)
                                       (= shard-id 0) (= shard-count 1))
                                (swap! success inc)
                                (if (and (= op 1) (or (= d nil) (= d 5)))
                                  (do (swap! heartbeats inc)
-                                     (println "Sending ACK")
                                      (send! conn (json/write-str {"op" 11})))
-                                 (if (= op 50)
-                                   (send! conn (json/write-str {"op" 1 "d" 5}))
-                                   (if (= op 51)
-                                     (send! conn (json/write-str {"op" 0 "d" {"v" 6
-                                                                              "session_id" 1}
-                                                                  "s" 5 "t" "READY"}))))))))]
+                                 (if (= op 6)
+                                   (swap! reconnects inc)
+                                   (if (= op 50)
+                                     (send! conn (json/write-str {"op" 1 "d" 5}))
+                                     (if (= op 51)
+                                       (send! conn (json/write-str {"op" 0 "d" {"v" 6
+                                                                                "session_id" 1}
+                                                                    "s" 5 "t" "READY"}))
+                                       (if (= op 52)
+                                         (send! conn (json/write-str {"op" 7}))
+                                         (if (= op 53)
+                                           (send! conn (json/write-str {"op" 9 "d" false}))
+                                           (if (= op 54)
+                                             (send! conn (json/write-str {"op" 9 "d" true}))))))))))))]
       (t/is (= @success 0))
       (let [socket-state (atom {:keep-alive true :ack? true})
             event-channel (a/chan)]
@@ -91,8 +100,8 @@
         (Thread/sleep 100)
         (t/is (= @success 1))
         (t/testing "\tDoes the websocket perform heartbeats?\n"
-          (t/is (= (:hb-interval @socket-state) 5000))
-          (Thread/sleep 5100)
+          (t/is (= (:hb-interval @socket-state) 1000))
+          (Thread/sleep 1100)
           (t/is (>= @heartbeats 2)))
         ;; TODO: figure out why I can't send-msg from here
         (t/testing "\tDoes the websocket send heartbeats back when prompted?\n"
@@ -105,9 +114,22 @@
           (let [[result port] (a/alts!! [event-channel (a/timeout 1000)])]
             (t/is (= (:type result)
                      :ready))))
+        (t/testing "\tDoes the websocket reconnect when sent an op 7 payload?"
+          (t/is (= @reconnects 0))
+          (ws/send-msg (:socket @socket-state) (json/write-str {"op" 52}))
+          (Thread/sleep 200)
+          (t/is (= @reconnects 1)))
+        (t/testing "\tDoes the websocket properly respond to invalid session payloads?"
+          (ws/send-msg (:socket @socket-state) (json/write-str {"op" 53}))
+          (Thread/sleep 200)
+          (t/is (= @success 2))
+          (ws/send-msg (:socket @socket-state) (json/write-str {"op" 54}))
+          (Thread/sleep 200)
+          (t/is (= @reconnects 2)))
         (t/testing "Does the hearbeat stop when the connection is closed?"
+          (t/is (not= nil (:socket @socket-state)))
           (let [beats @heartbeats]
             (swap! socket-state assoc :keep-alive false)
             (ws/close (:socket @socket-state))
-            (Thread/sleep 5100)
+            (Thread/sleep 1100)
             (t/is (= @heartbeats beats))))))))

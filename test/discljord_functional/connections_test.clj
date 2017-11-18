@@ -14,7 +14,7 @@
   (t/testing "Is a gateway properly created?"
     (t/is (= "https://discordapp.com/api/gateway?v=6&encoding=json"
              (api-url "/gateway"))))
-  (t/testing "Is a request made with the proper headers?"
+  (t/testing "Is a request made with the proper headers?\n"
     (fake/with-fake-http ["https://discordapp.com/api/gateway/bot?v=6&encoding=json"
                           (fn [orig-fn opts callback]
                             (if (= (:headers opts) {"Authorization" "TEST_TOKEN"})
@@ -54,24 +54,28 @@
 (def ^:private uri "ws://localhost:9009/")
 
 (t/deftest websockets
-  (t/testing "Are websockets properly created?"
-    (t/testing "Does the websocket connect to the server?"
-      (let [t "VALID_TOKEN"
-            success (atom 0)]
-          (with-redefs [*recv* (fn [_ conn msg]
-                                 (let [msg (json/read-str msg)
-                                       op (get msg "op")
-                                       d (get msg "d")
-                                       token (get d "token")
-                                       [shard-id shard-count] (get d "shard")]
-                                   (println msg op d token shard-id shard-count)
-                                   (if (and (= op 2) (= token t)
-                                            (= shard-id 0) (= shard-count 1))
-                                     (swap! success inc))))]
-            (t/is (= @success 0))
-            (println "Connecting the websocket")
-            (let [socket-state (atom {})
-                  conn (connect-websocket {:url uri :shards 1} 0 socket-state)]
-              (ws/send-msg conn (json/write-str {"d" {"token" t "shard" [0 1]} "op" 2}))
-              (Thread/sleep 1000)
-              (t/is (= @success 1))))))))
+  (t/testing "Does the websocket handshake the server?\n"
+    (let [t "VALID_TOKEN"
+          success (atom 0)]
+      (with-redefs [*recv* (fn [_ conn msg]
+                             (let [msg (json/read-str msg)
+                                   op (get msg "op")
+                                   d (get msg "d")
+                                   token (get d "token")
+                                   [shard-id shard-count] (get d "shard")]
+                               (if (and (= op 2) (= token t)
+                                        (= shard-id 0) (= shard-count 1))
+                                 (swap! success inc)
+                                 (if (and (= op 1) (= d nil))
+                                   (swap! success inc)))))]
+        (t/is (= @success 0))
+        (let [socket-state (atom {:keep-alive true})]
+          (swap! socket-state assoc :socket (connect-websocket {:url uri :shards 1} t [0 1] socket-state))
+          (Thread/sleep 100)
+          ;; FIXME: Sometimes this test fails beacuse of timings in the heartbeats
+          (t/is (= @success 1))
+          (t/testing "\tDoes the websocket perform heartbeats?\n"
+            (t/is (= (:hb-interval @socket-state) 1000))
+            (Thread/sleep 1000)
+            (t/is (= @success 2)))
+          (t/testing "Does the hearbeat stop when the connection is closed?"))))))

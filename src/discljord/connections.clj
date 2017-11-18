@@ -18,19 +18,23 @@
     (when (:url result)
       result)))
 
+(defn heartbeat
+  [socket s]
+  (ws/send-msg socket (json/write-str {"op" 1 "d" s})))
+
 (defn connect-websocket
   [gateway token [shard-id shard-count] socket-state]
   (ws/connect (:url gateway)
     :on-connect (fn [_] ;; TODO: Start sending heartbeats
                   (a/go-loop [continue true]
-                    (when continue
+                    (when (and continue (:ack? @socket-state))
                       (if-let [interval (:hb-interval @socket-state)]
-                        (do (ws/send-msg (:socket @socket-state) (json/write-str
-                                                                  {"op" 1
-                                                                   "d" (:seq @socket-state)}))
+                        (do (heartbeat (:socket @socket-state) (:seq @socket-state))
+                            (println "Sending heartbeat from usual route")
+                            (swap! socket-state assoc :ack? false)
                             (a/<! (a/timeout interval))
                             (recur (:keep-alive @socket-state)))
-                        (do (a/<! (a/timeout 1000))
+                        (do (a/<! (a/timeout 100))
                             (recur (:keep-alive @socket-state)))))))
     :on-receive (fn [msg] ;; TODO: respond to messages
                   (let [msg (json/read-str msg)
@@ -50,4 +54,10 @@
                                                                        "shard" [shard-id shard-count]
                                                                        "presence"
                                                                        (:presence @socket-state)}}))
-                           (swap! socket-state #(assoc % :hb-interval interval))))))))
+                           (swap! socket-state #(assoc (assoc % :hb-interval interval) :ack? true)))
+                      11 (swap! socket-state assoc :ack? true)
+                      1 (do (println "Sending heartbeat from server response")
+                            (swap! socket-state assoc :ack? false)
+                            (heartbeat (:socket @socket-state) (:seq @socket-state)))
+                      (println "Unhandled response from server:" op))))
+    :on-close (fn [stop-code msg])))

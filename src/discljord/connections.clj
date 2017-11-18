@@ -15,6 +15,7 @@
                                       (vec (json/read-str (:body @(http/get gateway
                                                                     {:headers {"Authorization" token}}))))))
                        (catch Exception e
+                         (println e)
                          nil))]
     (when (:url result)
       result)))
@@ -31,6 +32,20 @@
   [gateway token shard-id event-channel socket-state]
   (ws/connect (:url gateway)
     :on-connect (fn [_] ;; TODO: Start sending heartbeats
+                  (println "Connected!")
+                  (println "Sending connection packet")
+                  (ws/send-msg (:socket @socket-state) (json/write-str
+                                                        {"op" 2
+                                                         "d" {"token" token
+                                                              "properties"
+                                                              {"$os" "linux"
+                                                               "$browser" "discljord"
+                                                               "$device" "discljord"}
+                                                              "compress" false
+                                                              "large_threshold" 250
+                                                              "shard" [shard-id (:shards gateway)]
+                                                              "presence"
+                                                              (:presence @socket-state)}}))
                   (a/go-loop [continue true]
                     (when (and continue (:ack? @socket-state))
                       (if-let [interval (:hb-interval @socket-state)]
@@ -42,24 +57,13 @@
                         (do (a/<! (a/timeout 100))
                             (recur (:keep-alive @socket-state)))))))
     :on-receive (fn [msg] ;; TODO: respond to messages
+                  (println "Message recieved:" msg)
                   (let [msg (json/read-str msg)
                         op (get msg "op")]
                     (case op
                       ;; This is the initial payload that is sent, the "Hello" payload
                       10 (let [d (get msg "d")
                                interval (get d "heartbeat_interval")]
-                           (ws/send-msg (:socket @socket-state) (json/write-str
-                                                                 {"op" 2
-                                                                  "d" {"token" token
-                                                                       "properties"
-                                                                       {"$os" "linux"
-                                                                        "$browser" "discljord"
-                                                                        "$device" "discljord"}
-                                                                       "compress" false
-                                                                       "large_threshold" 250
-                                                                       "shard" [shard-id (:shards gateway)]
-                                                                       "presence"
-                                                                       (:presence @socket-state)}}))
                            (swap! socket-state #(assoc (assoc % :hb-interval interval) :ack? true)))
                       ;; These payloads occur when the server requests a heartbeat
                       1 (do (println "Sending heartbeat from server response")
@@ -76,4 +80,4 @@
                       ;; This is what happens if there was a unknown payload
                       (println "Unhandled response from server:" op))))
     :on-close (fn [stop-code msg]
-                )))
+                (println "Connection closed"))))

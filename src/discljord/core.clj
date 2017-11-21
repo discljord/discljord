@@ -1,4 +1,4 @@
-(ns discljord-functional.core
+(ns discljord.core
   (:gen-class))
 
 (defn -main

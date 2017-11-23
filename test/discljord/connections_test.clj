@@ -7,6 +7,7 @@
                                               on-receive
                                               run-server
                                               send!]]
+            [clojure.spec.alpha :as spec]
             [gniazdo.core :as ws]
             [clojure.test :as t]))
 
@@ -31,7 +32,7 @@
         (t/is (= nil
                  (get-websocket-gateway! (api-url "/gateway/bot") "UNAUTHORIZED"))))
       (t/testing "Are shards properly returned?"
-        (t/is (= {:url "wss://fake.gateway.api/" :shards 1}
+        (t/is (= {:url "wss://fake.gateway.api/" :shard-count 1}
                  (get-websocket-gateway! (api-url "/gateway/bot") "TEST_TOKEN")))))))
 
 (t/deftest events
@@ -40,6 +41,14 @@
              :ready))
     (t/is (= (event-keyword "GUILD_CREATE")
              :guild-create))))
+
+(t/deftest shards
+  (t/testing "Are shards properly created?"
+    (t/is (spec/valid? :discljord.connections/shard
+                       (create-shard {:url "wss://fake.gateway.api/" :shard-count 1} 0)))
+    (t/is (spec/valid? :discljord.connections/shards
+                       (for [id (range 0 2)]
+                         (create-shard {:url "wss://fake.gateway.api/" :shard-count 2} id))))))
 
 (declare ^:dynamic *recv*)
 

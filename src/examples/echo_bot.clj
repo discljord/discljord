@@ -1,9 +1,9 @@
 (ns examples.echo-bot
-  (:require [discljord.core :as discord]
+  (:require [discljord.core :as discord :refer [defcommands]]
             [clojure.java.io :as io]))
 
 (def token (slurp (io/resource "token.txt")))
-(def main-bot (atom (create-bot {:token token :trigger-type :prefix})))
+(def main-bot (atom (discord/create-bot {:token token :trigger-type :prefix})))
 
 (defcommands main-bot
   {:keys [channel user message] :as params}

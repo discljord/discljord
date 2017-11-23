@@ -3,25 +3,52 @@
             [clojure.data.json :as json]
             [gniazdo.core :as ws]
             [clojure.core.async :as a]
+            [clojure.spec.alpha :as s]
             [clojure.string :as str]))
+
+(s/def ::url string?)
+(s/def ::shard-count int?)
+(s/def ::gateway (s/keys :req-un [::url ::shard-count]))
+(s/def ::shard-id int?)
+(s/def ::socket-state any?)
+(s/def ::shard (s/keys :req-un [::gateway ::shard-id ::socket-state]))
+(s/def ::shards (s/coll-of ::shard))
 
 (defn api-url
   [gateway]
   (str "https://discordapp.com/api" gateway "?v=6&encoding=json"))
+(s/fdef api-url
+        :args (s/cat :gateway string?)
+        :ret string?)
 
 (defn get-websocket-gateway!
-  [gateway token]
-  (if-let [result (try (into {} (mapv (fn [[k v]] [(keyword k) v])
-                                      (vec (json/read-str (:body @(http/get gateway
+  [url token]
+  (if-let [result (try (into {} (mapv (fn [[k v]] [(if (= k "shards")
+                                                     :shard-count
+                                                     (keyword k)) v])
+                                      (vec (json/read-str (:body @(http/get url
                                                                     {:headers {"Authorization" token}}))))))
                        (catch Exception e
                          nil))]
     (when (:url result)
       result)))
+(s/fdef get-websocket-gateway!
+        :args (s/cat :url ::url :token string?)
+        :ret ::gateway)
+
+(defn create-shard
+  [gateway shard-id]
+  {:gateway gateway :shard-id shard-id :socket-state (atom {:ack? true :keep-alive true})})
+(s/fdef create-shard
+        :args (s/cat :gateway ::gateway :shard-id ::shard-id)
+        :ret ::shard)
 
 (defn event-keyword
   [s]
   (keyword (str/replace (str/lower-case s) #"_" "-")))
+(s/fdef event-keyword
+        :args (s/cat :str string?)
+        :ret keyword?)
 
 (defn heartbeat
   [socket s]
@@ -52,7 +79,7 @@
 (defn connect-websocket
   [gateway token shard-id event-channel socket-state]
   (ws/connect (:url gateway)
-    :on-connect (fn [_] ;; TODO: Start sending heartbeats
+    :on-connect (fn [_]
                   (println "Connected!")
                   (println "Sending connection packet. Resume:" (:resume @socket-state))
                   (if-not (:resume @socket-state)
@@ -83,7 +110,7 @@
                             (recur (:keep-alive @socket-state)))
                         (do (a/<! (a/timeout 100))
                             (recur (:keep-alive @socket-state)))))))
-    :on-receive (fn [msg] ;; TODO: respond to messages
+    :on-receive (fn [msg]
                   #_(println "Message recieved:" msg)
                   (let [msg (json/read-str msg)
                         op (get msg "op")]
@@ -151,3 +178,4 @@
                            (throw (Exception. "Sharding required")))
                   (println "Unknown stop code"))
                 (swap! socket-state dissoc :socket))))
+

@@ -5,7 +5,7 @@
 (def token (slurp (io/resource "token.txt")))
 (def main-bot (atom (discord/create-bot {:token token :trigger-type :prefix})))
 
-(defcommands @main-bot
+(defcommands main-bot
   {:keys [channel user message] :as params}
   {"echo" {:help-text "Sends back what was messaged to this bot!"
            :callback (discord/send-message channel (str "User " (discord/mention user) " said:\n" message))}

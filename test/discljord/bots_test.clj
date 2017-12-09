@@ -9,7 +9,7 @@
 
 (t/deftest sharding
   (t/testing "Shard ID's are correctly generated from channels"
-    (t/is (= (shard-id-from-channel {:url "blah" :shard-count 1} 1237318975)
+    (t/is (= (shard-id-from-channel {:url "blah" :shard-count 1} {:id 1237318975 :name "Blah" :state (atom {})})
              0))))
 
 (t/deftest message-processing

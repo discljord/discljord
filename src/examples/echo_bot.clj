@@ -1,17 +1,22 @@
 (ns examples.echo-bot
   (:require [discljord.core :as discord :refer [defcommands]]
+            [clojure.core.async :as a]
             [clojure.java.io :as io]))
 
 (def token (slurp (io/resource "token.txt")))
-(def main-bot (atom (discord/create-bot {:token token :trigger-type :prefix})))
 
-(defcommands main-bot
-  {:keys [channel user message] :as params}
-  {"echo" {:help-text "Sends back what was messaged to this bot!"
-           :callback (discord/send-message channel (str "User " (discord/mention user) " said:\n" message))}
-   "disconnect" {:help-text "Disconnects the bot from Discord."
-                 :callback (discord/disconnect-bot @main-bot)}})
+(defcommands echo-commands
+   {:keys [channel user message event-queue] :as params}
+   {"echo" {:help-text "Sends back what was messaged to this bot!"
+            :callback (discord/send-message channel
+                                            (str "User "
+                                                 (discord/mention user)
+                                                 " said:\n" message))}
+    "disconnect" {:help-text "Disconnects the bot from Discord."
+                  :callback (a/>!! event-queue {:event-type :disconnect :event-data nil})}})
+
+(def echo-bot nil #_(discord/create-bot {:token token :listeners echo-commands}))
 
 (defn -main
   []
-  (swap! main-bot discord/connect-bot))
+  (discord/connect-bot! echo-bot))

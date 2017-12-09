@@ -25,9 +25,10 @@
         :args (s/cat :params (s/keys* :req-un [::b/token]))
         :ret ::b/bot)
 
-(defn connect-bot
+(defn connect-bot!
   [bot]
-  (let [new-bot ]))
+  (let [new-bot nil]
+    new-bot))
 (s/fdef connect-bot
         :args (s/cat :bot ::b/bot)
         :ret ::b/bot)

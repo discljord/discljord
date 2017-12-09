@@ -16,9 +16,10 @@
 
 (s/def ::event-type keyword?)
 (s/def ::event-data any?)
+(s/def ::event-handler fn?)
 (s/def ::event (s/keys :req-un [::event-type ::event-data]))
-(s/def ::listener (s/keys :req-un [::event-channel ::event-type]))
-(s/def ::listeners any?)
+(s/def ::listener (s/keys :req-un [::event-channel ::event-type ::event-handler]))
+(s/def ::listeners (s/coll-of ::listener))
 
 (s/def ::token string?)
 (s/def ::bot (s/keys :req-un [::token ::conn/shards ::event-channel ::listeners]
@@ -26,10 +27,10 @@
 
 (defn shard-id-from-channel
   [gateway channel]
-  (mod (bit-shift-right channel 22) (:shard-count gateway)))
-#_(s/fdef shard-id-from-channel
-        {:args (s/cat :gateway ::conn/gateway :channel number?)
-         :ret number?})
+  (mod (bit-shift-right (:id channel) 22) (:shard-count gateway)))
+(s/fdef shard-id-from-channel
+        :args (s/cat :gateway ::conn/gateway :channel ::channel)
+        :ret number?)
 
 (defn start-message-proc
   "Starts the messaging procedure for a set of event listeners associated with a specific message channel."
@@ -37,8 +38,9 @@
   (a/go-loop []
     (let [event (a/<! event-channel)]
       (doseq [{channel :event-channel} (filterv #(= (:event-type event) (:event-type %)) event-listeners)]
-        (a/>! channel event)))
-    (recur)))
+        (a/>! channel event))
+      (when-not (= (:event-type event) :disconnect)
+        (recur)))))
 (s/fdef start-message-proc
         :args (s/cat :channel any? :listeners ::listeners))
 
@@ -53,7 +55,7 @@
                              (conn/create-shard gateway id))))
         default-listeners []]
     {:token token :shards shards :state (atom {}) :channels []
-     :event-channel event-channel :listeners (atom default-listeners)}))
+     :event-channel event-channel :listeners default-listeners}))
 (s/fdef create-bot
         :args (s/cat :params (s/keys* :token ::token))
         :ret ::bot)

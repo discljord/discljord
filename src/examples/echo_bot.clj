@@ -1,5 +1,5 @@
 (ns examples.echo-bot
-  (:require [discljord.core :as discord :refer [defcommands]]
+  (:require [discljord.core :as discord :refer [defbot]]
             [clojure.core.async :as a]
             [clojure.java.io :as io]))
 
@@ -31,4 +31,4 @@
 
 (defn -main
   []
-  (discord/connect-bot! echo-bot))
+  #_(discord/connect-bot! echo-bot))

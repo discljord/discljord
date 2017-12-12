@@ -40,8 +40,14 @@
         :args (s/cat :bot ::b/bot)
         :ret ::b/bot)
 
-(defmacro defcommands
-  [bot-atom param-destructured listener-map]
-  (let [p param-destructured
-        l listener-map]
+(defmacro defbot
+  [bot & params]
+  (let [params (if (map? (first params))
+                 (first params)
+                 (into {} (map vec (partition 2 params))))
+        #_{:keys [token prefix commands listeners]
+         :or {token ""
+              prefix "!"
+              commands {}
+              listeners []}} #_params]
     nil))

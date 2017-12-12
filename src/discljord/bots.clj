@@ -32,20 +32,39 @@
         :args (s/cat :gateway ::conn/gateway :channel ::channel)
         :ret number?)
 
-(defn start-message-proc
+(defn start-message-proc!
   "Starts the messaging procedure for a set of event listeners associated with a specific message channel."
   [event-channel event-listeners]
   (a/go-loop []
     (let [event (a/<! event-channel)]
       (doseq [{channel :event-channel} (filterv #(= (:event-type event) (:event-type %)) event-listeners)]
         (a/>! channel event))
-      (when-not (= (:event-type event) :disconnect)
-        (recur)))))
-(s/fdef start-message-proc
-        :args (s/cat :channel any? :listeners ::listeners))
+      (if-not (= (:event-type event) :disconnect)
+        (recur)
+        (doseq [{channel :event-channel} event-listeners]
+          (a/>! channel event)))))
+  nil)
+(s/fdef start-message-proc!
+        :args (s/cat :channel any? :listeners ::listeners)
+        :ret nil?)
+
+(defn start-listeners!
+  [listeners]
+  (doseq [{:keys [event-channel event-type event-handler] :as listener} listeners]
+    (a/go-loop []
+      (let [event (a/<! event-channel)]
+        (event-handler event)
+        (if-not (= (:event-type event) :disconnect)
+          (recur)
+          (a/close! event-channel)))))
+  nil)
+(s/fdef start-listeners!
+        :args (s/cat :listeners ::listeners)
+        :ret nil?)
 
 (defn create-bot
-  [{:keys [token] :as params}]
+  [{:keys [token default-listeners? listeners] :as params
+    :or {token "" default-listeners? true}}]
   (let [token (str "Bot " (str/trim token))
         gateway (conn/get-websocket-gateway! (conn/api-url "/gateway/bot") token)
         event-channel (a/chan 1000)
@@ -53,9 +72,11 @@
                                                result
                                                0))]
                              (conn/create-shard gateway id))))
-        default-listeners []]
+        default-listeners (if default-listeners?
+                            []
+                            [])]
     {:token token :shards shards :state (atom {}) :channels []
-     :event-channel event-channel :listeners default-listeners}))
+     :event-channel event-channel :listeners (into default-listeners listeners)}))
 (s/fdef create-bot
-        :args (s/cat :params (s/keys* :token ::token))
+        :args (s/cat :params (s/keys* :token ::token :listener-defaults boolean?))
         :ret ::bot)

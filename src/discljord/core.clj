@@ -33,7 +33,7 @@
         :args (s/cat :bot ::b/bot)
         :ret ::b/bot)
 
-(defn disconnect-bot
+(defn disconnect-bot!
   [bot]
   bot)
 (s/fdef disconnect-bot

@@ -132,7 +132,7 @@
                                 (if-let [session (get d "session_id")]
                                   (swap! socket-state #(assoc (assoc % :seq s) :session session))
                                   (swap! socket-state assoc :seq s))
-                                (a/>! event-channel {:type t :data d})))
+                                (a/>! event-channel {:event-type t :event-data d})))
                       ;; This is the restart connection one
                       7 (reconnect-websocket gateway token shard-id event-channel socket-state true)
                       ;; This is the invalid session response

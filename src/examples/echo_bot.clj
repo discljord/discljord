@@ -5,17 +5,29 @@
 
 (def token (slurp (io/resource "token.txt")))
 
-(defcommands echo-commands
-   {:keys [channel user message event-queue] :as params}
-   {"echo" {:help-text "Sends back what was messaged to this bot!"
-            :callback (discord/send-message channel
-                                            (str "User "
-                                                 (discord/mention user)
-                                                 " said:\n" message))}
-    "disconnect" {:help-text "Disconnects the bot from Discord."
-                  :callback (a/>!! event-queue {:event-type :disconnect :event-data nil})}})
-
-(def echo-bot nil #_(discord/create-bot {:token token :listeners echo-commands}))
+(defbot echo-bot
+  :token token
+  :prefix "!"
+  :commands {"echo"
+             {:help-text "Sends back what was messaged to this bot!"
+              :callback (fn [{:keys [channel user message] :as params}]
+                          (discord/send-message channel
+                                                (str "User "
+                                                     (discord/mention user)
+                                                     " said:\n" message)))}
+             "disconnect"
+             {:help-text "Disconnects the bot from Discord."
+              :callback (fn [{:keys [event-queue] :as params}]
+                          (a/>!! event-queue {:event-type :disconnect :event-data nil}))}}
+  :listeners [{:event-type :channel-create
+               :event-handler
+               (fn [{:keys [event-type]
+                     {:keys [id type name] :as event-data} :event-data
+                     :as event}]
+                 (if (and (not= type 2) (not= type 4))
+                   (discord/send-message id (if-not (nil? name)
+                                              (str "Hello " name "!")
+                                              "Hello new channel!"))))}])
 
 (defn -main
   []

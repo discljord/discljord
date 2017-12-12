@@ -4,7 +4,8 @@
             [gniazdo.core :as ws]
             [clojure.core.async :as a]
             [clojure.spec.alpha :as s]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [com.rpl.specter :refer :all]))
 
 (s/def ::url string?)
 (s/def ::shard-count int?)
@@ -43,12 +44,24 @@
         :args (s/cat :gateway ::gateway :shard-id ::shard-id)
         :ret ::shard)
 
-(defn event-keyword
+(defn json-keyword
   [s]
   (keyword (str/replace (str/lower-case s) #"_" "-")))
-(s/fdef event-keyword
+(s/fdef json-keyword
         :args (s/cat :str string?)
         :ret keyword?)
+
+(defn clean-json-input
+  [j]
+  (cond
+    (map? j) (transform [MAP-KEYS] clean-json-input
+                        (transform [MAP-VALS coll?] clean-json-input j))
+    (string? j) (json-keyword j)
+    (vector? j) (map clean-json-input j)
+    :else j))
+(s/fdef clean-json-input
+        :args any?
+        :ret any?)
 
 (defn heartbeat
   [socket s]
@@ -125,14 +138,14 @@
                       ;; This is the server's response to a heartbeat
                       11 (swap! socket-state assoc :ack? true)
                       ;; This is the payload that contains events to be responded to
-                      0 (a/go (let [t (event-keyword (get msg "t"))
+                      0 (a/go (let [t (json-keyword (get msg "t"))
                                     d (get msg "d")
                                     s (get msg "s")]
                                 (println "type" t "data" d "seq" s)
                                 (if-let [session (get d "session_id")]
                                   (swap! socket-state #(assoc (assoc % :seq s) :session session))
                                   (swap! socket-state assoc :seq s))
-                                (a/>! event-channel {:event-type t :event-data d})))
+                                (a/>! event-channel {:event-type t :event-data (clean-json-input d)})))
                       ;; This is the restart connection one
                       7 (reconnect-websocket gateway token shard-id event-channel socket-state true)
                       ;; This is the invalid session response

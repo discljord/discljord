@@ -8,6 +8,7 @@
                  [http-kit "2.2.0"]
                  [http-kit.fake "0.2.2"]
                  [stylefruits/gniazdo "1.0.1"]
-                 [org.clojure/core.async "0.3.442"]]
+                 [org.clojure/core.async "0.3.442"]
+                 [com.rpl/specter "1.0.5"]]
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}})

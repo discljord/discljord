@@ -35,12 +35,21 @@
         (t/is (= {:url "wss://fake.gateway.api/" :shard-count 1}
                  (get-websocket-gateway! (api-url "/gateway/bot") "TEST_TOKEN")))))))
 
-(t/deftest events
+(t/deftest clean-json
   (t/testing "Are event keywords created properly?"
-    (t/is (= (event-keyword "READY")
+    (t/is (= (json-keyword "READY")
              :ready))
-    (t/is (= (event-keyword "GUILD_CREATE")
-             :guild-create))))
+    (t/is (= (json-keyword "GUILD_CREATE")
+             :guild-create)))
+  (t/testing "Are json objects cleaned correctly?"
+    (t/is (= (clean-json-input "id")
+             :id))
+    (t/is (= (clean-json-input {"id" 12345})
+             {:id 12345}))
+    (t/is (= (clean-json-input {"id" "string"})
+             {:id "string"}))
+    (t/is (= (clean-json-input [{"id" "string"}])
+             [{:id "string"}]))))
 
 (t/deftest shards
   (t/testing "Are shards properly created?"
@@ -92,9 +101,12 @@
                                    (if (= op 50)
                                      (send! conn (json/write-str {"op" 1 "d" 5}))
                                      (if (= op 51)
-                                       (send! conn (json/write-str {"op" 0 "d" {"v" 6
-                                                                                "session_id" 1}
-                                                                    "s" 5 "t" "READY"}))
+                                       (do
+                                         (binding [*out* *err*]
+                                           (println "Sending ready packet"))
+                                         (send! conn (json/write-str {"op" 0 "d" {"v" 6
+                                                                                 "session_id" 1}
+                                                                     "s" 5 "t" "READY"})))
                                        (if (= op 52)
                                          (send! conn (json/write-str {"op" 7}))
                                          (if (= op 53)
@@ -121,7 +133,7 @@
         (t/testing "\tDoes the websocket push events onto its channel?"
           (ws/send-msg (:socket @socket-state) (json/write-str {"op" 51}))
           (let [[result port] (a/alts!! [event-channel (a/timeout 1000)])]
-            (t/is (= (:type result)
+            (t/is (= (:event-type result)
                      :ready))))
         (t/testing "\tDoes the websocket reconnect when sent an op 7 payload?"
           (t/is (= @reconnects 0))

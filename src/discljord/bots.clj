@@ -53,9 +53,9 @@
   (doseq [{:keys [event-channel event-type event-handler] :as listener} listeners]
     (a/go-loop []
       (let [event (a/<! event-channel)]
-        (event-handler event)
         (if-not (= (:event-type event) :disconnect)
-          (recur)
+          (do (event-handler event)
+              (recur))
           (a/close! event-channel)))))
   nil)
 (s/fdef start-listeners!

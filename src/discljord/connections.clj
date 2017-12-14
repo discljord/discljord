@@ -54,8 +54,9 @@
 (defn clean-json-input
   [j]
   (cond
-    (map? j) (transform [MAP-KEYS] clean-json-input
-                        (transform [MAP-VALS coll?] clean-json-input j))
+    (map? j) (->> j
+                  (transform [MAP-KEYS] clean-json-input)
+                  (transform [MAP-VALS coll?] clean-json-input))
     (string? j) (json-keyword j)
     (vector? j) (map clean-json-input j)
     :else j))
@@ -72,22 +73,24 @@
 (defn disconnect-websocket
   [socket-state]
   (ws/close (:socket @socket-state))
-  (swap! socket-state #(assoc (dissoc % :socket) :keep-alive false)))
+  (swap! socket-state #(-> %
+                           (dissoc :socket)
+                           (assoc :keep-alive false))))
 
 (defn reconnect-websocket
   [gateway token shard-id event-channel socket-state resume]
   (a/go (ws/close (:socket @socket-state))
-        (swap! socket-state #(dissoc
-                              (assoc (assoc
-                                      (assoc % :keep-alive false)
-                                      :ack? true)
-                                     :resume resume)
-                              :socket))
+        (swap! socket-state #(-> %
+                                 (assoc :keep-alive false)
+                                 (assoc :ack? true)
+                                 (assoc :resume resume)
+                                 (dissoc :socket)))
         (a/<! (a/timeout 100))
-        (swap! socket-state #(assoc (assoc % :socket (connect-websocket
-                                                      gateway token shard-id
-                                                      event-channel socket-state))
-                                    :keep-alive true))))
+        (swap! socket-state #(-> %
+                                 (assoc :socket (connect-websocket
+                                                 gateway token shard-id
+                                                 event-channel socket-state))
+                                 (assoc :keep-alive true)))))
 
 (defn connect-websocket
   [gateway token shard-id event-channel socket-state]
@@ -131,7 +134,9 @@
                       ;; This is the initial payload that is sent, the "Hello" payload
                       10 (let [d (get msg "d")
                                interval (get d "heartbeat_interval")]
-                           (swap! socket-state #(assoc (assoc % :hb-interval interval) :ack? true)))
+                           (swap! socket-state #(-> %
+                                                    (assoc :hb-interval interval)
+                                                    (assoc :ack? true))))
                       ;; These payloads occur when the server requests a heartbeat
                       1 (do (println "Sending heartbeat from server response")
                             (heartbeat (:socket @socket-state) (:seq @socket-state)))
@@ -143,7 +148,9 @@
                                     s (get msg "s")]
                                 (println "type" t "data" d "seq" s)
                                 (if-let [session (get d "session_id")]
-                                  (swap! socket-state #(assoc (assoc % :seq s) :session session))
+                                  (swap! socket-state #(-> %
+                                                           (assoc :seq s)
+                                                           (assoc :session session)))
                                   (swap! socket-state assoc :seq s))
                                 (a/>! event-channel {:event-type t :event-data (clean-json-input d)})))
                       ;; This is the restart connection one
@@ -165,30 +172,38 @@
                   4000 (reconnect-websocket gateway token
                                             shard-id event-channel
                                             socket-state true)
-                  4001 (do (disconnect-websocket socket-state)
+                  4001 (a/go (disconnect-websocket socket-state)
+                           (a/>! event-channel {:event-type :disconnect :event-data nil})
                            (throw (Exception. "Invalid gateway opcode sent to server")))
-                  4002 (do (disconnect-websocket socket-state)
-                           (throw (Exception. "Invalid payload send to server")))
-                  4003 (do (disconnect-websocket socket-state)
-                           (throw (Exception. "Payload sent to server before Identify payload")))
-                  4004 (do (disconnect-websocket socket-state)
-                           (throw (Exception. "Invalid token")))
-                  4005 (do (disconnect-websocket socket-state)
-                           (throw (Exception. "Multiple Identify payloads sent")))
+                  4002 (a/go (disconnect-websocket socket-state)
+                             (a/>! event-channel {:event-type :disconnect :event-data nil})
+                             (throw (Exception. "Invalid payload send to server")))
+                  4003 (a/go (disconnect-websocket socket-state)
+                             (a/>! event-channel {:event-type :disconnect :event-data nil})
+                             (throw (Exception. "Payload sent to server before Identify payload")))
+                  4004 (a/go (disconnect-websocket socket-state)
+                             (a/>! event-channel {:event-type :disconnect :event-data nil})
+                             (throw (Exception. "Invalid token")))
+                  4005 (a/go (disconnect-websocket socket-state)
+                             (a/>! event-channel {:event-type :disconnect :event-data nil})
+                             (throw (Exception. "Multiple Identify payloads sent")))
                   ;; Invalid seq
                   4007 (reconnect-websocket gateway token
                                             shard-id event-channel
                                             socket-state false)
-                  4008 (do (disconnect-websocket socket-state)
-                           (throw (Exception. "Rate limit reached")))
+                  4008 (a/go (disconnect-websocket socket-state)
+                             (a/>! event-channel {:event-type :disconnect :event-data nil})
+                             (throw (Exception. "Rate limit reached")))
                   ;; Session timed out
                   4009 (reconnect-websocket gateway token
                                             shard-id event-channel
                                             socket-state false)
-                  4010 (do (disconnect-websocket socket-state)
-                           (throw (Exception. "Invalid shard sent")))
-                  4011 (do (disconnect-websocket socket-state)
-                           (throw (Exception. "Sharding required")))
+                  4010 (a/go (disconnect-websocket socket-state)
+                             (a/>! event-channel {:event-type :disconnect :event-data nil})
+                             (throw (Exception. "Invalid shard sent")))
+                  4011 (a/go (disconnect-websocket socket-state)
+                             (a/>! event-channel {:event-type :disconnect :event-data nil})
+                             (throw (Exception. "Sharding required")))
                   (println "Unknown stop code"))
                 (swap! socket-state dissoc :socket))))
 

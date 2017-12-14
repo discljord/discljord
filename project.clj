@@ -1,5 +1,5 @@
 (defproject discljord "0.1.0-SNAPSHOT"
-  :description "FIXME: write description"
+  :description "A Clojure library to allow the creation of Discord bots with a relatively high level of abstraction."
   :url "http://example.com/FIXME"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}

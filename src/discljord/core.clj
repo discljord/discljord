@@ -43,11 +43,15 @@
 (defmacro defbot
   [bot & params]
   (let [params (if (map? (first params))
-                 (first params)
+                 (merge (first params)
+                        (into {}
+                              (map vec (partition 2 (rest params)))))
                  (into {} (map vec (partition 2 params))))
-        #_{:keys [token prefix commands listeners]
+        {:keys [token prefix commands listeners state channel-state]
          :or {token ""
               prefix "!"
               commands {}
-              listeners []}} #_params]
+              listeners []
+              state {}
+              channel-state {}}} params]
     nil))

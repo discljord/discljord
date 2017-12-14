@@ -89,9 +89,7 @@ And that's all there is to it!
 
 ## Handling state
 
-In discljord, state is stored within a special state structure in a given bot. It isn't reccomended that you edit it directly, so an api is provided to allow you to access state easily wihout caring about how it is stored.
-
-There are two kinds of state in discljord, global state, and guild-specific state. Global state is used for the entire bot and exists across all guilds. Guild-specific state is state that is stored inside a specific guild.
+In discljord, state is stored within atoms contining maps. There are two kinds of state in discljord, global state, and guild-specific state. Global state is used for the entire bot and exists across all guilds. Guild-specific state is state that is stored inside a specific guild.
 
 ### Global State
 

@@ -117,7 +117,7 @@
       (let [socket-state (atom {:keep-alive true :ack? true})
             event-channel (a/chan)]
         (swap! socket-state assoc :socket
-               (connect-websocket {:url uri :shards 1} t 0 event-channel socket-state))
+               (connect-websocket {:url uri :shard-count 1} t 0 event-channel socket-state))
         (Thread/sleep 100)
         (t/is (= @success 1))
         (t/testing "\tDoes the websocket perform heartbeats?\n"

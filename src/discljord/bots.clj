@@ -78,5 +78,5 @@
     {:token token :shards shards :state (atom {}) :channels []
      :event-channel event-channel :listeners (into default-listeners listeners)}))
 (s/fdef create-bot
-        :args (s/cat :params (s/keys* :token ::token :listener-defaults boolean?))
+        :args (s/cat :params (s/keys* :token ::token :default-listeners? boolean? :listeners ::listeners))
         :ret ::bot)

@@ -15,12 +15,19 @@
 (s/def ::shard (s/keys :req-un [::gateway ::shard-id ::socket-state]))
 (s/def ::shards (s/coll-of ::shard))
 
+(defn append-api-suffix
+  [url]
+  (str url "?v=6&encoding=json"))
+(s/fdef append-api-suffix
+        :args (s/cat :url ::url)
+        :ret ::url)
+
 (defn api-url
   [gateway]
-  (str "https://discordapp.com/api" gateway "?v=6&encoding=json"))
+  (append-api-suffix (str "https://discordapp.com/api" gateway)))
 (s/fdef api-url
         :args (s/cat :gateway string?)
-        :ret string?)
+        :ret ::url)
 
 (defn get-websocket-gateway!
   [url token]
@@ -108,7 +115,7 @@
                                                                 "$device" "discljord"}
                                                                "compress" false
                                                                "large_threshold" 250
-                                                               "shard" [shard-id (:shards gateway)]
+                                                               "shard" [shard-id (:shard-count gateway)]
                                                                "presence"
                                                                (:presence @socket-state)}}))
                    (ws/send-msg (:socket @socket-state) (json/write-str

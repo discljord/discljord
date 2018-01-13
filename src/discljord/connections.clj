@@ -9,7 +9,7 @@
 
 (s/def ::url string?)
 (s/def ::shard-count int?)
-(s/def ::gateway (s/keys :req-un [::url ::shard-count]))
+(s/def ::gateway (s/nilable (s/keys :req-un [::url ::shard-count])))
 (s/def ::shard-id int?)
 (s/def ::socket-state any?)
 (s/def ::shard (s/keys :req-un [::gateway ::shard-id ::socket-state]))
@@ -65,7 +65,7 @@
                   (transform [MAP-KEYS] clean-json-input)
                   (transform [MAP-VALS coll?] clean-json-input))
     (string? j) (json-keyword j)
-    (vector? j) (map clean-json-input j)
+    (vector? j) (mapv clean-json-input j)
     :else j))
 (s/fdef clean-json-input
         :args any?
@@ -153,7 +153,7 @@
                       0 (a/go (let [t (json-keyword (get msg "t"))
                                     d (get msg "d")
                                     s (get msg "s")]
-                                (println "type" t "data" d "seq" s)
+                                #_(println "type" t "data" d "seq" s)
                                 (if-let [session (get d "session_id")]
                                   (swap! socket-state #(-> %
                                                            (assoc :seq s)

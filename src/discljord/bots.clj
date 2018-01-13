@@ -43,8 +43,9 @@
         (a/>! channel event))
       (if-not (= (:event-type event) :disconnect)
         (recur)
-        (doseq [{channel :event-channel} event-listeners]
-          (a/>! channel event)))))
+        (do (println "Closing message proc")
+            (doseq [{channel :event-channel} event-listeners]
+              (a/>! channel event))))))
   nil)
 (s/fdef start-message-proc!
         :args (s/cat :channel any? :listeners ::listeners)
@@ -52,34 +53,43 @@
 
 (defn start-listeners!
   "Takes a collection of listeners and starts each one such that they take values from their channels and perform their handler functions on the events."
-  [listeners]
+  [{:keys [listeners] :as bot}]
   (doseq [{:keys [event-channel event-type event-handler] :as listener} listeners]
     (a/go-loop []
       (let [event (a/<! event-channel)]
         (if-not (= (:event-type event) :disconnect)
-          (do (event-handler event)
+          (do (event-handler bot event)
               (recur))
-          (a/close! event-channel)))))
+          (println "Closed listener:" listener)))))
   nil)
 (s/fdef start-listeners!
         :args (s/cat :listeners ::listeners)
         :ret nil?)
 
+(defn init-shards
+  [bot]
+  (assoc bot :shards
+         (let [gateway (conn/get-websocket-gateway! (conn/api-url "/gateway/bot") (:token bot))]
+           (vec (doall (for [id (range 0 (if-let [result (:shard-count gateway)]
+                                           result
+                                           0))]
+                         (conn/create-shard gateway id)))))))
+(s/fdef init-shards
+        :args (s/cat :bot ::bot)
+        :ret ::bot)
+
 (defn create-bot
-  [{:keys [token default-listeners? listeners guilds] :as params
-    :or {token "" default-listeners? true}}]
+  [{:keys [token default-listeners? listeners guilds init-state] :as params
+    :or {token "" default-listeners? true init-state {}}}]
   (let [token (str "Bot " (str/trim token))
-        gateway (conn/get-websocket-gateway! (conn/api-url "/gateway/bot") token)
         event-channel (a/chan 1000)
-        shards (vec (doall (for [id (range 0 (if-let [result (:shard-count gateway)]
-                                               result
-                                               0))]
-                             (conn/create-shard gateway id))))
+        gateway nil
+        shards []
         default-listeners (if default-listeners?
                             []
                             [])
         default-guilds guilds]
-    {:token token :shards shards :state (atom {::internal-state {:guilds default-guilds}})
+    {:token token :shards shards :state (atom (into init-state {::internal-state {:guilds default-guilds}}))
      :event-channel event-channel :listeners (into default-listeners listeners)}))
 (s/fdef create-bot
         :args (s/cat :params (s/keys* :token ::token :default-listeners? boolean? :listeners ::listeners :guilds ::guilds))

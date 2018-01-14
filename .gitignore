@@ -14,4 +14,4 @@ pom.xml.asc
 .hg/
 
 # Sensitive info
-resources/token.txt
+resources/

@@ -1,5 +1,8 @@
 (ns discljord.messaging
-  (:require [discljord.bots :as bots])
+  (:require [discljord.bots :as bots]
+            [discljord.connections :as conn]
+            [org.httpkit.client :as http]
+            [clojure.data.json :as json])
   (:use com.rpl.specter))
 
 (defn mention
@@ -31,3 +34,10 @@
 ;; and check for when the rate limit is finished, run the request, and if it gets back a rate limit
 ;; then it will update the rate limit for that endpoint and place the request back at the front
 ;; of the queue
+
+(defn send-message
+  [bot channel-id content]
+  (http/post (conn/api-url (str "/channels/" channel-id "/messages"))
+             {:headers {"Authorization" (:token bot)
+                        "Content-Type" "application/json"}
+              :body (json/write-str {:content content})}))

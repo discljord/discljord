@@ -8,9 +8,9 @@
             [clojure.edn :as edn])
   (:use com.rpl.specter))
 
-(def token (str/trim (slurp (io/resource "token.txt"))))
+(def token (str/trim (slurp "resources/token.txt")))
 
-(def bot-owner-id (str/trim (slurp (io/resource "owner.txt"))))
+(def bot-owner-id (str/trim (slurp "resources/owner.txt")))
 
 (defonce quotes (atom {}))
 
@@ -79,7 +79,7 @@
 
 (def initial-state (merge {:prefix "!" :prepend-to-messages "\u200B"}
                           (let [init-state
-                                (try (read-string (slurp (io/resource "quotes.edn")))
+                                (try (read-string (slurp "resources/quotes.edn"))
                                      (catch Exception e nil))]
                             (if (seq init-state)
                               init-state

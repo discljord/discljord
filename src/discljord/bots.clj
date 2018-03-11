@@ -117,7 +117,7 @@
 (defn state
   "Returns the global state map of a bot"
   [bot]
-  (dissoc (deref (:state bot)) ::internal-state))
+  @(:state bot))
 (s/fdef state
         :args (s/cat :bot ::bot)
         :ret map?)
@@ -125,7 +125,7 @@
 (defn state+
   "Adds a key to the state in a bot, and returns the state map"
   [bot key val]
-  (dissoc (swap! (:state bot) assoc key val) ::internal-state))
+  (swap! (:state bot) assoc key val))
 (s/fdef state+
         :args (s/cat :bot ::bot :key keyword? :val any?)
         :ret map?)
@@ -133,14 +133,14 @@
 (defn state-
   "Removes a key from the state in a bot, and returns the state map"
   [bot key]
-  (dissoc (swap! (:state bot) dissoc key) ::internal-state))
+  (swap! (:state bot) dissoc key))
 (s/fdef state-
         :args (s/cat :bot ::bot :key keyword?)
         :ret map?)
 
 (defn update-state
   [bot key f]
-  (dissoc (swap! (:state bot) update key f) ::internal-state))
+  (swap! (:state bot) update key f))
 (s/fdef update-state
         :args (s/cat :bot ::bot :key keyword? :f fn?)
         :ret map?)

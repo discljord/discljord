@@ -83,7 +83,7 @@
                                     (catch Exception e nil))]
                            (if (seq init-state)
                              init-state
-                             {})))
+                             [])))
 
 (def initial-state {:prefix "!" :prepend-to-messages "\u200B"})
 

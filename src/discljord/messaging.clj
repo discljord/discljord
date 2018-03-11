@@ -41,3 +41,10 @@
              {:headers {"Authorization" (:token bot)
                         "Content-Type" "application/json"}
               :body (json/write-str {:content content})}))
+
+(defn get-channel
+  [bot channel-id]
+  (conn/clean-json-input
+   (json/read-str (:body @(http/get (conn/api-url (str "/channels/" channel-id))
+                                    {:headers {"Authorization" (:token bot)
+                                               "Content-Type" "application/json"}})))))

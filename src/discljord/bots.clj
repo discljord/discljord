@@ -10,7 +10,8 @@
 (s/def ::name string?)
 (s/def ::id number?)
 
-(s/def ::guild (s/keys :req-un [::name ::id ::state]))
+(s/def ::guild (s/keys :req-un [::id ::state]
+                       :opt-un [::name]))
 (s/def ::guilds (s/coll-of ::guild))
 
 (s/def ::event-channel any?)
@@ -150,6 +151,8 @@
         :args (s/cat :guild ::guild :guild-id ::id)
         :ret boolean?)
 
+;; All the guild state things need an update since they assume that a guild already exists for them to work
+
 (defn guild-state
   [bot guild-id]
   (select-first [:state ATOM ::internal-state :guilds ALL #(same-id? % guild-id) :state] bot))
@@ -159,7 +162,7 @@
 
 (defn guild-state+
   [bot guild-id key val]
-  (select-one [:state ATOM ::internal-state :guilds ALL #(same-id? % guild-id) :state]
+  (select-one [:state ATOM ::internal-state :guilds ALL #(same-id? % guild-id) :state key]
                 (setval [:state ATOM ::internal-state :guilds ALL #(same-id? % guild-id) :state key] val bot)))
 (s/fdef guild-state+
         :args (s/cat :bot ::bot :guild-id ::id :key keyword? :val any?)
@@ -173,6 +176,6 @@
         :args (s/cat :bot ::bot :guild-id ::id :key keyword?))
 
 (defn update-guild-state
-  [bot guild-id key f]
-  (select-first [:state ATOM ::internal-state :guilds ALL #(same-id? % guild-id) :state]
-                (transform [:state ATOM ::internal-state :guilds ALL #(same-id? % guild-id) :state key] f bot)))
+  [bot guild-id key f & args]
+  (select-first [:state ATOM ::internal-state :guilds ALL #(same-id? % guild-id) :state key]
+                (transform [:state ATOM ::internal-state :guilds ALL #(same-id? % guild-id) :state key] #(apply f % args) bot)))

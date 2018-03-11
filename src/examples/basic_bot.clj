@@ -14,8 +14,7 @@
 
 (defn add-quote!
   [bot guild-id user q]
-  #_(println "Quote added to user:" user "\n" q)
-  (doall (map prn [bot guild-id user q]))
+  (println "Quote added to user:" user "\n" q)
   (bots/update-guild-state bot guild-id :quotes assoc user
                            (if-let [user-quotes (get (:quotes (bots/guild-state bot guild-id)) user)]
                              (conj user-quotes q)
@@ -35,6 +34,8 @@
 
 (defn disconnect
   [bot]
+  (a/>!! (:event-channel bot) {:event-type :stop :event-data nil})
+  (Thread/sleep 1000)
   (a/>!! (:event-channel bot) {:event-type :disconnect :event-data nil})
   (transform [:shards ALL :socket-state] conn/disconnect-websocket bot))
 
@@ -65,21 +66,30 @@
 
 (def quotes-file "resources/quotes.edn")
 
+(defn save-quotes
+  [bot]
+  (let [s (prn-str (:guilds (::bots/internal-state (bots/state bot))))]
+    (println "Saving out the quotes database...")
+    (spit quotes-file s)))
+
+(def running? (atom nil))
+
 (defn proc-disconnect
   [bot {:keys [event-type event-data] :as event}]
-  (spit quotes-file (prn-str (:guilds (::bots/internal-state (bots/state bot))))))
+  (save-quotes bot)
+  (reset! running? false))
 
 (def listeners [{:event-channel (a/chan 100)
                  :event-type :message-create
                  :event-handler (fn [& args]
                                   (apply @#'proc-command args))}
                 {:event-channel (a/chan 1)
-                 :event-type :disconnect
+                 :event-type :stop
                  :event-handler (fn [& args]
                                   (apply @#'proc-disconnect args))}])
 
 (def initial-guild-state (let [init-state
-                               (try (read-string (slurp "resources/quotes.edn"))
+                               (try (read-string (slurp quotes-file))
                                     (catch Exception e nil))]
                            (if (seq init-state)
                              init-state
@@ -105,6 +115,7 @@
   [& args]
   (when (connected? @basic-bot)
     (disconnect @basic-bot))
+  (reset! running? true)
   (swap! basic-bot bots/init-shards)
   (bots/start-message-proc! (:event-channel @basic-bot) (:listeners @basic-bot))
   (bots/start-listeners! @basic-bot)
@@ -114,4 +125,10 @@
                                  (:token @basic-bot)
                                  (select-one [ATOM :shards FIRST :shard-id] basic-bot)
                                  (:event-channel @basic-bot)
-                                 (select-one [ATOM :shards FIRST :socket-state] basic-bot))))
+                                 (select-one [ATOM :shards FIRST :socket-state] basic-bot)))
+  (a/go-loop []
+    (a/<! (a/timeout 300000))
+    (println "Autosave time. Next autosave in 5 minutes.")
+    (save-quotes @basic-bot)
+    (when @running?
+      (recur))))

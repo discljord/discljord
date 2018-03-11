@@ -81,7 +81,8 @@
 
 (defn create-bot
   [{:keys [token default-listeners? listeners guilds init-state] :as params
-    :or {token "" default-listeners? true init-state {}}}]
+    :or {token "" default-listeners? true init-state {}
+         guilds []}}]
   (let [token (str "Bot " (str/trim token))
         event-channel (a/chan 1000)
         gateway nil
@@ -175,7 +176,17 @@
 (s/fdef guild-state-
         :args (s/cat :bot ::bot :guild-id ::id :key keyword?))
 
+(defn guild-exists?
+  [bot guild-id]
+  (select-first [:state ATOM ::internal-state :guilds ALL #(same-id? % guild-id)] bot))
+
+(defn add-guild
+  [bot guild-id]
+  (setval [:state ATOM ::internal-state :guilds END] [{:id guild-id :state {}}] bot))
+
 (defn update-guild-state
   [bot guild-id key f & args]
+  (when-not (guild-exists? bot guild-id)
+    (add-guild bot guild-id))
   (select-first [:state ATOM ::internal-state :guilds ALL #(same-id? % guild-id) :state key]
                 (transform [:state ATOM ::internal-state :guilds ALL #(same-id? % guild-id) :state key] #(apply f % args) bot)))

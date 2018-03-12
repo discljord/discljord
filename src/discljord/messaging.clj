@@ -9,6 +9,10 @@
   [user-id]
   (str "<@" user-id ">"))
 
+(defn mention-nick
+  [user-d]
+  (str "<@!" user-id ">"))
+
 ;; TODO Create a system for interacting with the discord HTTP endpoint.
 ;; This will have to hold a state with all the information about various endpoints
 ;; that will be used for communication with the discord api. Most notably rate limits.

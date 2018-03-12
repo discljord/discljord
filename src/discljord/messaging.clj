@@ -48,3 +48,9 @@
    (json/read-str (:body @(http/get (conn/api-url (str "/channels/" channel-id))
                                     {:headers {"Authorization" (:token bot)
                                                "Content-Type" "application/json"}})))))
+
+(defn delete-message
+  [bot channel-id message-id]
+  (http/delete (conn/api-url (str "/channels/" channel-id "/messages/" message-id))
+               {:headers {"Authorization" (:token bot)
+                          "Content-Type" "application/json"}}))

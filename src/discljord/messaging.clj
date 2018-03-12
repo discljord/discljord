@@ -44,7 +44,7 @@
   (http/post (conn/api-url (str "/channels/" channel-id "/messages"))
              {:headers {"Authorization" (:token bot)
                         "Content-Type" "application/json"}
-              :body (json/write-str {:content (str \u200B content)})}))
+              :body (json/write-str {:content (str \u180E content)})}))
 
 (defn get-channel
   [bot channel-id]

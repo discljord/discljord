@@ -59,7 +59,11 @@
     (a/go-loop []
       (let [event (a/<! event-channel)]
         (if-not (= (:event-type event) :disconnect)
-          (do (event-handler bot event)
+          (do (try
+                (event-handler bot event)
+                (catch Exception e
+                  (binding [*out* *err*]
+                    (println e))))
               (recur))
           (println "Closed listener:" listener)))))
   nil)

@@ -10,7 +10,7 @@
   (str "<@" user-id ">"))
 
 (defn mention-nick
-  [user-d]
+  [user-id]
   (str "<@!" user-id ">"))
 
 ;; TODO Create a system for interacting with the discord HTTP endpoint.

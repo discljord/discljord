@@ -74,10 +74,12 @@
 
 (def running? (atom nil))
 
+(def stop-channel (a/chan 1))
+
 (defn proc-disconnect
   [bot {:keys [event-type event-data] :as event}]
   (save-quotes bot)
-  (reset! running? false))
+  (a/>!! stop-channel :stop))
 
 (def listeners [{:event-channel (a/chan 100)
                  :event-type :message-create
@@ -115,7 +117,6 @@
   [& args]
   (when (connected? @basic-bot)
     (disconnect @basic-bot))
-  (reset! running? true)
   (swap! basic-bot bots/init-shards)
   (bots/start-message-proc! (:event-channel @basic-bot) (:listeners @basic-bot))
   (bots/start-listeners! @basic-bot)
@@ -127,8 +128,9 @@
                                  (:event-channel @basic-bot)
                                  (select-one [ATOM :shards FIRST :socket-state] basic-bot)))
   (a/go-loop []
-    (a/<! (a/timeout 300000))
-    (println "Autosave time. Next autosave in 5 minutes.")
-    (save-quotes @basic-bot)
-    (when @running?
-      (recur))))
+    (let [[message port] (a/alts! [(a/timeout 30000) stop-channel])]
+      (println "Autosave time. Next autosave in 5 minutes.")
+      (save-quotes @basic-bot)
+      (if-not (= port stop-channel)
+        (recur)
+        (println "Closing autosave loop.")))))

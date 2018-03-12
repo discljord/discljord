@@ -73,8 +73,6 @@
     (println "Saving out the quotes database...")
     (spit quotes-file s)))
 
-(def running? (atom nil))
-
 (def stop-channel (a/chan 1))
 
 (defn proc-disconnect

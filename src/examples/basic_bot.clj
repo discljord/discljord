@@ -6,6 +6,7 @@
             [clojure.core.async :as a]
             [clojure.java.io :as io]
             [clojure.edn :as edn])
+  (:import [org.eclipse.jetty websocket.client.WebSocketClient util.ssl.SslContextFactory])
   (:use com.rpl.specter))
 
 (def token (str/trim (slurp "resources/token.txt")))
@@ -113,6 +114,8 @@
   [bot]
   false)
 
+(def max-message-size 100000)
+
 (defn -main
   [& args]
   (when (connected? @basic-bot)
@@ -120,13 +123,17 @@
   (swap! basic-bot bots/init-shards)
   (bots/start-message-proc! (:event-channel @basic-bot) (:listeners @basic-bot))
   (bots/start-listeners! @basic-bot)
-  (swap! (select-one [ATOM :shards FIRST :socket-state] basic-bot)
-         assoc :socket
-         (conn/connect-websocket (select-one [ATOM :shards FIRST :gateway] basic-bot)
-                                 (:token @basic-bot)
-                                 (select-one [ATOM :shards FIRST :shard-id] basic-bot)
-                                 (:event-channel @basic-bot)
-                                 (select-one [ATOM :shards FIRST :socket-state] basic-bot)))
+  (let [client (WebSocketClient. (SslContextFactory.))]
+    (.setMaxTextMessageSize (.getPolicy client) max-message-size)
+    (.start client)
+    (swap! (select-one [ATOM :shards FIRST :socket-state] basic-bot)
+           assoc :socket
+           (conn/connect-websocket (select-one [ATOM :shards FIRST :gateway] basic-bot)
+                                   (:token @basic-bot)
+                                   (select-one [ATOM :shards FIRST :shard-id] basic-bot)
+                                   (:event-channel @basic-bot)
+                                   (select-one [ATOM :shards FIRST :socket-state] basic-bot)
+                                   client)))
   (a/go-loop []
     (let [[message port] (a/alts! [(a/timeout 30000) stop-channel])]
       (println "Autosave time. Next autosave in 5 minutes.")

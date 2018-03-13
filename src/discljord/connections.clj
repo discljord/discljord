@@ -215,9 +215,6 @@
                                             shard-id event-channel
                                             socket-state true)
                   ;; NOTE: Maybe this should do a reconnect instead of a disconnect?
-                  (do (println "Unknown stop code")
-                      (a/go (disconnect-websocket socket-state)
-                            (a/>! event-channel {:event-type :disconnect :event-data nil})
-                            (throw (Exception. "Unkown stop code")))))
+                  (println "Unknown stop code"))
                 (swap! socket-state dissoc :socket))))
 

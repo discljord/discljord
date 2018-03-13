@@ -128,7 +128,6 @@
                     (when (and continue (:ack? @socket-state))
                       (if-let [interval (:hb-interval @socket-state)]
                         (do (heartbeat (:socket @socket-state) (:seq @socket-state))
-                            (println "Sending heartbeat from usual route")
                             (swap! socket-state assoc :ack? false)
                             (a/<! (a/timeout interval))
                             (recur (:keep-alive @socket-state)))
@@ -212,6 +211,9 @@
                   4011 (a/go (disconnect-websocket socket-state)
                              (a/>! event-channel {:event-type :disconnect :event-data nil})
                              (throw (Exception. "Sharding required")))
+                  1006 (reconnect-websocket gateway token
+                                            shard-id event-channel
+                                            socket-state true)
                   (println "Unknown stop code"))
                 (swap! socket-state dissoc :socket))))
 

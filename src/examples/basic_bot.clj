@@ -45,25 +45,42 @@
   (when-not (= event-type :disconnect)
     (case type
       0 (do
-          ;; A normal message has been sent
-          ;; Check to seee what message is being sent specifically
-          (cond
-            (and (= 0 (str/index-of content (str (:prefix (bots/state bot)) "disconnect")))
-                 (= user-id bot-owner-id))
-            (disconnect bot)
-            (= 0 (str/index-of content (str (:prefix (bots/state bot)) "quote")))
-            (if (> (count (str/split content #"\s")) 1)
-              (let [[q command & args] (str/split content #"\s")]
-                (case command
-                  "add" (when-let [guild (:guild-id (m/get-channel bot channel-id))]
-                          (add-quote! bot (BigInteger. guild) (first args) (str/join " " (rest args)))
-                          (m/send-message bot channel-id
-                                          (str "Quote \"" (str/join " " (rest args))
-                                               "\" added to user: " (first args))))
+          (let [finished? (atom nil)]
+            (when-not @finished?
+              (when-let [_ (re-find (re-pattern
+                                     (str "^"
+                                          (:prefix (bots/state bot))
+                                          "disconnect[\\s\\r\\n]*$"))
+                                    content)]
+                (if (= user-id bot-owner-id)
+                  (do
+                    (m/send-message bot channel-id "Goodbye!")
+                    (disconnect bot))
+                  (do
+                    (m/send-message bot channel-id "Non-owning users cannot deactivate this bot.")))
+                (reset! finished? true))
+              (when-not @finished?
+                (when-let [[_ user quote]
+                           (re-find (re-pattern
+                                     (str "^"
+                                          (:prefix (bots/state bot))
+                                          "quote\\s+add\\s+([^\\s\\r\\n]+)\\s+((.|\\r|\\n)*)"))
+                                    content)]
                   (when-let [guild (:guild-id (m/get-channel bot channel-id))]
-                    (m/send-message bot channel-id (random-quote bot (BigInteger. guild) command)))))
-              (when-let [guild (:guild-id (m/get-channel bot channel-id))]
-                (m/send-message bot channel-id (random-quote bot (BigInteger. guild) nil)))))))))
+                    (add-quote! bot guild user quote)
+                    (m/send-message bot channel-id
+                                    (str "Quote \"" quote
+                                         "\" added to user: " user)))
+                  (reset! finished? true))
+                (when-not @finished?
+                  (when-let [[_ _ user] (re-find (re-pattern
+                                                  (str "^"
+                                                       (:prefix (bots/state bot))
+                                                       "quote(\\s*|\\s+([^\\s\\r\\n]*)\\s*)$"))
+                                                 content)]
+                    (when-let [guild (:guild-id (m/get-channel bot channel-id))]
+                      (m/send-message bot channel-id (random-quote bot guild user)))
+                    (reset! finished? true))))))))))
 
 (def quotes-file "resources/quotes.edn")
 
@@ -96,12 +113,16 @@
                              init-state
                              [])))
 
+(def init-state {:prefix "!"})
+
 (defonce basic-bot (atom (bots/create-bot {:token token
                                            :listeners listeners
+                                           :init-state init-state
                                            :guilds initial-guild-state})))
 (comment
   (def basic-bot (atom (bots/create-bot {:token token
                                          :listeners listeners
+                                         :init-state init-state
                                          :guilds initial-guild-state}))))
 
 (defn connected?

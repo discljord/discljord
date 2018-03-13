@@ -35,8 +35,6 @@
 
 (defn disconnect
   [bot]
-  (a/>!! (:event-channel bot) {:event-type :stop :event-data nil})
-  (Thread/sleep 1000)
   (a/>!! (:event-channel bot) {:event-type :disconnect :event-data nil})
   (transform [:shards ALL :socket-state] conn/disconnect-websocket bot))
 
@@ -44,26 +42,28 @@
   [bot {event-type :event-type
         {:keys [channel-id content type mentions]
          {user-id :id :keys [username bot?] :as author} :author :as data} :event-data}]
-  (case type
-    0 (do ;; A normal message has been sent
-        ;; Check to seee what message is being sent specifically
-        (cond
-          (and (= 0 (str/index-of content (str (:prefix (bots/state bot)) "disconnect")))
-               (= user-id bot-owner-id))
-          (disconnect bot)
-          (= 0 (str/index-of content (str (:prefix (bots/state bot)) "quote")))
-          (if (> (count (str/split content #"\s")) 1)
-            (let [[q command & args] (str/split content #"\s")]
-              (case command
-                "add" (when-let [guild (:guild-id (m/get-channel bot channel-id))]
-                        (add-quote! bot (BigInteger. guild) (first args) (str/join " " (rest args)))
-                        (m/send-message bot channel-id
-                                        (str "Quote \"" (str/join " " (rest args))
-                                             "\" added to user: " (first args))))
-                (when-let [guild (:guild-id (m/get-channel bot channel-id))]
-                  (m/send-message bot channel-id (random-quote bot (BigInteger. guild) command)))))
-            (when-let [guild (:guild-id (m/get-channel bot channel-id))]
-              (m/send-message bot channel-id (random-quote bot (BigInteger. guild) nil))))))))
+  (when-not (= event-type :disconnect)
+    (case type
+      0 (do
+          ;; A normal message has been sent
+          ;; Check to seee what message is being sent specifically
+          (cond
+            (and (= 0 (str/index-of content (str (:prefix (bots/state bot)) "disconnect")))
+                 (= user-id bot-owner-id))
+            (disconnect bot)
+            (= 0 (str/index-of content (str (:prefix (bots/state bot)) "quote")))
+            (if (> (count (str/split content #"\s")) 1)
+              (let [[q command & args] (str/split content #"\s")]
+                (case command
+                  "add" (when-let [guild (:guild-id (m/get-channel bot channel-id))]
+                          (add-quote! bot (BigInteger. guild) (first args) (str/join " " (rest args)))
+                          (m/send-message bot channel-id
+                                          (str "Quote \"" (str/join " " (rest args))
+                                               "\" added to user: " (first args))))
+                  (when-let [guild (:guild-id (m/get-channel bot channel-id))]
+                    (m/send-message bot channel-id (random-quote bot (BigInteger. guild) command)))))
+              (when-let [guild (:guild-id (m/get-channel bot channel-id))]
+                (m/send-message bot channel-id (random-quote bot (BigInteger. guild) nil)))))))))
 
 (def quotes-file "resources/quotes.edn")
 
@@ -85,7 +85,7 @@
                  :event-handler (fn [& args]
                                   (apply @#'proc-command args))}
                 {:event-channel (a/chan 1)
-                 :event-type :stop
+                 :event-type :disconnect
                  :event-handler (fn [& args]
                                   (apply @#'proc-disconnect args))}])
 
@@ -96,16 +96,12 @@
                              init-state
                              [])))
 
-(def initial-state {:prefix "!" :prepend-to-messages "\u200B"})
-
 (defonce basic-bot (atom (bots/create-bot {:token token
                                            :listeners listeners
-                                           :init-state initial-state
                                            :guilds initial-guild-state})))
 (comment
   (def basic-bot (atom (bots/create-bot {:token token
                                          :listeners listeners
-                                         :init-state initial-state
                                          :guilds initial-guild-state}))))
 
 (defn connected?

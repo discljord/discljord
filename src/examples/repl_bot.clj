@@ -18,8 +18,6 @@
 
 (defn disconnect
   [bot]
-  (a/>!! (:event-channel bot) {:event-type :stop :event-data nil})
-  (Thread/sleep 1000)
   (a/>!! (:event-channel bot) {:event-type :disconnect :event-data nil})
   (transform [:shards ALL :socket-state] #(when % (conn/disconnect-websocket %)) bot))
 
@@ -55,7 +53,7 @@
       "!disconnect" (disconnect bot)
       nil)))
 
-(defn proc-stop
+(defn proc-disconnect
   [bot event]
   nil)
 
@@ -64,9 +62,9 @@
                  :event-handler (fn [& args]
                                   (apply @#'proc-command args))}
                 {:event-channel (a/chan 1)
-                 :event-type :stop
+                 :event-type :disconnect
                  :event-handler (fn [& args]
-                                  (apply @#'proc-stop args))}])
+                                  (apply @#'proc-disconnect args))}])
 
 (defonce basic-bot (atom (bots/create-bot {:token token
                                            :listeners listeners})))

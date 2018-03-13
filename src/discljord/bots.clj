@@ -65,7 +65,12 @@
                   (binding [*out* *err*]
                     (println e))))
               (recur))
-          (println "Closed listener:" listener)))))
+          (do (try
+                (event-handler bot event)
+                (catch Exception e
+                  (binding [*out* *err*]
+                    (println e))))
+              (println "Closed listener:" listener))))))
   nil)
 (s/fdef start-listeners!
         :args (s/cat :listeners ::listeners)

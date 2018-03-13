@@ -214,6 +214,10 @@
                   1006 (reconnect-websocket gateway token
                                             shard-id event-channel
                                             socket-state true)
-                  (println "Unknown stop code"))
+                  ;; NOTE: Maybe this should do a reconnect instead of a disconnect?
+                  (do (println "Unknown stop code")
+                      (a/go (disconnect-websocket socket-state)
+                            (a/>! event-channel {:event-type :disconnect :event-data nil})
+                            (throw (Exception. "Unkown stop code")))))
                 (swap! socket-state dissoc :socket))))
 

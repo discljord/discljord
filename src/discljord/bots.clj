@@ -8,7 +8,7 @@
 (s/def ::state any?)
 
 (s/def ::name string?)
-(s/def ::id string?)
+(s/def ::id (s/or :number number? :string string?))
 
 (s/def ::guild (s/keys :req-un [::id ::state]
                        :opt-un [::name]))
@@ -156,7 +156,7 @@
 
 (defn- same-id?
   [guild guild-id]
-  (= (:id guild) guild-id))
+  (= (:id guild) (if (string? guild-id) (BigInteger. guild-id) guild-id)))
 (s/fdef same-id?
         :args (s/cat :guild ::guild :guild-id ::id)
         :ret boolean?)
@@ -191,7 +191,8 @@
 
 (defn add-guild
   [bot guild-id]
-  (setval [:state ATOM ::internal-state :guilds END] [{:id guild-id :state {}}] bot))
+  (let [guild-id (if (string? guild-id) (BigInteger. guild-id) guild-id)]
+    (setval [:state ATOM ::internal-state :guilds END] [{:id guild-id :state {}}] bot)))
 
 (defn update-guild-state
   [bot guild-id key f & args]

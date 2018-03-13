@@ -8,7 +8,7 @@
 (s/def ::state any?)
 
 (s/def ::name string?)
-(s/def ::id number?)
+(s/def ::id string?)
 
 (s/def ::guild (s/keys :req-un [::id ::state]
                        :opt-un [::name]))

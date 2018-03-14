@@ -38,49 +38,64 @@
   (a/>!! (:event-channel bot) {:event-type :disconnect :event-data nil})
   (transform [:shards ALL :socket-state] conn/disconnect-websocket bot))
 
+(defn- gen-first-match-body
+  [finished ret-val clauses]
+  (if (> (count clauses) 0)
+    (if-not (= (first clauses) :default)
+      (let [[test & body] (first clauses)]
+        `(when-not @~finished
+           (when-let ~test
+             (reset! ~ret-val (do ~@body))
+             (reset! ~finished true))
+           ~(gen-first-match-body finished ret-val (rest clauses))))
+      `(when-not @~finished
+         (reset! ~ret-val (do ~@(rest clauses)))))))
+
+(defmacro first-match
+  [& body]
+  (let [finished (gensym)
+        ret-val (gensym)]
+    `(let [~finished (atom nil)
+           ~ret-val (atom nil)]
+       ~(gen-first-match-body finished ret-val body)
+       @~ret-val)))
+
 (defn proc-command
   [bot {event-type :event-type
         {:keys [channel-id content type mentions]
          {user-id :id :keys [username bot?] :as author} :author :as data} :event-data}]
   (when-not (= event-type :disconnect)
     (case type
-      0 (do
-          (let [finished? (atom nil)]
-            (when-not @finished?
-              (when-let [_ (re-find (re-pattern
-                                     (str "^"
-                                          (:prefix (bots/state bot))
-                                          "disconnect[\\s\\r\\n]*$"))
-                                    content)]
-                (if (= user-id bot-owner-id)
-                  (do
-                    (m/send-message bot channel-id "Goodbye!")
-                    (disconnect bot))
-                  (do
-                    (m/send-message bot channel-id "Non-owning users cannot deactivate this bot.")))
-                (reset! finished? true))
-              (when-not @finished?
-                (when-let [[_ user quote]
-                           (re-find (re-pattern
-                                     (str "^"
-                                          (:prefix (bots/state bot))
-                                          "quote\\s+add\\s+([^\\s\\r\\n]+)\\s+((.|\\r|\\n)*)"))
-                                    content)]
-                  (when-let [guild (:guild-id (m/get-channel bot channel-id))]
-                    (add-quote! bot guild user quote)
-                    (m/send-message bot channel-id
-                                    (str "Quote \"" quote
-                                         "\" added to user: " user)))
-                  (reset! finished? true))
-                (when-not @finished?
-                  (when-let [[_ _ user] (re-find (re-pattern
-                                                  (str "^"
-                                                       (:prefix (bots/state bot))
-                                                       "quote(\\s*|\\s+([^\\s\\r\\n]*)\\s*)$"))
-                                                 content)]
-                    (when-let [guild (:guild-id (m/get-channel bot channel-id))]
-                      (m/send-message bot channel-id (random-quote bot guild user)))
-                    (reset! finished? true))))))))))
+      0 (first-match
+         ([_ (re-find (re-pattern
+                       (str "^"
+                            (:prefix (bots/state bot))
+                            "disconnect[\\s\\r\\n]*$"))
+                      content)]
+          (if (= user-id bot-owner-id)
+            (do
+              (m/send-message bot channel-id "Goodbye!")
+              (disconnect bot))
+            (do
+              (m/send-message bot channel-id "Non-owning users cannot deactivate this bot."))))
+         ([[_ user quote]
+           (re-find (re-pattern
+                     (str "^"
+                          (:prefix (bots/state bot))
+                          "quote\\s+add\\s+([^\\s\\r\\n]+)\\s+((.|\\r|\\n)*)"))
+                    content)]
+          (when-let [guild (:guild-id (m/get-channel bot channel-id))]
+            (add-quote! bot guild user quote)
+            (m/send-message bot channel-id
+                            (str "Quote \"" quote
+                                 "\" added to user: " user))))
+         ([[_ _ user] (re-find (re-pattern
+                                (str "^"
+                                     (:prefix (bots/state bot))
+                                     "quote(\\s*|\\s+([^\\s\\r\\n]*)\\s*)$"))
+                               content)]
+          (when-let [guild (:guild-id (m/get-channel bot channel-id))]
+            (m/send-message bot channel-id (random-quote bot guild user))))))))
 
 (def quotes-file "resources/quotes.edn")
 

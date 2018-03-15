@@ -6,7 +6,8 @@
             [org.httpkit.server :as s :refer [with-channel
                                               on-receive
                                               run-server
-                                              send!]]
+                                              send!
+                                              close]]
             [clojure.spec.alpha :as spec]
             [gniazdo.core :as ws]
             [clojure.test :as t]))
@@ -112,45 +113,56 @@
                                          (if (= op 53)
                                            (send! conn (json/write-str {"op" 9 "d" false}))
                                            (if (= op 54)
-                                             (send! conn (json/write-str {"op" 9 "d" true}))))))))))))]
-      (t/is (= @success 0))
+                                             (send! conn (json/write-str {"op" 9 "d" true}))
+                                             (if (= op 55)
+                                               (do (println "Closing connection!")
+                                                   (close conn)))))))))))))]
+      (t/is (= 0 @success))
       (let [socket-state (atom {:keep-alive true :ack? true})
             event-channel (a/chan)]
         (swap! socket-state assoc :socket
                (connect-websocket {:url uri :shard-count 1} t 0 event-channel socket-state))
         (Thread/sleep 100)
-        (t/is (= @success 1))
+        (t/is (= 1 @success))
         (t/testing "\tDoes the websocket perform heartbeats?\n"
           (t/is (= (:hb-interval @socket-state) 1000))
           (Thread/sleep 1100)
-          (t/is (>= @heartbeats 2)))
+          (t/is (>= 2 @heartbeats)))
         ;; TODO: figure out why I can't send-msg from here
         (t/testing "\tDoes the websocket send heartbeats back when prompted?\n"
           (let [beats @heartbeats]
             (ws/send-msg (:socket @socket-state) (json/write-str {"op" 50}))
             (Thread/sleep 10)
-            (t/is (= @heartbeats (inc beats)))))
+            (t/is (= (inc beats) @heartbeats))))
         (t/testing "\tDoes the websocket push events onto its channel?"
           (ws/send-msg (:socket @socket-state) (json/write-str {"op" 51}))
           (let [[result port] (a/alts!! [event-channel (a/timeout 1000)])]
-            (t/is (= (:event-type result)
-                     :ready))))
+            (t/is (= :ready
+                     (:event-type result)))))
         (t/testing "\tDoes the websocket reconnect when sent an op 7 payload?"
-          (t/is (= @reconnects 0))
+          (t/is (= 0 @reconnects))
           (ws/send-msg (:socket @socket-state) (json/write-str {"op" 52}))
           (Thread/sleep 200)
-          (t/is (= @reconnects 1)))
+          (t/is (= 1 @reconnects)))
         (t/testing "\tDoes the websocket properly respond to invalid session payloads?"
           (ws/send-msg (:socket @socket-state) (json/write-str {"op" 53}))
           (Thread/sleep 200)
-          (t/is (= @success 2))
+          (t/is (= 2 @success))
           (ws/send-msg (:socket @socket-state) (json/write-str {"op" 54}))
           (Thread/sleep 200)
-          (t/is (= @reconnects 2)))
+          (t/is (= 2 @reconnects)))
+        (println "Reconnect on EOF?")
+        #_(t/testing "\tDoes the websocket reconnect when sent and EOF?"
+          (t/is (= 2 @reconnects))
+          ;; TODO Figure out how to send EOF
+          (ws/send-msg (:socket @socket-state) (json/write-str {"op" 55}))
+          (Thread/sleep 200)
+          (t/is (= 3 @reconnects)))
+        (println "Reconnected?")
         (t/testing "Does the hearbeat stop when the connection is closed?"
           (t/is (not= nil (:socket @socket-state)))
           (let [beats @heartbeats]
             (swap! socket-state assoc :keep-alive false)
             (ws/close (:socket @socket-state))
             (Thread/sleep 1100)
-            (t/is (= @heartbeats beats))))))))
+            (t/is (= beats @heartbeats))))))))

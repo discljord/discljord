@@ -85,19 +85,32 @@
                            (assoc :keep-alive false))))
 
 (defn reconnect-websocket
-  [gateway token shard-id event-channel socket-state resume]
-  (a/go (ws/close (:socket @socket-state))
-        (swap! socket-state #(-> %
-                                 (assoc :keep-alive false)
-                                 (assoc :ack? true)
-                                 (assoc :resume resume)
-                                 (dissoc :socket)))
-        (a/<! (a/timeout 100))
-        (swap! socket-state #(-> %
-                                 (assoc :socket (connect-websocket
-                                                 gateway token shard-id
-                                                 event-channel socket-state))
-                                 (assoc :keep-alive true)))))
+  [gateway token shard-id event-channel socket-state resume & causes]
+  (a/go-loop [timeout-amount 1000 retry-count 0]
+    (println "Closing socket during reconnect")
+    (println "Causes for reconnect:" causes)
+    (println "Reconnection attempt:" retry-count)
+    (when-let [socket (:socket @socket-state)]
+      (ws/close socket))
+    (swap! socket-state #(-> %
+                             (assoc :keep-alive false)
+                             (assoc :ack? true)
+                             (assoc :resume resume)
+                             (dissoc :socket)))
+    (a/<! (a/timeout 100))
+    (println "Opening socket during reconnect")
+    (try (swap! socket-state #(-> %
+                                  (assoc :socket (connect-websocket
+                                                  gateway token shard-id
+                                                  event-channel socket-state))
+                                  (assoc :keep-alive true)))
+         (catch Exception e
+           (let [error-message (with-out-str (binding [*err* *out*]
+                                               (.printStackTrace e)))]
+             (println error-message))))
+    (a/<! (a/timeout timeout-amount))
+    (when (and (not (:connected @socket-state)) (< timeout-amount 100000))
+      (recur (* 2 timeout-amount) (inc retry-count)))))
 
 (defn connect-websocket
   [gateway token shard-id event-channel socket-state & [client]]
@@ -106,6 +119,7 @@
     :on-connect (fn [_]
                   (println "Connected!")
                   (println "Sending connection packet. Resume:" (:resume @socket-state))
+                  (swap! socket-state assoc :connected true)
                   (if-not (:resume @socket-state)
                     (ws/send-msg (:socket @socket-state) (json/write-str
                                                           {"op" 2
@@ -161,25 +175,26 @@
                                   (swap! socket-state assoc :seq s))
                                 (a/>! event-channel {:event-type t :event-data (clean-json-input d)})))
                       ;; This is the restart connection one
-                      7 (reconnect-websocket gateway token shard-id event-channel socket-state true)
+                      7 (a/go (reconnect-websocket gateway token shard-id event-channel socket-state true "Reconnection message"))
                       ;; This is the invalid session response
                       9 (a/go (if (get msg "d")
                                 (reconnect-websocket gateway token
                                                      shard-id event-channel
-                                                     socket-state true)
+                                                     socket-state true "Invalid session, resume")
                                 (reconnect-websocket gateway token
                                                      shard-id event-channel
-                                                     socket-state false)))
+                                                     socket-state false "Invalid session")))
                       ;; This is what happens if there was a unknown payload
                       (println "Unhandled response from server:" op))))
     :on-close (fn [stop-code msg]
                 (println "Connection closed. code:" stop-code "\nmessage:" msg)
+                (swap! socket-state assoc :connected false)
                 (case stop-code
                   ;; Unknown error
                   4000 (a/go (a/<! (a/timeout 1000))
                              (reconnect-websocket gateway token
                                                   shard-id event-channel
-                                                  socket-state true))
+                                                  socket-state true "Unknown error"))
                   4001 (a/go (disconnect-websocket socket-state)
                              (a/>! event-channel {:event-type :disconnect :event-data nil})
                              (throw (Exception. "Invalid gateway opcode sent to server")))
@@ -199,21 +214,22 @@
                   4007 (a/go (a/<! (a/timeout 1000))
                              (reconnect-websocket gateway token
                                                   shard-id event-channel
-                                                  socket-state false))
+                                                  socket-state false "Ivalid seq"))
                   4008 (a/go (disconnect-websocket socket-state)
                              (a/>! event-channel {:event-type :disconnect :event-data nil})
                              (throw (Exception. "Rate limit reached")))
                   ;; Session timed out
-                  4009 (reconnect-websocket gateway token
-                                            shard-id event-channel
-                                            socket-state false)
+                  4009 (a/go (a/<! (a/timeout 1000))
+                             (reconnect-websocket gateway token
+                                                  shard-id event-channel
+                                                  socket-state false "Session timeout"))
                   4010 (a/go (disconnect-websocket socket-state)
                              (a/>! event-channel {:event-type :disconnect :event-data nil})
                              (throw (Exception. "Invalid shard sent")))
                   4011 (a/go (disconnect-websocket socket-state)
                              (a/>! event-channel {:event-type :disconnect :event-data nil})
                              (throw (Exception. "Sharding required")))
-                  1006 (a/go (a/timeout 1000)
+                  #_1006 #_(a/go (a/timeout 1000)
                              (reconnect-websocket gateway token
                                                   shard-id event-channel
                                                   socket-state true))

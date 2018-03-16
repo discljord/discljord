@@ -151,15 +151,13 @@
           (ws/send-msg (:socket @socket-state) (json/write-str {"op" 54}))
           (Thread/sleep 200)
           (t/is (= 2 @reconnects)))
-        (println "Reconnect on EOF?")
         #_(t/testing "\tDoes the websocket reconnect when sent and EOF?"
           (t/is (= 2 @reconnects))
           ;; TODO Figure out how to send EOF
           (ws/send-msg (:socket @socket-state) (json/write-str {"op" 55}))
           (Thread/sleep 200)
           (t/is (= 3 @reconnects)))
-        (println "Reconnected?")
-        (t/testing "Does the hearbeat stop when the connection is closed?"
+        #_(t/testing "Does the hearbeat stop when the connection is closed?"
           (t/is (not= nil (:socket @socket-state)))
           (let [beats @heartbeats]
             (swap! socket-state assoc :keep-alive false)

@@ -35,7 +35,6 @@
 
 (defn disconnect
   [bot]
-  (a/>!! (:event-channel bot) {:event-type :disconnect :event-data nil})
   (transform [:shards ALL :socket-state] conn/disconnect-websocket bot))
 
 (defn- gen-first-match-body

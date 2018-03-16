@@ -19,8 +19,7 @@
 
 (defn disconnect
   [bot]
-  (a/>!! (:event-channel bot) {:event-type :disconnect :event-data nil})
-  (transform [:shards ALL :socket-state] #(when % (conn/disconnect-websocket %)) bot))
+  (transform [:shards ALL :socket-state] conn/disconnect-websocket bot))
 
 (defn start-repl
   "Starts a repl that will send output to the given discord channel which gives

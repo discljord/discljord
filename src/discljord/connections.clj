@@ -229,7 +229,7 @@
                   4011 (a/go (disconnect-websocket socket-state)
                              (a/>! event-channel {:event-type :disconnect :event-data nil})
                              (throw (Exception. "Sharding required")))
-                  #_1006 #_(a/go (a/timeout 1000)
+                  1006 (a/go (a/timeout 1000)
                              (reconnect-websocket gateway token
                                                   shard-id event-channel
                                                   socket-state true))

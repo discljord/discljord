@@ -229,13 +229,21 @@
                   4011 (a/go (disconnect-websocket socket-state)
                              (a/>! event-channel {:event-type :disconnect :event-data nil})
                              (throw (Exception. "Sharding required")))
+                  1006 (a/go (println "Read an EOF, reconnecting.")
+                             (a/timeout 1000)
+                             (reconnect-websocket gateway token
+                                                  shard-id event-channel
+                                                  socket-state true
+                                                  "End of file"))
+                  1001 (a/go (println "Stop code 1001, reconnecting")
+                             (a/timeout 1000)
+                             (reconnect-websocket gateway token
+                                                  shard-id event-channel
+                                                  socket-state true
+                                                  "Error 1001"))
                   1000 (a/go (disconnect-websocket socket-state)
                              (a/>! event-channel {:event-type :disconnect :event-data nil})
                              (println "Clean disconnect"))
-                  (a/go (println "Unknown stop code, reconnecting.")
-                        (a/timeout 1000)
-                        (reconnect-websocket gateway token
-                                             shard-id event-channel
-                                             socket-state true)))
+                  (println "Unknown stop code, disconnecting."))
                 (swap! socket-state dissoc :socket))))
 

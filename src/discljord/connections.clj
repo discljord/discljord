@@ -229,11 +229,13 @@
                   4011 (a/go (disconnect-websocket socket-state)
                              (a/>! event-channel {:event-type :disconnect :event-data nil})
                              (throw (Exception. "Sharding required")))
-                  1006 (a/go (a/timeout 1000)
-                             (reconnect-websocket gateway token
-                                                  shard-id event-channel
-                                                  socket-state true))
-                  ;; NOTE: Maybe this should do a reconnect instead of a disconnect?
-                  (println "Unknown stop code"))
+                  1000 (a/go (disconnect-websocket socket-state)
+                             (a/>! event-channel {:event-type :disconnect :event-data nil})
+                             (println "Clean disconnect"))
+                  (a/go (println "Unknown stop code, reconnecting.")
+                        (a/timeout 1000)
+                        (reconnect-websocket gateway token
+                                             shard-id event-channel
+                                             socket-state true)))
                 (swap! socket-state dissoc :socket))))
 

@@ -87,11 +87,9 @@
 (defn reconnect-websocket
   [gateway token shard-id event-channel socket-state resume & causes]
   (do ;a/go-loop [timeout-amount 1000 retry-count 0]
-    (println "Closing socket during reconnect")
     (println "Causes for reconnect:" causes)
     #_(println "Reconnection attempt:" retry-count)
-    (when-let [socket (:socket @socket-state)]
-      (ws/close socket))
+    (println "Attempting resume?" resume)
     (swap! socket-state #(-> %
                              (assoc :keep-alive false)
                              (assoc :ack? true)
@@ -175,76 +173,83 @@
                                   (swap! socket-state assoc :seq s))
                                 (a/>! event-channel {:event-type t :event-data (clean-json-input d)})))
                       ;; This is the restart connection one
-                      7 (reconnect-websocket gateway token shard-id event-channel socket-state true "Reconnection message")
+                      7 (do
+                          (swap! socket-state assoc :connected false)
+                          (reconnect-websocket gateway token shard-id event-channel socket-state true "Reconnection message"))
                       ;; This is the invalid session response
-                      9 (do (println (get msg "d"))
-                            (if (get msg "d")
-                              (reconnect-websocket gateway token
-                                                   shard-id event-channel
-                                                   socket-state true "Invalid session, resume")
-                              (reconnect-websocket gateway token
-                                                   shard-id event-channel
-                                                   socket-state false "Invalid session")))
+                      9 (do
+                          (swap! socket-state assoc :connected false)
+                          (if (get msg "d")
+                            (reconnect-websocket gateway token
+                                                 shard-id event-channel
+                                                 socket-state true "Invalid session, resume")
+                            (reconnect-websocket gateway token
+                                                 shard-id event-channel
+                                                 socket-state false "Invalid session")))
                       ;; This is what happens if there was a unknown payload
                       (println "Unhandled response from server:" op))))
     :on-close (fn [stop-code msg]
                 (println "Connection closed. code:" stop-code "\nmessage:" msg)
+                (if (:connected @socket-state)
+                  (case stop-code
+                    ;; Unknown error
+                    4000 (a/go (a/<! (a/timeout 1000))
+                               (reconnect-websocket gateway token
+                                                    shard-id event-channel
+                                                    socket-state true "Unknown error"))
+                    4001 (a/go (disconnect-websocket socket-state)
+                               (a/>! event-channel {:event-type :disconnect :event-data nil})
+                               (throw (Exception. "Invalid gateway opcode sent to server")))
+                    4002 (a/go (disconnect-websocket socket-state)
+                               (a/>! event-channel {:event-type :disconnect :event-data nil})
+                               (throw (Exception. "Invalid payload send to server")))
+                    4003 (a/go (disconnect-websocket socket-state)
+                               (a/>! event-channel {:event-type :disconnect :event-data nil})
+                               (throw (Exception. "Payload sent to server before Identify payload")))
+                    4004 (a/go (disconnect-websocket socket-state)
+                               (a/>! event-channel {:event-type :disconnect :event-data nil})
+                               (throw (Exception. "Invalid token")))
+                    4005 (a/go (disconnect-websocket socket-state)
+                               (a/>! event-channel {:event-type :disconnect :event-data nil})
+                               (throw (Exception. "Multiple Identify payloads sent")))
+                    ;; Invalid seq
+                    4007 (a/go (a/<! (a/timeout 1000))
+                               (reconnect-websocket gateway token
+                                                    shard-id event-channel
+                                                    socket-state false "Ivalid seq"))
+                    4008 (a/go (disconnect-websocket socket-state)
+                               (a/>! event-channel {:event-type :disconnect :event-data nil})
+                               (throw (Exception. "Rate limit reached")))
+                    ;; Session timed out
+                    4009 (a/go (a/<! (a/timeout 1000))
+                               (reconnect-websocket gateway token
+                                                    shard-id event-channel
+                                                    socket-state false "Session timeout"))
+                    4010 (a/go (disconnect-websocket socket-state)
+                               (a/>! event-channel {:event-type :disconnect :event-data nil})
+                               (throw (Exception. "Invalid shard sent")))
+                    4011 (a/go (disconnect-websocket socket-state)
+                               (a/>! event-channel {:event-type :disconnect :event-data nil})
+                               (throw (Exception. "Sharding required")))
+                    1006 (a/go (println "Read an EOF, reconnecting.")
+                               (disconnect-websocket socket-state)
+                               (a/<! (a/timeout 1000))
+                               (reconnect-websocket gateway token
+                                                    shard-id event-channel
+                                                    socket-state true
+                                                    "End of file"))
+                    #_1001 #_(a/go (println "Stop code 1001, reconnecting")
+                                   (disconnect-websocket socket-state)
+                                   (a/<! (a/timeout 1000))
+                                   (reconnect-websocket gateway token
+                                                        shard-id event-channel
+                                                        socket-state true
+                                                        "Error 1001"))
+                    1000 (a/go (disconnect-websocket socket-state)
+                               (a/>! event-channel {:event-type :disconnect :event-data nil})
+                               (println "Clean disconnect"))
+                    (println "Unknown stop code, disconnecting."))
+                  (println "Disconnecting invalid socket"))
                 (swap! socket-state assoc :connected false)
-                (case stop-code
-                  ;; Unknown error
-                  4000 (a/go (a/<! (a/timeout 1000))
-                             (reconnect-websocket gateway token
-                                                  shard-id event-channel
-                                                  socket-state true "Unknown error"))
-                  4001 (a/go (disconnect-websocket socket-state)
-                             (a/>! event-channel {:event-type :disconnect :event-data nil})
-                             (throw (Exception. "Invalid gateway opcode sent to server")))
-                  4002 (a/go (disconnect-websocket socket-state)
-                             (a/>! event-channel {:event-type :disconnect :event-data nil})
-                             (throw (Exception. "Invalid payload send to server")))
-                  4003 (a/go (disconnect-websocket socket-state)
-                             (a/>! event-channel {:event-type :disconnect :event-data nil})
-                             (throw (Exception. "Payload sent to server before Identify payload")))
-                  4004 (a/go (disconnect-websocket socket-state)
-                             (a/>! event-channel {:event-type :disconnect :event-data nil})
-                             (throw (Exception. "Invalid token")))
-                  4005 (a/go (disconnect-websocket socket-state)
-                             (a/>! event-channel {:event-type :disconnect :event-data nil})
-                             (throw (Exception. "Multiple Identify payloads sent")))
-                  ;; Invalid seq
-                  4007 (a/go (a/<! (a/timeout 1000))
-                             (reconnect-websocket gateway token
-                                                  shard-id event-channel
-                                                  socket-state false "Ivalid seq"))
-                  4008 (a/go (disconnect-websocket socket-state)
-                             (a/>! event-channel {:event-type :disconnect :event-data nil})
-                             (throw (Exception. "Rate limit reached")))
-                  ;; Session timed out
-                  4009 (a/go (a/<! (a/timeout 1000))
-                             (reconnect-websocket gateway token
-                                                  shard-id event-channel
-                                                  socket-state false "Session timeout"))
-                  4010 (a/go (disconnect-websocket socket-state)
-                             (a/>! event-channel {:event-type :disconnect :event-data nil})
-                             (throw (Exception. "Invalid shard sent")))
-                  4011 (a/go (disconnect-websocket socket-state)
-                             (a/>! event-channel {:event-type :disconnect :event-data nil})
-                             (throw (Exception. "Sharding required")))
-                  1006 (a/go (println "Read an EOF, reconnecting.")
-                             (a/<! (a/timeout 1000))
-                             (reconnect-websocket gateway token
-                                                  shard-id event-channel
-                                                  socket-state true
-                                                  "End of file"))
-                  1001 (a/go (println "Stop code 1001, reconnecting")
-                             (a/<! (a/timeout 1000))
-                             (reconnect-websocket gateway token
-                                                  shard-id event-channel
-                                                  socket-state true
-                                                  "Error 1001"))
-                  1000 (a/go (disconnect-websocket socket-state)
-                             (a/>! event-channel {:event-type :disconnect :event-data nil})
-                             (println "Clean disconnect"))
-                  (println "Unknown stop code, disconnecting."))
                 (swap! socket-state dissoc :socket))))
 

@@ -142,22 +142,22 @@
         (t/testing "\tDoes the websocket reconnect when sent an op 7 payload?"
           (t/is (= 0 @reconnects))
           (ws/send-msg (:socket @socket-state) (json/write-str {"op" 52}))
-          (Thread/sleep 200)
-          (t/is (>= 1 @reconnects)))
+          (Thread/sleep 1200)
+          (t/is (= 1 @reconnects)))
         (t/testing "\tDoes the websocket properly respond to invalid session payloads?"
           (ws/send-msg (:socket @socket-state) (json/write-str {"op" 53}))
-          (Thread/sleep 200)
-          (t/is (= 2 @success))
+          (Thread/sleep 1200)
+          (t/is (= 2 @success)) ; This one seems to be borked. It should be 2?
           (ws/send-msg (:socket @socket-state) (json/write-str {"op" 54}))
-          (Thread/sleep 200)
-          (t/is (>= 2 @reconnects)))
+          (Thread/sleep 1200)
+          (t/is (= 2 @reconnects)))
         #_(t/testing "\tDoes the websocket reconnect when sent and EOF?"
           (t/is (= 2 @reconnects))
           ;; TODO Figure out how to send EOF
           (ws/send-msg (:socket @socket-state) (json/write-str {"op" 55}))
           (Thread/sleep 200)
           (t/is (= 3 @reconnects)))
-        #_(t/testing "Does the hearbeat stop when the connection is closed?"
+        (t/testing "Does the hearbeat stop when the connection is closed?"
           (t/is (not= nil (:socket @socket-state)))
           (let [beats @heartbeats]
             (swap! socket-state assoc :keep-alive false)

@@ -86,10 +86,10 @@
 
 (defn reconnect-websocket
   [gateway token shard-id event-channel socket-state resume & causes]
-  (a/go-loop [timeout-amount 1000 retry-count 0]
+  (do ;a/go-loop [timeout-amount 1000 retry-count 0]
     (println "Closing socket during reconnect")
     (println "Causes for reconnect:" causes)
-    (println "Reconnection attempt:" retry-count)
+    #_(println "Reconnection attempt:" retry-count)
     (when-let [socket (:socket @socket-state)]
       (ws/close socket))
     (swap! socket-state #(-> %
@@ -97,7 +97,7 @@
                              (assoc :ack? true)
                              (assoc :resume resume)
                              (dissoc :socket)))
-    (a/<! (a/timeout 100))
+    (a/<!! (a/timeout 100))
     (println "Opening socket during reconnect")
     (try (swap! socket-state #(-> %
                                   (assoc :socket (connect-websocket
@@ -108,8 +108,8 @@
            (let [error-message (with-out-str (binding [*err* *out*]
                                                (.printStackTrace e)))]
              (println error-message))))
-    (a/<! (a/timeout timeout-amount))
-    (when (and (not (:connected @socket-state)) (< timeout-amount 100000))
+    #_(a/<! (a/timeout timeout-amount))
+    #_(when (and (not (:connected @socket-state)) (< timeout-amount 100000))
       (recur (* 2 timeout-amount) (inc retry-count)))))
 
 (defn connect-websocket
@@ -175,15 +175,15 @@
                                   (swap! socket-state assoc :seq s))
                                 (a/>! event-channel {:event-type t :event-data (clean-json-input d)})))
                       ;; This is the restart connection one
-                      7 (a/go (reconnect-websocket gateway token shard-id event-channel socket-state true "Reconnection message"))
+                      7 (reconnect-websocket gateway token shard-id event-channel socket-state true "Reconnection message")
                       ;; This is the invalid session response
-                      9 (a/go (if (get msg "d")
-                                (reconnect-websocket gateway token
-                                                     shard-id event-channel
-                                                     socket-state true "Invalid session, resume")
-                                (reconnect-websocket gateway token
-                                                     shard-id event-channel
-                                                     socket-state false "Invalid session")))
+                      9 (if (get msg "d")
+                          (reconnect-websocket gateway token
+                                               shard-id event-channel
+                                               socket-state true "Invalid session, resume")
+                          (reconnect-websocket gateway token
+                                               shard-id event-channel
+                                               socket-state false "Invalid session"))
                       ;; This is what happens if there was a unknown payload
                       (println "Unhandled response from server:" op))))
     :on-close (fn [stop-code msg]
@@ -230,13 +230,13 @@
                              (a/>! event-channel {:event-type :disconnect :event-data nil})
                              (throw (Exception. "Sharding required")))
                   1006 (a/go (println "Read an EOF, reconnecting.")
-                             (a/timeout 1000)
+                             (a/<! (a/timeout 1000))
                              (reconnect-websocket gateway token
                                                   shard-id event-channel
                                                   socket-state true
                                                   "End of file"))
                   1001 (a/go (println "Stop code 1001, reconnecting")
-                             (a/timeout 1000)
+                             (a/<! (a/timeout 1000))
                              (reconnect-websocket gateway token
                                                   shard-id event-channel
                                                   socket-state true

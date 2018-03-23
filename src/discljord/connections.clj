@@ -117,38 +117,36 @@
   (ws/connect (:url gateway)
     :client client
     :on-connect (fn [_]
-                  (if (:socket @socket-state)
-                    (do (println "Connected!")
-                        (println "Sending connection packet. Resume:" (:resume @socket-state))
-                        (swap! socket-state assoc :connected true)
-                        (if-not (:resume @socket-state)
-                          (ws/send-msg (:socket @socket-state) (json/write-str
-                                                                {"op" 2
-                                                                 "d" {"token" token
-                                                                      "properties"
-                                                                      {"$os" "linux"
-                                                                       "$browser" "discljord"
-                                                                       "$device" "discljord"}
-                                                                      "compress" false
-                                                                      "large_threshold" 250
-                                                                      "shard" [shard-id (:shard-count gateway)]
-                                                                      "presence"
-                                                                      (:presence @socket-state)}}))
-                          (ws/send-msg (:socket @socket-state) (json/write-str
-                                                                {"op" 6
-                                                                 "d" {"token" token
-                                                                      "session_id" (:session @socket-state)
-                                                                      "seq" (:seq @socket-state)}})))
-                        (a/go-loop [continue true]
-                          (when (and continue (:ack? @socket-state) (:socket @socket-state))
-                            (if-let [interval (:hb-interval @socket-state)]
-                              (do (heartbeat (:socket @socket-state) (:seq @socket-state))
-                                  (swap! socket-state assoc :ack? false)
-                                  (a/<! (a/timeout interval))
-                                  (recur (:keep-alive @socket-state)))
-                              (do (a/<! (a/timeout 100))
-                                  (recur (:keep-alive @socket-state)))))))
-                    (println "Cannot send connection packet, socket nil during on-connect.")))
+                  (println "Connected!")
+                  (println "Sending connection packet. Resume:" (:resume @socket-state))
+                  (swap! socket-state assoc :connected true)
+                  (if-not (:resume @socket-state)
+                    (ws/send-msg (:socket @socket-state) (json/write-str
+                                                          {"op" 2
+                                                           "d" {"token" token
+                                                                "properties"
+                                                                {"$os" "linux"
+                                                                 "$browser" "discljord"
+                                                                 "$device" "discljord"}
+                                                                "compress" false
+                                                                "large_threshold" 250
+                                                                "shard" [shard-id (:shard-count gateway)]
+                                                                "presence"
+                                                                (:presence @socket-state)}}))
+                    (ws/send-msg (:socket @socket-state) (json/write-str
+                                                          {"op" 6
+                                                           "d" {"token" token
+                                                                "session_id" (:session @socket-state)
+                                                                "seq" (:seq @socket-state)}})))
+                  (a/go-loop [continue true]
+                    (when (and continue (:ack? @socket-state) (:socket @socket-state))
+                      (if-let [interval (:hb-interval @socket-state)]
+                        (do (heartbeat (:socket @socket-state) (:seq @socket-state))
+                            (swap! socket-state assoc :ack? false)
+                            (a/<! (a/timeout interval))
+                            (recur (:keep-alive @socket-state)))
+                        (do (a/<! (a/timeout 100))
+                            (recur (:keep-alive @socket-state)))))))
     :on-receive (fn [msg]
                   #_(println "Message recieved:" msg)
                   (let [msg (json/read-str msg)

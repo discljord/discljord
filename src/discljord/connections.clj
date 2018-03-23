@@ -117,36 +117,38 @@
   (ws/connect (:url gateway)
     :client client
     :on-connect (fn [_]
-                  (println "Connected!")
-                  (println "Sending connection packet. Resume:" (:resume @socket-state))
-                  (swap! socket-state assoc :connected true)
-                  (if-not (:resume @socket-state)
-                    (ws/send-msg (:socket @socket-state) (json/write-str
-                                                          {"op" 2
-                                                           "d" {"token" token
-                                                                "properties"
-                                                                {"$os" "linux"
-                                                                 "$browser" "discljord"
-                                                                 "$device" "discljord"}
-                                                                "compress" false
-                                                                "large_threshold" 250
-                                                                "shard" [shard-id (:shard-count gateway)]
-                                                                "presence"
-                                                                (:presence @socket-state)}}))
-                    (ws/send-msg (:socket @socket-state) (json/write-str
-                                                          {"op" 6
-                                                           "d" {"token" token
-                                                                "session_id" (:session @socket-state)
-                                                                "seq" (:seq @socket-state)}})))
-                  (a/go-loop [continue true]
-                    (when (and continue (:ack? @socket-state) (:socket @socket-state))
-                      (if-let [interval (:hb-interval @socket-state)]
-                        (do (heartbeat (:socket @socket-state) (:seq @socket-state))
-                            (swap! socket-state assoc :ack? false)
-                            (a/<! (a/timeout interval))
-                            (recur (:keep-alive @socket-state)))
-                        (do (a/<! (a/timeout 100))
-                            (recur (:keep-alive @socket-state)))))))
+                  (if (:socket @socket-state)
+                    (do (println "Connected!")
+                        (println "Sending connection packet. Resume:" (:resume @socket-state))
+                        (swap! socket-state assoc :connected true)
+                        (if-not (:resume @socket-state)
+                          (ws/send-msg (:socket @socket-state) (json/write-str
+                                                                {"op" 2
+                                                                 "d" {"token" token
+                                                                      "properties"
+                                                                      {"$os" "linux"
+                                                                       "$browser" "discljord"
+                                                                       "$device" "discljord"}
+                                                                      "compress" false
+                                                                      "large_threshold" 250
+                                                                      "shard" [shard-id (:shard-count gateway)]
+                                                                      "presence"
+                                                                      (:presence @socket-state)}}))
+                          (ws/send-msg (:socket @socket-state) (json/write-str
+                                                                {"op" 6
+                                                                 "d" {"token" token
+                                                                      "session_id" (:session @socket-state)
+                                                                      "seq" (:seq @socket-state)}})))
+                        (a/go-loop [continue true]
+                          (when (and continue (:ack? @socket-state) (:socket @socket-state))
+                            (if-let [interval (:hb-interval @socket-state)]
+                              (do (heartbeat (:socket @socket-state) (:seq @socket-state))
+                                  (swap! socket-state assoc :ack? false)
+                                  (a/<! (a/timeout interval))
+                                  (recur (:keep-alive @socket-state)))
+                              (do (a/<! (a/timeout 100))
+                                  (recur (:keep-alive @socket-state)))))))
+                    (println "Cannot send connection packet, socket nil during on-connect.")))
     :on-receive (fn [msg]
                   #_(println "Message recieved:" msg)
                   (let [msg (json/read-str msg)
@@ -177,13 +179,14 @@
                       ;; This is the restart connection one
                       7 (reconnect-websocket gateway token shard-id event-channel socket-state true "Reconnection message")
                       ;; This is the invalid session response
-                      9 (if (get msg "d")
-                          (reconnect-websocket gateway token
-                                               shard-id event-channel
-                                               socket-state true "Invalid session, resume")
-                          (reconnect-websocket gateway token
-                                               shard-id event-channel
-                                               socket-state false "Invalid session"))
+                      9 (do (println (get msg "d"))
+                            (if (get msg "d")
+                              (reconnect-websocket gateway token
+                                                   shard-id event-channel
+                                                   socket-state true "Invalid session, resume")
+                              (reconnect-websocket gateway token
+                                                   shard-id event-channel
+                                                   socket-state false "Invalid session")))
                       ;; This is what happens if there was a unknown payload
                       (println "Unhandled response from server:" op))))
     :on-close (fn [stop-code msg]

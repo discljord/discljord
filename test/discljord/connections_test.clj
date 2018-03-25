@@ -127,13 +127,13 @@
         (t/testing "\tDoes the websocket perform heartbeats?\n"
           (t/is (= (:hb-interval @socket-state) 100))
           (Thread/sleep 110)
-          (t/is (= 1 @heartbeats)))
+          (t/is (<= 1 @heartbeats)))
         ;; TODO: figure out why I can't send-msg from here
         (t/testing "\tDoes the websocket send heartbeats back when prompted?\n"
           (let [beats @heartbeats]
             (ws/send-msg (:socket @socket-state) (json/write-str {"op" 50}))
             (Thread/sleep 10)
-            (t/is (< (Math/abs (- (inc beats) @heartbeats)) 2))))
+            (t/is (> @heartbeats beats))))
         (t/testing "\tDoes the websocket push events onto its channel?"
           (ws/send-msg (:socket @socket-state) (json/write-str {"op" 51}))
           (let [[result port] (a/alts!! [event-channel (a/timeout 100)])]
@@ -160,8 +160,9 @@
           (t/is (= 3 @reconnects)))
         (t/testing "Does the hearbeat stop when the connection is closed?"
           (t/is (not= nil (:socket @socket-state)))
+          (swap! socket-state assoc :keep-alive false)
+          (ws/close (:socket @socket-state))
+          (Thread/sleep 120)
           (let [beats @heartbeats]
-            (swap! socket-state assoc :keep-alive false)
-            (ws/close (:socket @socket-state))
-            (Thread/sleep 100)
+            (Thread/sleep 120)
             (t/is (= beats @heartbeats))))))))

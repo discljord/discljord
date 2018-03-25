@@ -133,7 +133,7 @@
           (let [beats @heartbeats]
             (ws/send-msg (:socket @socket-state) (json/write-str {"op" 50}))
             (Thread/sleep 10)
-            (t/is (> @heartbeats beats))))
+            (t/is (> beats @heartbeats))))
         (t/testing "\tDoes the websocket push events onto its channel?"
           (ws/send-msg (:socket @socket-state) (json/write-str {"op" 51}))
           (let [[result port] (a/alts!! [event-channel (a/timeout 100)])]

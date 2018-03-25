@@ -77,9 +77,9 @@
   (t/testing "Is state fetched properly from its map?"
     (let [state {:discljord.bots/internal-state {:guilds [{:name "blah" :id 1 :state {:test-chan :a}}]}
                  :test-global :b}]
-      (t/is (= (@#'get-key state :test-global)
-               :b))
-      (t/is (:test-global-2 (@#'set-key state :test-global-2 true)))))
+      (t/is (= :b
+               (get-key state :test-global)))
+      (t/is (:test-global-2 (set-key state :test-global-2 true)))))
   (t/testing "Is state fetched from a bot?"
     (let [bot (create-bot {})]
       (t/is (= {}

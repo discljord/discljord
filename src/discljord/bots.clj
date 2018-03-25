@@ -109,14 +109,14 @@
 ;; ================================
 ;; State
 
-(defn- get-key
+(defn get-key
   [state key]
   (key state))
 (s/fdef get-key
         :args (s/cat :state ::state :key keyword?)
         :ret any?)
 
-(defn- set-key
+(defn set-key
   [state key val]
   (assoc state key val))
 (s/fdef set-key

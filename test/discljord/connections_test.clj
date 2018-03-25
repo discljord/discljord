@@ -65,7 +65,7 @@
 (defn- ws-srv
   [req]
   (with-channel req conn
-    (send! conn (json/write-str {"op" 10 "d" {"heartbeat_interval" 1000}}))
+    (send! conn (json/write-str {"op" 10 "d" {"heartbeat_interval" 100}}))
     (on-receive conn (partial *recv* req conn))))
 
 (t/use-fixtures
@@ -122,38 +122,39 @@
             event-channel (a/chan)]
         (swap! socket-state assoc :socket
                (connect-websocket {:url uri :shard-count 1} t 0 event-channel socket-state))
-        (Thread/sleep 100)
+        (Thread/sleep 10)
         (t/is (= 1 @success))
         (t/testing "\tDoes the websocket perform heartbeats?\n"
-          (t/is (= (:hb-interval @socket-state) 1000))
-          (Thread/sleep 1100)
-          (t/is (>= 2 @heartbeats)))
+          (t/is (= (:hb-interval @socket-state) 100))
+          (Thread/sleep 110)
+          (t/is (= 1 @heartbeats)))
         ;; TODO: figure out why I can't send-msg from here
         (t/testing "\tDoes the websocket send heartbeats back when prompted?\n"
           (let [beats @heartbeats]
             (ws/send-msg (:socket @socket-state) (json/write-str {"op" 50}))
             (Thread/sleep 10)
-            (t/is (= (inc beats) @heartbeats))))
+            (t/is (< (Math/abs (- (inc beats) @heartbeats)) 2))))
         (t/testing "\tDoes the websocket push events onto its channel?"
           (ws/send-msg (:socket @socket-state) (json/write-str {"op" 51}))
-          (let [[result port] (a/alts!! [event-channel (a/timeout 1000)])]
+          (let [[result port] (a/alts!! [event-channel (a/timeout 100)])]
             (t/is (= :ready
                      (:event-type result)))))
         (t/testing "\tDoes the websocket reconnect when sent an op 7 payload?"
           (t/is (= 0 @reconnects))
           (ws/send-msg (:socket @socket-state) (json/write-str {"op" 52}))
-          (Thread/sleep 1200)
+          (Thread/sleep 200)
           (t/is (= 1 @reconnects)))
         (t/testing "\tDoes the websocket properly respond to invalid session payloads?"
           (ws/send-msg (:socket @socket-state) (json/write-str {"op" 53}))
-          (Thread/sleep 1200)
+          (Thread/sleep 200)
           (t/is (= 2 @success)) ; This one seems to be borked. It should be 2?
           (ws/send-msg (:socket @socket-state) (json/write-str {"op" 54}))
-          (Thread/sleep 1200)
+          (Thread/sleep 200)
           (t/is (= 2 @reconnects)))
         #_(t/testing "\tDoes the websocket reconnect when sent and EOF?"
           (t/is (= 2 @reconnects))
           ;; TODO Figure out how to send EOF
+          (ws/close (:socket @socket-state))
           (ws/send-msg (:socket @socket-state) (json/write-str {"op" 55}))
           (Thread/sleep 200)
           (t/is (= 3 @reconnects)))
@@ -162,5 +163,5 @@
           (let [beats @heartbeats]
             (swap! socket-state assoc :keep-alive false)
             (ws/close (:socket @socket-state))
-            (Thread/sleep 1100)
+            (Thread/sleep 100)
             (t/is (= beats @heartbeats))))))))

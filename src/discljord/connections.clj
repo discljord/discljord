@@ -229,9 +229,9 @@
                                                     shard-id event-channel
                                                     socket-state true
                                                     "End of file"))
-                    1001 (a/go (println "Stop code 1001, reconnecting")
-                               (a/<! (a/timeout 1000))
-                               (reconnect-websocket gateway token
+                    1001 (a/go (a/>! event-channel {:event-type :disconnect :event-data nil})
+                               (println "Stop code 1001, clean disconnect")
+                               #_(reconnect-websocket gateway token
                                                     shard-id event-channel
                                                     socket-state true
                                                     "Error 1001"))

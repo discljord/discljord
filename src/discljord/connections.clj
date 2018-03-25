@@ -237,10 +237,12 @@
                                                     "Error 1001"))
                     1000 (a/go (a/>! event-channel {:event-type :disconnect :event-data nil})
                                (println "Clean disconnect"))
-                    ;; NOTE: I may want in future to make it so that this will do a reconnect.
-                    ;; That way the only clean disconnects are ones that I specify.
-                    (a/go (a/>! event-channel {:event-type :disconnect :event-data nil})
-                          (println "Unknown stop code, disconnecting.")))
+                    (a/go (println "Unknown stop code, reconnecting.")
+                          (a/<! (a/timeout 100))
+                          (reconnect-websocket gateway token
+                                               shard-id event-channel
+                                               socket-state false
+                                               "Unknown stop code.")))
                   (a/go (a/<! (a/timeout 100))
                         (reconnect-websocket gateway token
                                              shard-id event-channel

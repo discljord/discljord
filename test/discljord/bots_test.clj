@@ -9,9 +9,9 @@
 
 (t/deftest sharding
   (t/testing "Shard ID's are correctly generated from guilds"
-    (t/is (= (shard-id-from-guild {:url "blah" :shard-count 1}
-                                    {:id 1237318975 :name "Blah" :state (atom {})})
-             0))))
+    (t/is (= 0
+             (shard-id-from-guild {:url "blah" :shard-count 1}
+                                  {:id 1237318975 :name "Blah" :state (atom {})})))))
 
 (t/deftest message-processing
   (t/testing "Are messages conveyed through the message process?"
@@ -21,9 +21,8 @@
       (a/>!! ch val)
       (start-message-proc! ch [listener])
       (let [result (a/alts!! [(:event-channel listener) (a/timeout 100)])]
-        (t/is (and (not (nil? result))
-                   (= val
-                      (first result)))))))
+        (t/is (not (nil? result)))
+        (t/is (= val (first result))))
   (t/testing "Are messages taken off thier channels?"
     (let [test-atom (atom false)
           event-channel (a/chan)

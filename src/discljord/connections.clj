@@ -173,12 +173,12 @@
                                   (swap! socket-state assoc :seq s))
                                 (a/>! event-channel {:event-type t :event-data (clean-json-input d)})))
                       ;; This is the restart connection one
-                      7 (do
-                          (swap! socket-state assoc :connected false)
+                      7 (a/go
+                          (disconnect-websocket socket-state)
                           (reconnect-websocket gateway token shard-id event-channel socket-state true "Reconnection message"))
                       ;; This is the invalid session response
-                      9 (do
-                          (swap! socket-state assoc :connected false)
+                      9 (a/go
+                          (disconnect-websocket socket-state)
                           (if (get msg "d")
                             (reconnect-websocket gateway token
                                                  shard-id event-channel

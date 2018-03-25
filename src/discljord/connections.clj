@@ -241,11 +241,11 @@
                     ;; That way the only clean disconnects are ones that I specify.
                     (a/go (a/>! event-channel {:event-type :disconnect :event-data nil})
                           (println "Unknown stop code, disconnecting.")))
-                  (do (a/<!! (a/timeout 100))
-                      (reconnect-websocket gateway token
-                                           shard-id event-channel
-                                           socket-state false
-                                           "Connection failed, reconnecting.")))
+                  (a/go (a/<! (a/timeout 100))
+                        (reconnect-websocket gateway token
+                                             shard-id event-channel
+                                             socket-state false
+                                             "Connection failed, reconnecting.")))
                 (swap! socket-state assoc :connected false)
                 (swap! socket-state dissoc :socket))))
 

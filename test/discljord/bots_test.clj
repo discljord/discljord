@@ -23,14 +23,16 @@
       (let [result (a/alts!! [(:event-channel listener) (a/timeout 100)])]
         (t/is (not (nil? result)))
         (t/is (= val (first result))))
+      (a/>!! ch {:event-type :disconnect :event-data nil})))
   (t/testing "Are messages taken off thier channels?"
     (let [test-atom (atom false)
-          event-channel (a/chan)
+          event-channel (a/chan 10)
           listeners [{:event-channel event-channel
                       :event-type :test
-                      :event-handler (fn [{:keys [event-type event-data] :as event}]
-                                       (reset! test-atom true))}]]
-      (start-listeners! listeners)
+                      :event-handler (fn [bot {:keys [event-type event-data] :as event}]
+                                       (when-not (= event-type :disconnect)
+                                         (reset! test-atom true)))}]]
+      (start-listeners! {:listeners listeners})
       (a/>!! event-channel {:event-type :test :event-data nil})
       (Thread/sleep 10)
       (t/is @test-atom)
@@ -82,7 +84,7 @@
       (t/is (:test-global-2 (set-key state :test-global-2 true)))))
   (t/testing "Is state fetched from a bot?"
     (let [bot (create-bot {})]
-      (t/is (= {}
+      (t/is (= {:discljord.bots/internal-state {:guilds []}}
                (state bot)))
       (t/is (:test-global (state+ bot :test-global true)))
       (t/is (= :test
@@ -94,6 +96,6 @@
     (t/testing "Is guild state created properly?"
       (t/is (= {}
                (guild-state bot 0)))
-      (t/is (= {:test true} (guild-state+ bot 0 :test true)))
-      (t/is (= {:test false} (update-guild-state bot 0 :test not)))
+      (t/is (= true (guild-state+ bot 0 :test true)))
+      (t/is (= false (update-guild-state bot 0 :test not)))
       (t/is (= {} (guild-state- bot 0 :test))))))

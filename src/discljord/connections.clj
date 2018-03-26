@@ -175,7 +175,10 @@
                       ;; This is the restart connection one
                       7 (a/go
                           (disconnect-websocket socket-state)
-                          (reconnect-websocket gateway token shard-id event-channel socket-state true "Reconnection message"))
+                          (reconnect-websocket gateway token
+                                               shard-id event-channel
+                                               socket-state true
+                                               "Reconnection message"))
                       ;; This is the invalid session response
                       9 (a/go
                           (disconnect-websocket socket-state)

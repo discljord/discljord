@@ -122,7 +122,7 @@
             event-channel (a/chan)]
         (swap! socket-state assoc :socket
                (connect-websocket {:url uri :shard-count 1} t 0 event-channel socket-state))
-        (Thread/sleep 10)
+        (Thread/sleep 100)
         (t/is (= 1 @success))
         (t/testing "\tDoes the websocket perform heartbeats?\n"
           (t/is (= (:hb-interval @socket-state) 100))

@@ -232,14 +232,8 @@
                                                     shard-id event-channel
                                                     socket-state true
                                                     "End of file"))
-                    1001 (a/go (if msg
-                                 (do (println "Stop code 1001, reconnecting")
-                                     (reconnect-websocket gateway token
-                                                          shard-id event-channel
-                                                          socket-state true
-                                                          "Error 1001"))
-                                 (do (a/>! event-channel {:event-type :disconnect :event-data nil})
-                                     (println "Stop code 1001, clean disconnect"))))
+                    1001 (a/go (a/>! event-channel {:event-type :disconnect :event-data nil})
+                               (println "Stop code 1001, clean disconnect"))
                     1000 (a/go (a/>! event-channel {:event-type :disconnect :event-data nil})
                                (println "Clean disconnect"))
                     (a/go (println "Unknown stop code, reconnecting.")

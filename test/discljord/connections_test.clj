@@ -4,7 +4,6 @@
             [clojure.core.async :as a]
             [org.httpkit.fake :as fake]
             [org.httpkit.server :as s :refer [with-channel
-                                              on-receive
                                               run-server
                                               send!
                                               close]]
@@ -66,7 +65,7 @@
   [req]
   (with-channel req conn
     (send! conn (json/write-str {"op" 10 "d" {"heartbeat_interval" 100}}))
-    (on-receive conn (partial *recv* req conn))))
+    (s/on-receive conn (partial *recv* req conn))))
 
 (t/use-fixtures
   :each

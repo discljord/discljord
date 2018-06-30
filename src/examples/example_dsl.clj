@@ -14,7 +14,7 @@
 
 (defcommand prefix "prefix"
   [guild channel author args]
-  (update-prefix (first args)))
+  (update-prefix *guild-state* (first args)))
 
 (defregexcommand quote-add #"quote\s+add\s+\"([^\"]+)\"\s+-\s+(.+)"
   [guild channel author matches]

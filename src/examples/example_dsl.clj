@@ -1,11 +1,8 @@
 (ns examples.example-dsl
   (:require [discljord.core :as discord
              :refer :all]
-            [clojure.java.io :as io]))
-
-(defhandler user-join :user-join
-  [user]
-  (send-message! (str "Greetings, " (:username user) "! Welcome to the server!")))
+            [clojure.java.io :as io])
+  (:gen-class))
 
 (def creator (slurp (io/resource "author.txt")))
 
@@ -46,6 +43,14 @@
 
 (def default-prefix "!")
 
+(defhandler connect :connect
+  []
+  (set-playing "with DSLs"))
+
+(defhandler user-join :user-join
+  [user]
+  (send-message! (str "Greetings, " (:username user) "! Welcome to the server!")))
+
 (defhandler commands :message-create
   [guild channel author message]
   (commands default-prefix
@@ -55,14 +60,10 @@
             quote-remove
             quote))
 
-(defhandler connect :connect
-  []
-  (set-playing "with DSLs"))
-
 (defbot bot
+  connect
   user-join
-  commands
-  connect)
+  commands)
 
 (defn -main
   [& args]

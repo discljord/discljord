@@ -15,7 +15,9 @@
 ;;               a specific shard/websocket into a queue which will handle
 ;;               all connection/reconnection requests
 
-(s/def ::url string?)
+(def url-re #"(https?://)?([^\s]+\.[^\s]+)")
+
+(s/def ::url (partial re-matches url-re))
 (s/def ::shard-count int?)
 (s/def ::gateway (s/nilable (s/keys :req-un [::url ::shard-count])))
 (s/def ::shard-id int?)
@@ -39,13 +41,21 @@
 
 (defn get-websocket-gateway!
   [url token]
-  (if-let [result (try (into {} (mapv (fn [[k v]] [(if (= k "shards")
-                                                     :shard-count
-                                                     (keyword k)) v])
-                                      (vec (json/read-str (:body @(http/get url
-                                                                    {:headers {"Authorization" token}}))))))
-                       (catch Exception e
-                         nil))]
+  (if-let [result
+           (try (into
+                 {}
+                 (mapv
+                  (fn [[k v]]
+                    [(if (= k "shards")
+                       :shard-count
+                       (keyword k)) v])
+                  (vec (json/read-str
+                        (:body
+                         @(http/get
+                           url
+                           {:headers {"Authorization" token}}))))))
+                (catch Exception e
+                  nil))]
     (when (:url result)
       result)))
 (s/fdef get-websocket-gateway!

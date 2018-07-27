@@ -51,7 +51,7 @@
   [user]
   (send-message! (str "Greetings, " (:username user) "! Welcome to the server!")))
 
-(defhandler commands :message-create
+(defhandler handle-commands :message-create
   [guild channel author message]
   (commands default-prefix
             disconnect
@@ -63,7 +63,7 @@
 (defbot bot
   connect
   user-join
-  commands)
+  handle-commands)
 
 (defn -main
   [& args]

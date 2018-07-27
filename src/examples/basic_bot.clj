@@ -17,7 +17,10 @@
   [bot guild-id user q]
   (println "Quote added to user:" user "\n" q)
   (bots/update-guild-state bot guild-id :quotes assoc user
-                           (if-let [user-quotes (get (:quotes (bots/guild-state bot guild-id)) user)]
+                           (if-let [user-quotes (get
+                                                 (:quotes
+                                                  (bots/guild-state bot guild-id))
+                                                 user)]
                              (conj user-quotes q)
                              [q])))
 

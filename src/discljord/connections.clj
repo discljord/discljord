@@ -271,11 +271,19 @@
 
 (defn connect-websocket
   [gateway token shard-id event-channel socket-state & [client]]
+  ;; TODO: make sure this works on a channel so that it is handled by a separate thread
   (ws/connect (:url gateway)
               :client client
               :on-connect (fn [_]
-                            (on-connect gateway token shard-id socket-state))
+                            (on-connect
+                             gateway token
+                             shard-id socket-state))
               :on-receive (fn [msg]
-                            (on-receive msg gateway token shard-id event-channel socket-state))
+                            (on-receive
+                             msg gateway token shard-id
+                             event-channel socket-state))
               :on-close (fn [stop-code msg]
-                          (on-close stop-code msg gateway token shard-id event-channel socket-state))))
+                          (on-close
+                           stop-code msg gateway
+                           token shard-id event-channel
+                           socket-state))))

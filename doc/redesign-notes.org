@@ -1,5 +1,18 @@
 #+TITLE:Redesign Notes for Discljord
 * Bot Application
+  A bot application will be made up of several processes.
+  These processes will communicate with each other, and that will
+  provide the actual functionality of a Discord bot.
+
+  The three required processes will be a Connection which will handle
+  the actual connection with Discord's servers and event collection,
+  a Bot which will take input events and ouput messages, and a Messaging
+  process which will take input messages and send them to Discord's
+  servers.
+
+  Additional Connection and Bot processes may be created, but only
+  one Messaging will be necessary for any given application. However,
+  that may change later once implementation gets underway.
 ** Connection
    The connection will be a process which takes data from Discord, and puts
    it onto a pipeline for events. It will also handle sharding, and reconnections.

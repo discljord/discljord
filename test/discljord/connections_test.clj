@@ -1,5 +1,5 @@
 (ns discljord.connections-test
-  (:require [discljord.connections :refer :all]
+  (:require [discljord.connections :refer :all :as c]
             [clojure.data.json :as json]
             [clojure.core.async :as a]
             [org.httpkit.fake :as fake]
@@ -7,161 +7,101 @@
                                               run-server
                                               send!
                                               close]]
-            [clojure.spec.alpha :as spec]
             [gniazdo.core :as ws]
-            [clojure.test :as t]))
+            [midje.sweet :as m]))
 
-(t/deftest gateway
-  (t/testing "Is a gateway properly created?"
-    (t/is (= "https://discordapp.com/api/gateway?v=6&encoding=json"
-             (api-url "/gateway"))))
-  (t/testing "Is a request made with the proper headers?\n"
-    (fake/with-fake-http ["https://discordapp.com/api/gateway/bot?v=6&encoding=json"
-                          (fn [orig-fn opts callback]
-                            (if (= (:headers opts) {"Authorization" "TEST_TOKEN"})
-                              {:status 200 :body (json/write-str
-                                                  {"url" "wss://fake.gateway.api/" "shards" 1})}
-                              {:status 401
-                               :body (json/write-str {"code" 0 "message" "401: Unauthorized"})}))]
-      (t/is (= "wss://fake.gateway.api/"
-               (:url (get-websocket-gateway! (api-url "/gateway/bot") "TEST_TOKEN"))))
-      (t/testing "Are invalid endpoints caught properly?"
-        (t/is (= nil
-                 (get-websocket-gateway! (api-url "/invalid") "TEST_TOKEN"))))
-      (t/testing "Are tokens properly taken into account?"
-        (t/is (= nil
-                 (get-websocket-gateway! (api-url "/gateway/bot") "UNAUTHORIZED"))))
-      (t/testing "Are shards properly returned?"
-        (t/is (= {:url "wss://fake.gateway.api/" :shard-count 1}
-                 (get-websocket-gateway! (api-url "/gateway/bot") "TEST_TOKEN")))))))
+(m/facts "about discord urls"
+         (m/fact "giving append-api-suffix a url appends discord's api suffix"
+                 (append-api-suffix ..url..)
+                 => #"\?v=6&encoding=json$")
+         (m/fact "giving an endpoint creates the appropriate string"
+                 (api-url ..endpoint..)
+                 => (str "https://discordapp.com/api"
+                         (append-api-suffix ..endpoint..))))
 
-(t/deftest clean-json
-  (t/testing "Are event keywords created properly?"
-    (t/is (= (json-keyword "READY")
-             :ready))
-    (t/is (= (json-keyword "GUILD_CREATE")
-             :guild-create)))
-  (t/testing "Are json objects cleaned correctly?"
-    (t/is (= (clean-json-input "id")
-             :id))
-    (t/is (= (clean-json-input {"id" 12345})
-             {:id 12345}))
-    (t/is (= (clean-json-input {"id" "string"})
-             {:id "string"}))
-    (t/is (= (clean-json-input [{"id" "string"}])
-             [{:id "string"}]))))
+(fake/with-fake-http ["https://discordapp.com/api/gateway/bot?v=6&encoding=json"
+                      (fn [orig-fn opts callback]
+                        (if (= (:headers opts) {"Authorization" "TEST_TOKEN"})
+                          {:status 200 :body (json/write-str
+                                              {"url" "wss://fake.gateway.api/" "shards" 1})}
+                          {:status 401
+                           :body (json/write-str {"code" 0 "message" "401: Unauthorized"})}))]
+  (m/facts "about gateways"
+           (m/fact "the websocket gateway requires an authorization header"
+                   (get-websocket-gateway! (api-url "/gateway/bot") "TEST_TOKEN")
+                   => {::c/url "wss://fake.gateway.api/"
+                       ::c/shard-count 1}
+                   (get-websocket-gateway! (api-url "/gateway/bot") "INVALID_TOKEN")
+                   => nil
+                   (get-websocket-gateway! (api-url "/invalid/endpoint") "TEST_TOKEN")
+                   => nil)))
 
-(t/deftest shards
-  (t/testing "Are shards properly created?"
-    (t/is (spec/valid? :discljord.connections/shard
-                       (create-shard {:url "wss://fake.gateway.api/" :shard-count 1} 0)))
-    (t/is (spec/valid? :discljord.connections/shards
-                       (for [id (range 0 2)]
-                         (create-shard {:url "wss://fake.gateway.api/" :shard-count 2} id))))))
+(m/facts "about json conversions to keywords"
+         (m/fact "strings are converted to keywords"
+                 (json-keyword "ready")
+                 => :ready)
+         (m/fact "strings with underscores are converted to hyphens"
+                 (json-keyword "test_key")
+                 => :test-key)
+         (m/fact "strings are downcased"
+                 (json-keyword "TeSt")
+                 => :test))
+
+(m/facts "about json data cleaning"
+         (m/fact "strings are cleaned to strings"
+                 (clean-json-input "id")
+                 => "id")
+         (m/fact "objects are cleaned to maps"
+                 (clean-json-input {12345 12345})
+                 => {12345 12345}
+                 (clean-json-input {1 {2 3}})
+                 => {1 {2 3}})
+         (m/fact "string keys in objects are changed to keywords"
+                 (clean-json-input {"id" 12345})
+                 => {:id 12345}
+                 (clean-json-input {"player" {"id" 12345}})
+                 => {:player {:id 12345}})
+         (m/fact "vectors are cleaned recursively"
+                 (clean-json-input [{"id" 12345}])
+                 => [{:id 12345}]))
 
 (declare ^:dynamic *recv*)
 
 (defn- ws-srv
-  [req]
-  (with-channel req conn
-    (send! conn (json/write-str {"op" 10 "d" {"heartbeat_interval" 100}}))
-    (s/on-receive conn (partial *recv* req conn))))
+  [request]
+  (println "Starting server")
+  (with-channel request channel
+    (send! channel (json/write-str {"op" 10 "d" {"heartbeat_interval" 10}}))
+    (s/on-receive channel (partial *recv* channel))))
 
-(t/use-fixtures
-  :each
-  (fn [f]
-    (let [srv (run-server ws-srv {:port 9009})]
-      (try
-        (f)
-        (finally
-          (srv))))))
+(def ^:private uri "ws://localhost:9009")
 
-(def ^:private uri "ws://localhost:9009/")
-
-(t/deftest websockets
-  (let [t "VALID_TOKEN"
-        success (atom 0)
-        heartbeats (atom 0)
-        reconnects (atom 0)]
-    (with-redefs [*recv* (fn [_ conn msg]
-                           (let [msg (json/read-str msg)
-                                 op (get msg "op")
-                                 d (get msg "d")
-                                 token (get d "token")
-                                 [shard-id shard-count] (get d "shard")]
-                             (println "op code" op "data" d)
-                             (if (and (= op 2) (= token t)
-                                      (= shard-id 0) (= shard-count 1))
-                               (swap! success inc)
-                               (if (and (= op 1) (or (= d nil) (= d 5)))
-                                 (do (swap! heartbeats inc)
-                                     (send! conn (json/write-str {"op" 11})))
-                                 (if (= op 6)
-                                   (swap! reconnects inc)
-                                   (if (= op 50)
-                                     (send! conn (json/write-str {"op" 1 "d" 5}))
-                                     (if (= op 51)
-                                       (do
-                                         (binding [*out* *err*]
-                                           (println "Sending ready packet"))
-                                         (send! conn (json/write-str {"op" 0 "d" {"v" 6
-                                                                                 "session_id" 1}
-                                                                     "s" 5 "t" "READY"})))
-                                       (if (= op 52)
-                                         (send! conn (json/write-str {"op" 7}))
-                                         (if (= op 53)
-                                           (send! conn (json/write-str {"op" 9 "d" false}))
-                                           (if (= op 54)
-                                             (send! conn (json/write-str {"op" 9 "d" true}))
-                                             (if (= op 55)
-                                               (do (println "Closing connection!")
-                                                   (close conn)))))))))))))]
-      (t/is (= 0 @success))
-      (let [socket-state (atom {:keep-alive true :ack? true})
-            event-channel (a/chan)]
-        (swap! socket-state assoc :socket
-               (connect-websocket {:url uri :shard-count 1} t 0 event-channel socket-state))
-        (Thread/sleep 100)
-        (t/is (= 1 @success))
-        (t/testing "\tDoes the websocket perform heartbeats?\n"
-          (t/is (= (:hb-interval @socket-state) 100))
-          (Thread/sleep 110)
-          (t/is (<= 1 @heartbeats)))
-        ;; TODO: figure out why I can't send-msg from here
-        (t/testing "\tDoes the websocket send heartbeats back when prompted?\n"
-          (let [beats @heartbeats]
-            (ws/send-msg (:socket @socket-state) (json/write-str {"op" 50}))
-            (Thread/sleep 10)
-            (t/is (< beats @heartbeats))))
-        (t/testing "\tDoes the websocket push events onto its channel?"
-          (ws/send-msg (:socket @socket-state) (json/write-str {"op" 51}))
-          (let [[result port] (a/alts!! [event-channel (a/timeout 100)])]
-            (t/is (= :ready
-                     (:event-type result)))))
-        (t/testing "\tDoes the websocket reconnect when sent an op 7 payload?"
-          (t/is (= 0 @reconnects))
-          (ws/send-msg (:socket @socket-state) (json/write-str {"op" 52}))
-          (Thread/sleep 200)
-          (t/is (= 1 @reconnects)))
-        (t/testing "\tDoes the websocket properly respond to invalid session payloads?"
-          (ws/send-msg (:socket @socket-state) (json/write-str {"op" 53}))
-          (Thread/sleep 200)
-          (t/is (= 2 @success)) ; This one seems to be borked. It should be 2?
-          (ws/send-msg (:socket @socket-state) (json/write-str {"op" 54}))
-          (Thread/sleep 200)
-          (t/is (= 2 @reconnects)))
-        #_(t/testing "\tDoes the websocket reconnect when sent and EOF?"
-          (t/is (= 2 @reconnects))
-          ;; TODO Figure out how to send EOF
-          (ws/close (:socket @socket-state))
-          (ws/send-msg (:socket @socket-state) (json/write-str {"op" 55}))
-          (Thread/sleep 200)
-          (t/is (= 3 @reconnects)))
-        (t/testing "Does the hearbeat stop when the connection is closed?"
-          (t/is (not= nil (:socket @socket-state)))
-          (swap! socket-state assoc :keep-alive false)
-          (ws/close (:socket @socket-state))
-          (Thread/sleep 120)
-          (let [beats @heartbeats]
-            (Thread/sleep 120)
-            (t/is (= beats @heartbeats))))))))
+(m/facts "about websocket connections"
+         (let [server (atom nil)
+               success (atom 0)
+               t "VALID_TOKEN"]
+           (m/with-state-changes [(m/before :facts
+                                            (do
+                                              (println "Running before")
+                                              (reset! server
+                                                      (run-server ws-srv
+                                                                  {:port 9009}))
+                                              (reset! success 0)))
+                                  (m/after :facts
+                                           (do (@server)
+                                               (reset! server nil)))]
+             (with-redefs [*recv* (fn [connection message]
+                                    (let [message (json/read-str message)
+                                          op (get message "op")
+                                          d (get message "d")
+                                          token (get d "token")
+                                          [shard-id shard-count] (get d "shard")]
+                                      (if (and (= op 2) (= token t))
+                                        (swap! success inc))))]
+               (m/fact "the bot connects with a websocket"
+                       (do (connect-websocket uri t)
+                           (Thread/sleep 100)
+                           @success)
+                       => 1))
+             ;; Add more tests for different websocket behaviors
+             )))

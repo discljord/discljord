@@ -11,6 +11,6 @@
                  [com.rpl/specter "1.0.5"]]
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}
-             :dev {:dependencies [[http-kit.fake "0.2.2"]]}}
-  :jvm-opts ["-Dorg.eclipse.jetty.websocket.client.LEVEL=WARN"
-             "--add-modules" "java.xml.bind"])
+             :dev {:dependencies [[http-kit.fake "0.2.2"]
+                                  [midje "1.9.2"]]}}
+  :jvm-opts ["--add-modules" "java.xml.bind"])

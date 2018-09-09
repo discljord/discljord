@@ -97,8 +97,8 @@
                                       (if (and (= op 2) (= token t))
                                         (swap! success inc))))]
                (m/fact "the bot connects with a websocket"
-                       (do (connect-websocket uri t)
-                           (Thread/sleep 100)
+                       (do (connect-shard uri t)
+                           (Thread/sleep 50)
                            @success)
                        => 1))
              ;; Add more tests for different websocket behaviors

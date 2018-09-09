@@ -28,12 +28,12 @@
     These methods can also decide if it's an actual event that a bot should have
     access to as well, like perhaps it will ensure the bot only gets a disconnect
     message once it's failed to reconnect?
-    #+BEGIN_SRC: clojure
-    (defmethod create-event 7 [proc-chan discord-event]
-      (go (>! proc-chan {:type :message-create
-                         :channel (:channel discord-event)
-                         :data {:author (:author discord-event)
-                                :content (:message discord-event)}})))
+    #+BEGIN_SRC clojure
+      (defmethod create-event 7 [proc-chan discord-event]
+        (go (>! proc-chan {:type :message-create
+                           :channel (:channel discord-event)
+                           :data {:author (:author discord-event)
+                                  :content (:message discord-event)}})))
     #+END_SRC
 ** Bot
    Bots will be a process which takes events off of a pipeline, and puts messages
@@ -48,18 +48,18 @@
 *** Event Dispatch
     Takes Discljord events and determines which event handlers to call
     with that event
-    #+BEGIN_SRC: clojure
-    (defhandlers bot
-      :connect load-state
-      :message-create bot-respond
-      :disconnect [cleanup-resources save-state])
+    #+BEGIN_SRC clojure
+      (defhandlers bot
+        :connect load-state
+        :message-create bot-respond
+        :disconnect [cleanup-resources save-state])
     #+END_SRC
 *** Event Handling
     Event handlers take a discord event and perform any operations needed,
     as well as sending messages to the relevant messaging process
-    #+BEGIN_SRC: clojure
-    (defhandler bot-respond [event]
-      (send-message (:channel event) "Hello! You sent a message!"))
+    #+BEGIN_SRC clojure
+      (defhandler bot-respond [event]
+        (send-message (:channel event) "Hello! You sent a message!"))
     #+END_SRC
 *** State Handling
     State is something that's difficult to maintain or prescribe about in bots.

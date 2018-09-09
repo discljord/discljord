@@ -6,7 +6,8 @@
                                               run-server
                                               send!
                                               close]]
-            [gniazdo.core :as ws]))
+            [gniazdo.core :as ws]
+            [midje.repl :refer :all]))
 
 (defn message-handler
   [channel message]

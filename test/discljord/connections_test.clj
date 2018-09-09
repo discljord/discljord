@@ -69,7 +69,6 @@
 
 (defn- ws-srv
   [request]
-  (println "Starting server")
   (with-channel request channel
     (send! channel (json/write-str {"op" 10 "d" {"heartbeat_interval" 10}}))
     (s/on-receive channel (partial *recv* channel))))
@@ -82,7 +81,6 @@
                t "VALID_TOKEN"]
            (m/with-state-changes [(m/before :facts
                                             (do
-                                              (println "Running before")
                                               (reset! server
                                                       (run-server ws-srv
                                                                   {:port 9009}))

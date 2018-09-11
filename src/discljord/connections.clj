@@ -64,18 +64,6 @@
                   (transform [MAP-VALS coll?] clean-json-input))
     (vector? j) (mapv clean-json-input j)
     :else j))
-(s/fdef clean-json-input
-  :args (s/cat :json (s/or :string string?
-                           :array vector?
-                           :object map?
-                           :number number?
-                           :bool boolean?))
-  :ret (s/or :string string?
-             :array vector?
-             :key keyword?
-             :object map?
-             :number number?
-             :bool boolean?))
 
 (defmulti handle-event
   "Takes an event type and event data, and handles it based on event type."

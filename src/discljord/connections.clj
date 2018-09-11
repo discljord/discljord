@@ -66,13 +66,14 @@
     :else j))
 
 (defmulti handle-event
-  "Takes an event type and event data, and handles it based on event type."
-  (fn [[event-type event-data] conn]
+  "Handles events sent from discord over the websocket.
+  Takes a vector of event type and event data, the websocket connection, and the events channel."
+  (fn [[event-type event-data] conn ch]
     event-type))
 
 (defmethod handle-event :connect
-  [[_ token] conn]
-  (ws/send-msg conn
+  [[_ token] conn ch]
+  (ws/send-msg @conn
                (json/write-str {"op" 2
                                 "d" {"token" token
                                      ;; TODO: Add default presence and shard
@@ -80,12 +81,36 @@
                                                    "$browser" "discljord"
                                                    "$device" "discljord"}}})))
 
-(defmethod handle-event :recieve
-  [[_ event-data] conn]
-  )
+(defmethod handle-event :reconnect
+  [[_ [token session-id seq]] conn ch]
+  (ws/send-msg @conn
+               (json/write-str {"op" 6
+                                "d" {"token" token
+                                     "session_id" session-id
+                                     "seq" seq}})))
 
 (defmethod handle-event :disconnect
-  [[_ event-data] conn]
+  [[_ [url token stop-code msg]] conn ch]
+  ;; TODO: Make this worry about stop codes
+  ;; This will trigger a reconnect, but only do this if you need to
+  (reset! conn (ws/connect url
+                 :on-connect (fn [_]
+                               ;; Put a connection event on the channel
+                               (a/go (a/>! ch [:reconnect [token 0 0]])))
+                 :on-receive (fn [msg]
+                               ;; Put a recieve event on the channel
+                               (a/go (a/>! ch [:recieve msg])))
+                 :on-close (fn [stop-code msg]
+                             ;; Put a disconnect event on the channel
+                             (a/go (a/>! ch [:disconnect [url
+                                                          token
+                                                          stop-code
+                                                          msg]]))))))
+
+(defmethod handle-event :recieve
+  [[_ msg] conn ch]
+  ;; TODO: Make this dispatch messages based on what kind of messages handler we want
+  ;;       This will have default handlers for many types of messages, like opcode 7
   )
 
 (defn start-event-loop
@@ -93,30 +118,31 @@
   via multimethod."
   [ch conn]
   (a/go-loop []
-    (try (handle-event (a/<! ch) conn)
+    (try (handle-event (a/<! ch) conn ch)
          (catch Exception e
-           (binding [*out* *err*]
-             (println "Exception caught in handling an event.")
-             (print-stack-trace e))))))
+           nil))))
 
 (defn connect-shard
   "Takes a gateway URL and a bot token, creates a websocket connected to
   Discord's servers, and returns it."
   [url token]
   (let [event-ch (a/chan 100)
-        conn (ws/connect url
-               :on-connect (fn [_]
-                             ;; Put a connection event on the channel
-                             (a/go (a/>! event-ch [:connect token])))
-               :on-receive (fn [msg]
-                             ;; Put a recieve event on the channel
-                             (a/go (a/>! event-ch [:recieve msg])))
-               :on-close (fn [stop-code msg]
-                           ;; Put a disconnect event on the channel
-                           (a/go (a/>! event-ch [:disconnect [stop-code msg]]))))]
+        conn (atom (ws/connect url
+                     :on-connect (fn [_]
+                                   ;; Put a connection event on the channel
+                                   (a/go (a/>! event-ch [:connect token])))
+                     :on-receive (fn [msg]
+                                   ;; Put a recieve event on the channel
+                                   (a/go (a/>! event-ch [:recieve msg])))
+                     :on-close (fn [stop-code msg]
+                                 ;; Put a disconnect event on the channel
+                                 (a/go (a/>! event-ch [:disconnect [url
+                                                                    token
+                                                                    stop-code
+                                                                    msg]])))))]
     ;; Start an event loop with event-ch
     (start-event-loop event-ch conn)
-    conn))
+    nil))
 
 (defn connect-bot
   "Creates a connection process which will handle the services granted by

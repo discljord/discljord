@@ -8,7 +8,8 @@
                  [http-kit "2.2.0"]
                  [stylefruits/gniazdo "1.0.1"]
                  [org.clojure/core.async "0.3.442"]
-                 [com.rpl/specter "1.0.5"]]
+                 [com.rpl/specter "1.0.5"]
+                 [org.clojure/tools.logging "0.4.1"]]
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}
              :dev {:dependencies [[http-kit.fake "0.2.2"]

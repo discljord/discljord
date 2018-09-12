@@ -1,5 +1,5 @@
 (ns user
-  (:require [discljord.connections :refer :all :as c]
+  (:require [discljord.connections :as c]
             [clojure.data.json :as json]
             [org.httpkit.fake :as fake]
             [org.httpkit.server :as s :refer [with-channel
@@ -9,14 +9,22 @@
             [gniazdo.core :as ws]
             [midje.repl :refer :all]))
 
+(defmulti server-handle-message
+  "Takes an op code and information about the bot, and handles it appropriately."
+  (fn [conn opcode data]
+    opcode))
+
 (defn message-handler
   [channel message]
   (let [message (json/read-str message)
         op (get message "op")
-        d (get message "d")
-        token (get d "token")
-        [shard-id shard-count] (get d "shard")]
-    (println "message recieved")))
+        d (c/clean-json-input (get message "d"))]
+    (server-handle-message channel op d)))
+
+;; Identify packet
+(defmethod server-handle-message 2
+  [conn opcode data]
+  (println "recieved identify!"))
 
 (defn connect-handler
   [request]

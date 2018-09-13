@@ -46,7 +46,7 @@
       result)))
 (s/fdef get-websocket-gateway!
   :args (s/cat :url ::url :token ::token)
-  :ret ::gateway)
+  :ret (s/nilable ::gateway))
 
 (defn json-keyword
   [s]
@@ -127,7 +127,8 @@
                                                            shard-state)])))
                    :on-error
                    (fn [err]
-                     (log/error err "Error caught on websocket"))))))
+                     (log/error err "Error caught on websocket")))))
+  nil)
 
 (defmulti handle-websocket-event
   "Handles events sent from discord over the websocket.

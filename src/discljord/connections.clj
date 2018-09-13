@@ -69,7 +69,7 @@
 (defn reconnect-websocket
   "Takes a websocket connection atom and additional connection information,
   and reconnects a websocket, with options for resume or not."
-  [url token conn ch shard & [init-shard-state]]
+  [url token conn ch shard out-ch & [init-shard-state]]
   (let [ack (atom false)
         connected (atom false)
         shard-state (atom (or init-shard-state
@@ -94,16 +94,16 @@
                                                 (let [new-seq (:s msg)
                                                       msg-type (:t msg)]
                                                   (swap! shard-state assoc :seq new-seq)
-                                                  [:event msg-type data shard-state])
+                                                  [:event msg-type data shard-state out-ch])
                                                 [:command op data
                                                  #(do
                                                     (ws/close @conn)
                                                     (fn []
-                                                      (reconnect-websocket url token conn ch shard)))
+                                                      (reconnect-websocket url token conn ch shard out-ch)))
                                                  #(do
                                                     (ws/close @conn)
                                                     (fn []
-                                                      (reconnect-websocket url token conn ch shard shard-state)))
+                                                      (reconnect-websocket url token conn ch shard out-ch shard-state)))
                                                  #(ws/send-msg @conn
                                                                (json/write-str
                                                                 {"op" 1
@@ -113,8 +113,19 @@
                                ;; Put a disconnect event on the channel
                                (reset! connected false)
                                (a/go (a/>! ch [:disconnect stop-code msg
-                                               #(reconnect-websocket url token conn ch shard)
-                                               #(reconnect-websocket url token conn ch shard shard-state)])))
+                                               #(reconnect-websocket url
+                                                                     token
+                                                                     conn
+                                                                     ch
+                                                                     shard
+                                                                     out-ch)
+                                               #(reconnect-websocket url
+                                                                     token
+                                                                     conn
+                                                                     ch
+                                                                     shard
+                                                                     out-ch
+                                                                     shard-state)])))
                    :on-error (fn [err]
                                (log/error err "Error caught on websocket"))))))
 
@@ -232,16 +243,17 @@
 
 ;; TODO: make this update the shard state for everything
 (defmethod handle-event :event
-  [_ & [event-type data shard-state]]
+  [_ & [event-type data shard-state out-ch]]
   (case event-type
     :ready (let [session-id (:session-id data)]
              (swap! shard-state assoc :session-id session-id))
-    nil))
+    nil)
+  (a/go (a/>! out-ch [event-type data])))
 
 (defn start-event-loop
   "Starts a go loop which takes events from the channel and dispatches them
   via multimethod."
-  [ch conn token]
+  [ch]
   (a/go-loop []
     (try (apply handle-event (a/<! ch))
          (catch Exception e
@@ -251,12 +263,12 @@
 (defn connect-shard
   "Takes a gateway URL and a bot token, creates a websocket connected to
   Discord's servers, and returns it."
-  [url token shard-id shard-count]
+  [url token shard-id shard-count out-ch]
   (let [event-ch (a/chan 100)
         conn (atom nil)]
-    (reconnect-websocket url token conn event-ch [shard-id shard-count])
+    (reconnect-websocket url token conn event-ch [shard-id shard-count] out-ch)
     ;; Start an event loop with event-ch
-    (start-event-loop event-ch conn token)
+    (start-event-loop event-ch)
     nil))
 
 (defn connect-bot
@@ -268,5 +280,5 @@
 
   Returns a channel used to communicate with the process and send packets to
   Discord."
-  [token ch]
+  [token out-ch]
   )

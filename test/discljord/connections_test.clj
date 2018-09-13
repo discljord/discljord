@@ -109,12 +109,12 @@
                                                            "d" {"session_id" "session"}}))))
                                  nil)))]
         (m/fact "the bot connects with a websocket"
-          (do (connect-shard uri t 0 1)
+          (do (connect-shard uri t 0 1 (a/chan))
               (Thread/sleep 50)
               @success)
           => 1)
         (m/fact "the bot sends heartbeats"
-          (do (connect-shard uri t 0 1)
+          (do (connect-shard uri t 0 1 (a/chan))
               (Thread/sleep 50)
               (> @heartbeats
                  1))

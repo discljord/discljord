@@ -20,16 +20,25 @@
 
 (defmulti handle-event
   "Handles an event sent from Discord's servers"
-  (fn [event-type event-data event-channel]
+  (fn [event-type event-data state]
     event-type))
 
 (defmethod handle-event :default
-  [event-type event-data event-channel]
-  nil)
+  [event-type event-data state]
+  state)
+
+(defmethod handle-event :connect
+  [event-type event-data state]
+  (println "Connected to Discord!"))
 
 (defmethod handle-event :message-create
-  [event-type event-data event-channel]
-  (prn event-data))
+  [event-type event-data state]
+  (prn event-data)
+  state)
+
+(defmethod handle-event :disconnect
+  [event-type event-data state]
+  (println "Disconnected from Discord!"))
 
 (defn start-bot
   []
@@ -37,7 +46,7 @@
         bot (c/connect-bot bot-token ch)]
     (reset! bot-communicate bot)
     (reset! bot-events ch)
-    (e/message-pump ch handle-event)))
+    (e/message-pump ch handle-event nil)))
 
 (defn stop-bot
   []

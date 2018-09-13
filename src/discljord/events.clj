@@ -4,18 +4,24 @@
 
 (defn message-pump
   "Pulls events off of the channel and calls handle-event with them,
-  and stops when it sees a :disconnect event"
-  [event-ch handle-event]
-  (a/go-loop []
-    (let [[event-type event-data] (a/<! event-ch)]
-      (handle-event event-type event-data event-ch)
+  and stops when it sees a :disconnect event.
+
+  The handle-event function takes they keyword event type, the event
+  data, and a state value.
+
+  The value returned by handle-event will be used as the new state
+  for the next event."
+  [event-ch handle-event init-state]
+  (a/go-loop [state init-state]
+    (let [[event-type event-data] (a/<! event-ch)
+          new-state (handle-event event-type event-data state)]
       (when-not (= event-type :disconnect)
-        (recur))))
+        (recur new-state))))
   nil)
 (s/fdef message-pump
   :args (s/cat :channel any?
                :handle-event (s/fspec :args (s/cat :event-type keyword?
                                                    :event-data any?
-                                                   :event-channel any?)
+                                                   :handler-state any?)
                                       :ret any?))
   :ret nil?)

@@ -80,6 +80,7 @@
                    (fn [_]
                      ;; Put a connection event on the channel
                      (reset! connected true)
+                     (a/go (a/>! out-ch [:connect]))
                      (a/go (a/>! ch (if init-shard-state
                                       [:reconnect conn token
                                        (:session-id @shard-state)
@@ -337,15 +338,16 @@
 
 (defmulti handle-command
   "Handles commands from the outside world"
-  (fn [shards command-type & command-data]
+  (fn [shards out-ch command-type & command-data]
     command-type))
 
 (defmethod handle-command :default
-  [shards command-type & command-data]
+  [shards out-ch command-type & command-data]
   nil)
 
 (defmethod handle-command :disconnect
-  [shards command-type & command-data]
+  [shards out-ch command-type & command-data]
+  (a/go (a/>! out-ch [:disconnect]))
   (doseq [fut shards]
     (a/thread
       (when @@fut
@@ -353,11 +355,11 @@
 
 (defn start-communication-loop
   "Takes a vector of futures representing the atoms of websocket connections of the shards."
-  [shards ch]
+  [shards ch out-ch]
   (a/go-loop []
     (let [command (a/<! ch)]
       ;; Handle the communication command
-      (apply handle-command shards command)
+      (apply handle-command shards out-ch command)
       (when-not (= command [:disconnect])
         (recur)))))
 
@@ -380,5 +382,5 @@
                                                            token)
         communication-chan (a/chan 100)
         shards (connect-shards url token shard-count out-ch)]
-    (start-communication-loop shards communication-chan)
+    (start-communication-loop shards communication-chan out-ch)
     communication-chan))

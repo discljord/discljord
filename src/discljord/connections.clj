@@ -234,7 +234,7 @@
 
 (defmethod handle-websocket-event :disconnect
   [out-ch _ & [stop-code msg reconnect resume]]
-  ()
+  (a/go (a/>! out-ch [:shard-disconnect]))
   (handle-disconnect stop-code msg reconnect resume))
 
 (defmulti handle-payload

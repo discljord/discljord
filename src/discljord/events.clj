@@ -24,4 +24,5 @@
                                                    :event-data any?
                                                    :handler-state any?)
                                       :ret any?))
+               :init-state any?)
   :ret nil?)

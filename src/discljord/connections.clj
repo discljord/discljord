@@ -80,7 +80,7 @@
                    (fn [_]
                      ;; Put a connection event on the channel
                      (reset! connected true)
-                     (a/go (a/>! out-ch [:connect]))
+                     (a/go (a/>! out-ch [:shard-connect]))
                      (a/go (a/>! ch (if init-shard-state
                                       [:reconnect conn token
                                        (:session-id @shard-state)
@@ -132,11 +132,11 @@
 (defmulti handle-websocket-event
   "Handles events sent from discord over the websocket.
   Takes a vector of event type and event data, the websocket connection, and the events channel."
-  (fn [event-type & event-data]
+  (fn [out-ch event-type & event-data]
     event-type))
 
 (defmethod handle-websocket-event :connect
-  [_ & [conn token shard]]
+  [out-ch _ & [conn token shard]]
   (ws/send-msg @conn
                (json/write-str {"op" 2
                                 "d" {"token" token
@@ -148,7 +148,7 @@
                                      "shard" shard}})))
 
 (defmethod handle-websocket-event :reconnect
-  [_ & [conn token session-id seq]]
+  [out-ch _ & [conn token session-id seq]]
   (ws/send-msg @conn
                (json/write-str {"op" 6
                                 "d" {"token" token
@@ -233,7 +233,8 @@
   (log/info "Disconnected from Discord by client"))
 
 (defmethod handle-websocket-event :disconnect
-  [_ & [stop-code msg reconnect resume]]
+  [out-ch _ & [stop-code msg reconnect resume]]
+  ()
   (handle-disconnect stop-code msg reconnect resume))
 
 (defmulti handle-payload
@@ -282,7 +283,7 @@
   (log/error "Recieved an unhandled payload from Discord. op code" op "with data" data))
 
 (defmethod handle-websocket-event :command
-  [_ & [op data reconnect resume heartbeat ack connected shard-state]]
+  [out-ch _ & [op data reconnect resume heartbeat ack connected shard-state]]
   (handle-payload op data reconnect resume heartbeat ack connected shard-state))
 
 (defmulti handle-event
@@ -301,16 +302,16 @@
   nil)
 
 (defmethod handle-websocket-event :event
-  [_ & [event-type data shard-state out-ch]]
+  [out-ch _ & [event-type data shard-state out-ch]]
   (handle-event event-type data shard-state out-ch)
   (a/go (a/>! out-ch [(json-keyword event-type) data])))
 
 (defn start-event-loop
   "Starts a go loop which takes events from the channel and dispatches them
   via multimethod."
-  [conn ch]
+  [conn ch out-ch]
   (a/go-loop []
-    (try (apply handle-websocket-event (a/<! ch))
+    (try (apply handle-websocket-event out-ch (a/<! ch))
          (catch Exception e
            (log/error e "Exception caught from handle-websocket-event")))
     (when @conn
@@ -323,7 +324,7 @@
   (let [event-ch (a/chan 100)
         conn (atom nil)]
     (reconnect-websocket url token conn event-ch [shard-id shard-count] out-ch)
-    (start-event-loop conn event-ch)
+    (start-event-loop conn event-ch out-ch)
     conn))
 
 (defn connect-shards
@@ -382,5 +383,6 @@
                                                            token)
         communication-chan (a/chan 100)
         shards (connect-shards url token shard-count out-ch)]
+    (a/go (a/>! out-ch [:connect]))
     (start-communication-loop shards communication-chan out-ch)
     communication-chan))

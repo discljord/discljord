@@ -361,6 +361,8 @@
     (let [command (a/<! ch)]
       ;; Handle the communication command
       (apply handle-command shards out-ch command)
+      ;; Handle the rate limit
+      (a/<! (a/timeout 500))
       (when-not (= command [:disconnect])
         (recur)))))
 

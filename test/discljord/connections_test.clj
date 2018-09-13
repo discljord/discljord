@@ -70,36 +70,54 @@
 (defn- ws-srv
   [request]
   (with-channel request channel
-    (send! channel (json/write-str {"op" 10 "d" {"heartbeat_interval" 10}}))
+    (send! channel (json/write-str {"op" 10 "d" {"heartbeat_interval" 100}}))
     (s/on-receive channel (partial *recv* channel))))
 
 (def ^:private uri "ws://localhost:9009")
 
 (m/facts "about websocket connections"
-         (let [server (atom nil)
-               success (atom 0)
-               t "VALID_TOKEN"]
-           (m/with-state-changes [(m/before :facts
-                                            (do
-                                              (reset! server
-                                                      (run-server ws-srv
-                                                                  {:port 9009}))
-                                              (reset! success 0)))
-                                  (m/after :facts
-                                           (do (@server)
-                                               (reset! server nil)))]
-             (with-redefs [*recv* (fn [connection message]
-                                    (let [message (json/read-str message)
-                                          op (get message "op")
-                                          d (get message "d")
-                                          token (get d "token")
-                                          [shard-id shard-count] (get d "shard")]
-                                      (if (and (= op 2) (= token t))
-                                        (swap! success inc))))]
-               (m/fact "the bot connects with a websocket"
-                       (do (connect-shard uri t)
-                           (Thread/sleep 50)
-                           @success)
-                       => 1))
-             ;; Add more tests for different websocket behaviors
-             )))
+  (let [server (atom nil)
+        success (atom 0)
+        heartbeats (atom 0)
+        t "VALID_TOKEN"]
+    (m/with-state-changes [(m/before :facts
+                                     (do
+                                       (reset! server
+                                               (run-server ws-srv
+                                                           {:port 9009}))
+                                       (reset! success 0)))
+                           (m/after :facts
+                                    (do (@server)
+                                        (reset! server nil)))]
+      (with-redefs [*recv* (fn [connection message]
+                             (let [message (json/read-str message)
+                                   op (get message "op")
+                                   d (get message "d")]
+                               (case op
+                                 1 (do (swap! heartbeats inc)
+                                       (send! connection (json/write-str {"op" 11})))
+                                 2 (let [token (get d "token")
+                                         [shard-id shard-count] (get d "shard")]
+                                     (when (and (= token t)
+                                                (= shard-id 0)
+                                                (= shard-count 1))
+                                       (swap! success inc)
+                                       (send! connection (json/write-str
+                                                          {"op" 0
+                                                           "s" 0
+                                                           "t" "READY"
+                                                           "d" {"session_id" "session"}}))))
+                                 nil)))]
+        (m/fact "the bot connects with a websocket"
+          (do (connect-shard uri t 0 1)
+              (Thread/sleep 50)
+              @success)
+          => 1)
+        (m/fact "the bot sends heartbeats"
+          (do (connect-shard uri t 0 1)
+              (Thread/sleep 50)
+              (> @heartbeats
+                 1))
+          => true))
+      ;; Add more tests for different websocket behaviors
+      )))

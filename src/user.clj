@@ -1,6 +1,7 @@
 (ns user
   (:require [discljord.connections :as c]
             [clojure.data.json :as json]
+            [clojure.string :as str]
             [org.httpkit.fake :as fake]
             [org.httpkit.server :as s :refer [with-channel
                                               run-server

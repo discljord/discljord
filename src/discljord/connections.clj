@@ -2,6 +2,7 @@
   (:use com.rpl.specter)
   (:require [org.httpkit.client :as http]
             [clojure.data.json :as json]
+            [clojure.tools.logging :as log]
             [gniazdo.core :as ws]
             [clojure.core.async :as a]
             [clojure.spec.alpha :as s]
@@ -65,24 +66,78 @@
     (vector? j) (mapv clean-json-input j)
     :else j))
 
+(defn reconnect-websocket
+  "Takes a websocket connection atom and additional connection information,
+  and reconnects a websocket, with options for resume or not."
+  [url token conn ch shard & [init-shard-state]]
+  (let [ack (atom false)
+        connected (atom false)
+        shard-state (atom (or init-shard-state
+                              {:session-id nil
+                               :seq nil}))]
+    (reset! conn (ws/connect url
+                   :on-connect (fn [_]
+                                 ;; Put a connection event on the channel
+                                 (reset! connected true)
+                                 (a/go (a/>! ch (if init-shard-state
+                                                  [:reconnect conn token
+                                                   (:session-id @shard-state)
+                                                   (:seq @shard-state)]
+                                                  [:connect conn token shard]))))
+                   :on-receive (fn [msg]
+                                 ;; Put a recieve event on the channel
+                                 (a/go
+                                   (let [msg (clean-json-input (json/read-str msg))
+                                         op (:op msg)
+                                         data (:d msg)]
+                                     (a/>! ch (if (= op 0)
+                                                (let [new-seq (:s msg)
+                                                      msg-type (:t msg)]
+                                                  (swap! shard-state assoc :seq new-seq)
+                                                  [:event msg-type data shard-state])
+                                                [:command op data
+                                                 #(do
+                                                    (ws/close @conn)
+                                                    (fn []
+                                                      (reconnect-websocket url token conn ch shard)))
+                                                 #(do
+                                                    (ws/close @conn)
+                                                    (fn []
+                                                      (reconnect-websocket url token conn ch shard shard-state)))
+                                                 #(ws/send-msg @conn
+                                                               (json/write-str
+                                                                {"op" 1
+                                                                 "d" (:seq @shard-state)}))
+                                                 ack connected shard-state])))))
+                   :on-close (fn [stop-code msg]
+                               ;; Put a disconnect event on the channel
+                               (reset! connected false)
+                               (a/go (a/>! ch [:disconnect stop-code msg
+                                               #(reconnect-websocket url token conn ch shard)
+                                               #(reconnect-websocket url token conn ch shard shard-state)])))
+                   :on-error (fn [err]
+                               (log/error err "Error caught on websocket"))))))
+
 (defmulti handle-event
   "Handles events sent from discord over the websocket.
   Takes a vector of event type and event data, the websocket connection, and the events channel."
-  (fn [[event-type event-data] conn ch]
+  (fn [event-type & event-data]
     event-type))
 
 (defmethod handle-event :connect
-  [[_ token] conn ch]
+  [_ & [conn token shard]]
   (ws/send-msg @conn
                (json/write-str {"op" 2
                                 "d" {"token" token
-                                     ;; TODO: Add default presence and shard
                                      "properties" {"$os" "linux"
                                                    "$browser" "discljord"
-                                                   "$device" "discljord"}}})))
+                                                   "$device" "discljord"}
+                                     "compress" false
+                                     "large_threshold" 50
+                                     "shard" shard}})))
 
 (defmethod handle-event :reconnect
-  [[_ [token session-id seq]] conn ch]
+  [_ & [conn token session-id seq]]
   (ws/send-msg @conn
                (json/write-str {"op" 6
                                 "d" {"token" token
@@ -90,66 +145,126 @@
                                      "seq" seq}})))
 
 (defmethod handle-event :disconnect
-  [[_ [url token stop-code msg]] conn ch]
-  ;; TODO: Make this worry about stop codes
-  ;; This will trigger a reconnect, but only do this if you need to
-  (reset! conn (ws/connect url
-                 :on-connect (fn [_]
-                               ;; Put a connection event on the channel
-                               (a/go (a/>! ch [:reconnect [token 0 0]])))
-                 :on-receive (fn [msg]
-                               ;; Put a recieve event on the channel
-                               (a/go (a/>! ch [:recieve msg])))
-                 :on-close (fn [stop-code msg]
-                             ;; Put a disconnect event on the channel
-                             (a/go (a/>! ch [:disconnect [url
-                                                          token
-                                                          stop-code
-                                                          msg]]))))))
+  [_ & [stop-code msg reconnect resume]]
+  (case stop-code
+    ;; ------------------------------------------------------------------
+    ;; Discord stop codes
 
-(defmethod handle-event :recieve
-  [[_ msg] conn ch]
-  ;; TODO: Make this dispatch messages based on what kind of messages handler we want
-  ;;       This will have default handlers for many types of messages, like opcode 7
-  )
+    ;; Unknown error, reconnect and resume
+    ;; TODO: Get actual session id and seq
+    4000 (do (log/info "Unknown error, reconnect and resume")
+             (resume))
+    ;; Invalid op code
+    4001 (log/fatal "Invalid op code sent to Discord servers")
+    ;; Invalid payload
+    4002 (log/fatal "Invalid payload sent to Discord servers")
+    ;; Not authenticated
+    4003 (log/fatal "Sent data to Discord without authenticating")
+    ;; Invalid token
+    4004 (do (log/error "Invalid token sent to Discord servers")
+             (throw (Exception. "Invalid token sent to Discord servers")))
+    ;; Already authenticated
+    4005 (log/fatal "Sent identify packet to Discord twice from same shard")
+    ;; Invalid seq
+    4007 (do (log/info "Sent invalid seq to Discord on resume, reconnect")
+             (reconnect))
+    ;; Rate limited
+    4008 (log/fatal "Rate limited by Discord")
+    ;; Session timed out, reconnect, don't resume
+    4009 (do (log/info "Session timed out, reconnecting")
+             (reconnect))
+    ;; Invalid shard
+    4010 (log/fatal "Invalid shard set to discord servers")
+    ;; Sharding Required
+    ;; NOTE(Joshua): This should never happen, unless discord sends
+    ;;               this as the bot joins more servers. If so, then
+    ;;               make this cause a full disconnect and reconnect
+    ;;               of the whole bot, not just this shard.
+    4011 (log/fatal "Bot requires sharding")
+
+    ;; ---------------------------------------------------------------
+    ;; Normal stop codes
+
+    ;; End of file
+    1006 (do (log/info "Disconnected from Discord by server, reconnecting")
+             (reconnect))
+
+    ;; Closed by client
+    1000 (log/info "Disconnected from Discord by client")
+
+    ;; Unkown stop code, reconnect?
+    (do (log/warn (str "Unknown stop code "
+                       stop-code
+                       " encountered with message:\n\t"
+                       msg)))))
+
+(defmethod handle-event :command
+  [_ & [op data reconnect resume heartbeat ack connected shard-state]]
+  (case op
+    ;; Heartbeat payload
+    1 (when @connected
+        (swap! shard-state assoc :seq data)
+        (heartbeat))
+    ;; Reconnect payload
+    7 (reconnect)
+    ;; Invalid session payload
+    9 (if data
+        (resume)
+        (reconnect))
+    ;; Hello payload
+    10 (let [interval (get data :heartbeat-interval)]
+         (a/go-loop []
+           ;; Send heartbeat
+           (reset! ack false)
+           (heartbeat)
+           ;; Wait the interval
+           (a/<! (a/timeout interval))
+           ;; If there's no ack, disconnect and reconnect with resume
+           (if-not @ack
+             (resume)
+             ;; Make this check to see if we've disconnected
+             (when @connected
+               (recur)))))
+    ;; Heartbeat ACK
+    11 (reset! ack true)
+    ;; Other payload
+    (do (log/error "Recieved an unhandled payload from Discord. op code" op "with data" data))))
+
+;; TODO: make this update the shard state for everything
+(defmethod handle-event :event
+  [_ & [event-type data shard-state]]
+  (case event-type
+    :ready (let [session-id (:session-id data)]
+             (swap! shard-state assoc :session-id session-id))
+    nil))
 
 (defn start-event-loop
   "Starts a go loop which takes events from the channel and dispatches them
   via multimethod."
-  [ch conn]
+  [ch conn token]
   (a/go-loop []
-    (try (handle-event (a/<! ch) conn ch)
+    (try (apply handle-event (a/<! ch))
          (catch Exception e
-           nil))))
+           (log/error e "Exception caught from handle-event")))
+    (recur)))
 
 (defn connect-shard
   "Takes a gateway URL and a bot token, creates a websocket connected to
   Discord's servers, and returns it."
-  [url token]
+  [url token shard-id shard-count]
   (let [event-ch (a/chan 100)
-        conn (atom (ws/connect url
-                     :on-connect (fn [_]
-                                   ;; Put a connection event on the channel
-                                   (a/go (a/>! event-ch [:connect token])))
-                     :on-receive (fn [msg]
-                                   ;; Put a recieve event on the channel
-                                   (a/go (a/>! event-ch [:recieve msg])))
-                     :on-close (fn [stop-code msg]
-                                 ;; Put a disconnect event on the channel
-                                 (a/go (a/>! event-ch [:disconnect [url
-                                                                    token
-                                                                    stop-code
-                                                                    msg]])))))]
+        conn (atom nil)]
+    (reconnect-websocket url token conn event-ch [shard-id shard-count])
     ;; Start an event loop with event-ch
-    (start-event-loop event-ch conn)
+    (start-event-loop event-ch conn token)
     nil))
 
 (defn connect-bot
   "Creates a connection process which will handle the services granted by
   Discord which interact over websocket.
 
-  Creates a connection to Discord's servers using the given token, and sends
-  all events over the provided channel.
+  Takes a token for the bot, and a channel on which all events from Discord
+  will be sent back across.
 
   Returns a channel used to communicate with the process and send packets to
   Discord."

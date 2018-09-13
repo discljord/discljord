@@ -1,6 +1,8 @@
 (ns user
   (:require [discljord.connections :as c]
+            [discljord.events :as e]
             [clojure.data.json :as json]
+            [clojure.java.io :as io]
             [clojure.string :as str]
             [org.httpkit.fake :as fake]
             [org.httpkit.server :as s :refer [with-channel
@@ -8,42 +10,26 @@
                                               send!
                                               close]]
             [gniazdo.core :as ws]
-            [midje.repl :refer :all]))
+            [midje.repl :refer :all]
+            [clojure.core.async :as a]))
 
-(defmulti server-handle-message
-  "Takes an op code and information about the bot, and handles it appropriately."
-  (fn [conn opcode data]
-    opcode))
+(def bot-token (str/trim (slurp (io/resource "token.txt"))))
 
-(defn message-handler
-  [channel message]
-  (let [message (json/read-str message)
-        op (get message "op")
-        d (c/clean-json-input (get message "d"))]
-    (server-handle-message channel op d)))
+(def bot-events (atom nil))
+(def bot-communicate (atom nil))
 
-;; Identify packet
-(defmethod server-handle-message 2
-  [conn opcode data]
-  (println "recieved identify!"))
+(defmethod e/handle-event :message-create
+  [event-type event-data event-channel]
+  (prn event-data))
 
-(defn connect-handler
-  [request]
-  (println "Starting server")
-  (with-channel request channel
-    (send! channel (json/write-str {"op" 10 "d" {"heartbeat_interval" 10}}))
-    (s/on-receive channel (partial message-handler channel))))
-
-(def uri "ws://localhost:9090")
-
-(def server-stop (atom nil))
-
-(defn start-server
+(defn start-bot
   []
-  (reset! server-stop (run-server connect-handler {:port 9090})))
+  (let [ch (a/chan 100)
+        bot (c/connect-bot bot-token ch)]
+    (reset! bot-communicate bot)
+    (reset! bot-events ch)
+    (e/default-message-pump ch)))
 
-(defn stop-server
+(defn stop-bot
   []
-  (when @server-stop
-    (@server-stop)
-    (reset! server-stop nil)))
+  (a/>!! @bot-communicate [:disconnect]))

@@ -154,111 +154,166 @@
                                      "session_id" session-id
                                      "seq" seq}})))
 
+(defmulti handle-disconnect
+  "Handles the disconnection process for different stop codes"
+  (fn [stop-code msg reconnect resume]
+    stop-code))
+
+(defmethod handle-disconnect :default
+  [stop-code msg reconnect resume]
+  (log/warn (str "Unknown stop code "
+                 stop-code
+                 " encountered with message:\n\t"
+                 msg)))
+
+(defmethod handle-disconnect 4000
+  [stop-code msg reconnect resume]
+  (log/info "Unknown error, reconnect and resume")
+  (resume))
+
+(defmethod handle-disconnect 4001
+  [stop-code msg reconnect resume]
+  (log/fatal "Invalid op code sent to Discord servers"))
+
+(defmethod handle-disconnect 4002
+  [stop-code msg reconnect resume]
+  (log/fatal "Invalid payload sent to Discord servers"))
+
+(defmethod handle-disconnect 4003
+  [stop-code msg reconnect resume]
+  (log/fatal "Sent data to Discord without authenticating"))
+
+(defmethod handle-disconnect 4004
+  [stop-code msg reconnect resume]
+  (log/error "Invalid token sent to Discord servers")
+  (throw (Exception. "Invalid token sent to Discord servers")))
+
+(defmethod handle-disconnect 4005
+  [stop-code msg reconnect resume]
+  (log/fatal "Sent identify packet to Discord twice from same shard"))
+
+(defmethod handle-disconnect 4007
+  [stop-code msg reconnect resume]
+  (log/info "Sent invalid seq to Discord on resume, reconnect")
+  (reconnect))
+
+(defmethod handle-disconnect 4008
+  [stop-code msg reconnect resume]
+  (log/fatal "Rate limited by Discord"))
+
+(defmethod handle-disconnect 4009
+  [stop-code msg reconnect resume]
+  (log/info "Session timed out, reconnecting")
+  (reconnect))
+
+(defmethod handle-disconnect 4010
+  [stop-code msg reconnect resume]
+  (log/fatal "Invalid shard set to discord servers"))
+
+(defmethod handle-disconnect 4011
+  [stop-code msg reconnect resume]
+  ;; NOTE(Joshua): This should never happen, unless discord sends
+  ;;               this as the bot joins more servers. If so, then
+  ;;               make this cause a full disconnect and reconnect
+  ;;               of the whole bot, not just this shard.
+  (log/fatal "Bot requires sharding"))
+
+(defmethod handle-disconnect 1006
+  [stop-code msg reconnect resume]
+  (log/info "Disconnected from Discord by server, reconnecting")
+  (reconnect))
+
+(defmethod handle-disconnect 1000
+  [stop-code msg reconnect resume]
+  (log/info "Disconnected from Discord by client"))
+
+(defmethod handle-disconnect 1001
+  [stop-code msg reconnect resume]
+  (log/info "Disconnected from Discord by client"))
+
 (defmethod handle-websocket-event :disconnect
   [_ & [stop-code msg reconnect resume]]
-  (case stop-code
-    ;; ------------------------------------------------------------------
-    ;; Discord stop codes
+  (handle-disconnect stop-code msg reconnect resume))
 
-    ;; Unknown error, reconnect and resume
-    ;; TODO: Get actual session id and seq
-    4000 (do (log/info "Unknown error, reconnect and resume")
-             (resume))
-    ;; Invalid op code
-    4001 (log/fatal "Invalid op code sent to Discord servers")
-    ;; Invalid payload
-    4002 (log/fatal "Invalid payload sent to Discord servers")
-    ;; Not authenticated
-    4003 (log/fatal "Sent data to Discord without authenticating")
-    ;; Invalid token
-    4004 (do (log/error "Invalid token sent to Discord servers")
-             (throw (Exception. "Invalid token sent to Discord servers")))
-    ;; Already authenticated
-    4005 (log/fatal "Sent identify packet to Discord twice from same shard")
-    ;; Invalid seq
-    4007 (do (log/info "Sent invalid seq to Discord on resume, reconnect")
-             (reconnect))
-    ;; Rate limited
-    4008 (log/fatal "Rate limited by Discord")
-    ;; Session timed out, reconnect, don't resume
-    4009 (do (log/info "Session timed out, reconnecting")
-             (reconnect))
-    ;; Invalid shard
-    4010 (log/fatal "Invalid shard set to discord servers")
-    ;; Sharding Required
-    ;; NOTE(Joshua): This should never happen, unless discord sends
-    ;;               this as the bot joins more servers. If so, then
-    ;;               make this cause a full disconnect and reconnect
-    ;;               of the whole bot, not just this shard.
-    4011 (log/fatal "Bot requires sharding")
+(defmulti handle-payload
+  "Handles a command payload sent from Discord"
+  (fn [op data reconnect resume heartbeat ack connected shard-state]
+    op))
 
-    ;; ---------------------------------------------------------------
-    ;; Normal stop codes
+(defmethod handle-payload 1
+  [op data reconnect resume heartbeat ack connected shard-state]
+  (when @connected
+    (swap! shard-state assoc :seq data)
+    (heartbeat)))
 
-    ;; End of file
-    1006 (do (log/info "Disconnected from Discord by server, reconnecting")
-             (reconnect))
+(defmethod handle-payload 7
+  [op data reconnect resume heartbeat ack connected shard-state]
+  (reconnect))
 
-    ;; Closed by client
-    1000 (log/info "Disconnected from Discord by client")
-    1001 (log/info "Disconnected from Discord by client")
+(defmethod handle-payload 9
+  [op data reconnect resume heartbeat ack connected shard-state]
+  (if data
+    (resume)
+    (reconnect)))
 
-    ;; Unkown stop code, reconnect?
-    (do (log/warn (str "Unknown stop code "
-                       stop-code
-                       " encountered with message:\n\t"
-                       msg)))))
+(defmethod handle-payload 10
+  [op data reconnect resume heartbeat ack connected shard-state]
+  (let [interval (get data :heartbeat-interval)]
+    (a/go-loop []
+      ;; Send heartbeat
+      (reset! ack false)
+      (heartbeat)
+      ;; Wait the interval
+      (a/<! (a/timeout interval))
+      ;; If there's no ack, disconnect and reconnect with resume
+      (if-not @ack
+        (resume)
+        ;; Make this check to see if we've disconnected
+        (when @connected
+          (recur))))))
+
+(defmethod handle-payload 11
+  [op data reconnect resume heartbeat ack connected shard-state]
+  (reset! ack true))
+
+(defmethod handle-payload :default
+  [op data reconnect resume heartbeat ack connected shard-state]
+  (log/error "Recieved an unhandled payload from Discord. op code" op "with data" data))
 
 (defmethod handle-websocket-event :command
   [_ & [op data reconnect resume heartbeat ack connected shard-state]]
-  (case op
-    ;; Heartbeat payload
-    1 (when @connected
-        (swap! shard-state assoc :seq data)
-        (heartbeat))
-    ;; Reconnect payload
-    7 (reconnect)
-    ;; Invalid session payload
-    9 (if data
-        (resume)
-        (reconnect))
-    ;; Hello payload
-    10 (let [interval (get data :heartbeat-interval)]
-         (a/go-loop []
-           ;; Send heartbeat
-           (reset! ack false)
-           (heartbeat)
-           ;; Wait the interval
-           (a/<! (a/timeout interval))
-           ;; If there's no ack, disconnect and reconnect with resume
-           (if-not @ack
-             (resume)
-             ;; Make this check to see if we've disconnected
-             (when @connected
-               (recur)))))
-    ;; Heartbeat ACK
-    11 (reset! ack true)
-    ;; Other payload
-    (do (log/error "Recieved an unhandled payload from Discord. op code" op "with data" data))))
+  (handle-payload op data reconnect resume heartbeat ack connected shard-state))
 
-;; TODO: make this update the shard state for everything
+(defmulti handle-event
+  "Handles event payloads sent from Discord in the context of the connection,
+  before it gets to the regular event handlers"
+  (fn [event-type data shard-state out-ch]
+    event-type))
+
+(defmethod handle-event :ready
+  [event-type data shard-state out-ch]
+  (let [session-id (:session-id data)]
+    (swap! shard-state assoc :session-id session-id)))
+
+(defmethod handle-event :default
+  [event-type data shard-state out-ch]
+  nil)
+
 (defmethod handle-websocket-event :event
   [_ & [event-type data shard-state out-ch]]
-  (case event-type
-    :ready (let [session-id (:session-id data)]
-             (swap! shard-state assoc :session-id session-id))
-    nil)
+  (handle-event event-type data shard-state out-ch)
   (a/go (a/>! out-ch [(json-keyword event-type) data])))
 
 (defn start-event-loop
   "Starts a go loop which takes events from the channel and dispatches them
   via multimethod."
-  [ch]
+  [conn ch]
   (a/go-loop []
     (try (apply handle-websocket-event (a/<! ch))
          (catch Exception e
            (log/error e "Exception caught from handle-websocket-event")))
-    (recur)))
+    (when @conn
+      (recur))))
 
 (defn connect-shard
   "Takes a gateway URL and a bot token, creates a websocket connected to
@@ -267,8 +322,18 @@
   (let [event-ch (a/chan 100)
         conn (atom nil)]
     (reconnect-websocket url token conn event-ch [shard-id shard-count] out-ch)
-    (start-event-loop event-ch)
+    (start-event-loop conn event-ch)
     conn))
+
+(defn connect-shards
+  [url token shard-count out-ch]
+  ;; FIXME: This is going to break when there's a high enough shard count
+  ;;        that the JVM can't handle having more threads doing this.
+  (doall
+   (for [shard-id (range shard-count)]
+     (future
+       (a/<!! (a/go (a/<! (a/timeout (* 5000 shard-id)))
+                    (connect-shard url token shard-id shard-count out-ch)))))))
 
 (defmulti handle-command
   "Handles commands from the outside world"
@@ -291,7 +356,6 @@
   [shards ch]
   (a/go-loop []
     (let [command (a/<! ch)]
-      (prn command)
       ;; Handle the communication command
       (apply handle-command shards command)
       (when-not (= command [:disconnect])
@@ -315,12 +379,6 @@
         {::keys [url shard-count]} (get-websocket-gateway! (api-url "/gateway/bot")
                                                            token)
         communication-chan (a/chan 100)
-        ;; FIXME: This is going to break when there's a high enough shard count
-        ;;        that the JVM can't handle having more threads doing this.
-        shards (doall
-                (for [shard-id (range shard-count)]
-                  (future
-                    (a/<!! (a/go (a/<! (a/timeout (* 5000 shard-id)))
-                                 (connect-shard url token shard-id shard-count out-ch))))))]
+        shards (connect-shards url token shard-count out-ch)]
     (start-communication-loop shards communication-chan)
     communication-chan))

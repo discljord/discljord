@@ -18,7 +18,16 @@
 (def bot-events (atom nil))
 (def bot-communicate (atom nil))
 
-(defmethod e/handle-event :message-create
+(defmulti handle-event
+  "Handles an event sent from Discord's servers"
+  (fn [event-type event-data event-channel]
+    event-type))
+
+(defmethod handle-event :default
+  [event-type event-data event-channel]
+  nil)
+
+(defmethod handle-event :message-create
   [event-type event-data event-channel]
   (prn event-data))
 
@@ -28,7 +37,7 @@
         bot (c/connect-bot bot-token ch)]
     (reset! bot-communicate bot)
     (reset! bot-events ch)
-    (e/default-message-pump ch)))
+    (e/message-pump ch handle-event)))
 
 (defn stop-bot
   []

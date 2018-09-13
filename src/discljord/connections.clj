@@ -270,6 +270,32 @@
     (start-event-loop event-ch)
     conn))
 
+(defmulti handle-command
+  "Handles commands from the outside world"
+  (fn [shards command-type & command-data]
+    command-type))
+
+(defmethod handle-command :default
+  [shards command-type & command-data]
+  nil)
+
+(defmethod handle-command :disconnect
+  [shards command-type & command-data]
+  (doseq [fut shards]
+    (a/thread
+      (when @@fut
+        (ws/close @@fut)))))
+
+(defn start-communication-loop
+  "Takes a vector of futures representing the atoms of websocket connections of the shards."
+  [shards ch]
+  (a/go-loop []
+    (let [command (a/<! ch)]
+      (prn command)
+      ;; Handle the communication command
+      (apply handle-command shards command)
+      (when-not (= command [:disconnect])
+        (recur)))))
 
 (defn connect-bot
   "Creates a connection process which will handle the services granted by
@@ -279,6 +305,22 @@
   will be sent back across.
 
   Returns a channel used to communicate with the process and send packets to
-  Discord."
+  Discord.
+
+  Keep in mind that Discord sets a limit to how many shards can connect in a
+  given period. This means that communication to Discord may be bounded based
+  on which shard you use to talk to the server immediately after starting the bot."
   [token out-ch]
-  )
+  (let [token (str "Bot " token)
+        {::keys [url shard-count]} (get-websocket-gateway! (api-url "/gateway/bot")
+                                                           token)
+        communication-chan (a/chan 100)
+        ;; FIXME: This is going to break when there's a high enough shard count
+        ;;        that the JVM can't handle having more threads doing this.
+        shards (doall
+                (for [shard-id (range shard-count)]
+                  (future
+                    (a/<!! (a/go (a/<! (a/timeout (* 5000 shard-id)))
+                                 (connect-shard url token shard-id shard-count out-ch))))))]
+    (start-communication-loop shards communication-chan)
+    communication-chan))

@@ -4,14 +4,10 @@
             [clojure.data.json :as json]
             [clojure.java.io :as io]
             [clojure.string :as str]
-            [org.httpkit.fake :as fake]
-            [org.httpkit.server :as s :refer [with-channel
-                                              run-server
-                                              send!
-                                              close]]
-            [gniazdo.core :as ws]
             [midje.repl :refer :all]
-            [clojure.core.async :as a]))
+            [clojure.core.async :as a]
+            [clojure.spec.alpha :as s]
+            [clojure.spec.test.alpha :as st]))
 
 (def bot-token (str/trim (slurp (io/resource "token.txt"))))
 

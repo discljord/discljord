@@ -12,8 +12,24 @@
 (s/def ::url string?)
 (s/def ::token string?)
 
+(s/def ::shard-id int?)
 (s/def ::shard-count pos-int?)
 (s/def ::gateway (s/keys :req [::url ::shard-count]))
+
+(defn atom-of?
+  [s]
+  (fn [x]
+    (and (instance? clojure.lang.Atom x)
+         (s/valid? s x))))
+
+(s/def ::channel (partial satisfies? clojure.core.async.impl.protocols/Channel))
+
+(s/def ::session-id (s/nilable string?))
+(s/def ::seq (s/nilable int?))
+(s/def ::shard-state (s/keys :req-un [::session-id ::seq]))
+
+(s/def ::connection any?)
+(s/def ::future any?)
 
 (defn append-api-suffix
   [url]
@@ -65,6 +81,16 @@
                   (transform [MAP-VALS coll?] clean-json-input))
     (vector? j) (mapv clean-json-input j)
     :else j))
+(s/fdef clean-json-input
+  :args (s/cat :json-data (s/or :string string?
+                                :number number?
+                                :array vector?
+                                :object map?))
+  :ret (s/or :string string?
+             :number number?
+             :array vector?
+             :object map?
+             :keyword keyword?))
 
 (defn reconnect-websocket
   "Takes a websocket connection atom and additional connection information,
@@ -95,7 +121,7 @@
                              data (:d msg)]
                          (a/>! ch (if (= op 0)
                                     (let [new-seq (:s msg)
-                                          msg-type (:t msg)]
+                                          msg-type (json-keyword (:t msg))]
                                       (swap! shard-state assoc :seq new-seq)
                                       [:event msg-type data shard-state out-ch])
                                     [:command op data
@@ -129,10 +155,20 @@
                    (fn [err]
                      (log/error err "Error caught on websocket")))))
   nil)
+(s/fdef reconnect-websocket
+  :args (s/cat :url ::url
+               :token ::token
+               :connection (atom-of? ::connection)
+               :event-channel ::channel
+               :shard (s/tuple ::shard-id ::shard-count)
+               :out-channel ::channel
+               :init-shard-state (s/? any?)))
 
 (defmulti handle-websocket-event
   "Handles events sent from discord over the websocket.
-  Takes a vector of event type and event data, the websocket connection, and the events channel."
+
+  Takes the channel to send events out of the process, a
+  keyword event type, and any number of event data arguments."
   (fn [out-ch event-type & event-data]
     event-type))
 
@@ -157,7 +193,10 @@
                                      "seq" seq}})))
 
 (defmulti handle-disconnect
-  "Handles the disconnection process for different stop codes"
+  "Handles the disconnection process for different stop codes.
+
+  Takes an integer stop code, the message, a function to reconnect
+  the shard, and a function to reconnect the shard with resume."
   (fn [stop-code msg reconnect resume]
     stop-code))
 
@@ -239,7 +278,14 @@
   (handle-disconnect stop-code msg reconnect resume))
 
 (defmulti handle-payload
-  "Handles a command payload sent from Discord"
+  "Handles a command payload sent from Discord.
+
+  Takes an integer op code, the data sent from Discord, a function to reconnect
+  the shard to Discord, a function to reconnect to Discord with a resume,
+  a function to send a heartbeat to Discord, an atom containing the ack state
+  from the last heartbeat, an atom containing whether the current shard is connected,
+  and an atom containing the shard state, including the seq and session-id."
+  ;; FIXME(Joshua): The ack and connected atoms should be moved to keys in the shard-state atom
   (fn [op data reconnect resume heartbeat ack connected shard-state]
     op))
 
@@ -289,7 +335,10 @@
 
 (defmulti handle-event
   "Handles event payloads sent from Discord in the context of the connection,
-  before it gets to the regular event handlers"
+  before it gets to the regular event handlers.
+
+  Takes a keyword event type, event data from Discord, an atom containing the shard's
+  state, and the channel for sending events out of the process."
   (fn [event-type data shard-state out-ch]
     event-type))
 
@@ -305,7 +354,7 @@
 (defmethod handle-websocket-event :event
   [out-ch _ & [event-type data shard-state out-ch]]
   (handle-event event-type data shard-state out-ch)
-  (a/go (a/>! out-ch [(json-keyword event-type) data])))
+  (a/go (a/>! out-ch [event-type data])))
 
 (defn start-event-loop
   "Starts a go loop which takes events from the channel and dispatches them
@@ -316,7 +365,13 @@
          (catch Exception e
            (log/error e "Exception caught from handle-websocket-event")))
     (when @conn
-      (recur))))
+      (recur)))
+  nil)
+(s/fdef start-event-loop
+  :args (s/cat :connection (atom-of? ::connection)
+               :event-channel ::channel
+               :out-channel ::channel)
+  :ret nil?)
 
 (defn connect-shard
   "Takes a gateway URL and a bot token, creates a websocket connected to
@@ -327,6 +382,13 @@
     (reconnect-websocket url token conn event-ch [shard-id shard-count] out-ch)
     (start-event-loop conn event-ch out-ch)
     conn))
+(s/fdef connect-shard
+  :args (s/cat :url ::url
+               :token ::token
+               :shard-id int?
+               :shard-count pos-int?
+               :out-channel ::channel)
+  :ret (atom-of? ::connection))
 
 (defn connect-shards
   [url token shard-count out-ch]
@@ -337,9 +399,19 @@
      (future
        (a/<!! (a/go (a/<! (a/timeout (* 5000 shard-id)))
                     (connect-shard url token shard-id shard-count out-ch)))))))
+(s/fdef connect-shards
+  :args (s/cat :url ::url
+               :token ::token
+               :shard-count pos-int?
+               :out-ch ::channel)
+  :ret (s/coll-of ::future))
 
 (defmulti handle-command
-  "Handles commands from the outside world"
+  "Handles commands from the outside world.
+
+  Takes a vector of futures containing atoms of shard connections,
+  the channel used to send events out of the process, a keyword command type,
+  and any number of command data arguments."
   (fn [shards out-ch command-type & command-data]
     command-type))
 
@@ -352,8 +424,9 @@
   (a/go (a/>! out-ch [:disconnect]))
   (doseq [fut shards]
     (a/thread
-      (when @@fut
-        (ws/close @@fut)))))
+      (swap! @fut #(do (when %
+                         (ws/close %))
+                       nil)))))
 
 (defn start-communication-loop
   "Takes a vector of futures representing the atoms of websocket connections of the shards."
@@ -365,7 +438,13 @@
       ;; Handle the rate limit
       (a/<! (a/timeout 500))
       (when-not (= command [:disconnect])
-        (recur)))))
+        (recur))))
+  nil)
+(s/fdef start-communication-loop
+  :args (s/cat :shards (s/coll-of ::future)
+               :event-channel ::channel
+               :out-channel ::channel)
+  :ret nil?)
 
 (defn connect-bot
   "Creates a connection process which will handle the services granted by
@@ -389,3 +468,6 @@
     (a/go (a/>! out-ch [:connect]))
     (start-communication-loop shards communication-chan out-ch)
     communication-chan))
+(s/fdef connect-bot
+  :args (s/cat :token ::token :out-ch ::channel)
+  :ret ::channel)

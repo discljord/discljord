@@ -23,6 +23,6 @@
                :handle-event (s/fspec :args (s/cat :event-type keyword?
                                                    :event-data any?
                                                    :handler-state any?)
-                                      :ret any?))
+                                      :ret any?)
                :init-state any?)
   :ret nil?)

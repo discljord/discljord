@@ -2,7 +2,7 @@
   (:require [clojure.core.async :as a]
             [clojure.spec.alpha :as s]))
 
-(defn message-pump
+(defn message-pump!
   "Pulls events off of the channel and calls handle-event with them,
   and stops when it sees a :disconnect event.
 
@@ -18,7 +18,7 @@
       (when-not (= event-type :disconnect)
         (recur new-state))))
   nil)
-(s/fdef message-pump
+(s/fdef message-pump!
   :args (s/cat :channel any?
                :handle-event (s/fspec :args (s/cat :event-type keyword?
                                                    :event-data any?

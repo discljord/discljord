@@ -1,5 +1,6 @@
 (ns discljord.connections-test
   (:require [discljord.connections :refer :all :as c]
+            [discljord.specs :as ds]
             [clojure.data.json :as json]
             [clojure.core.async :as a]
             [org.httpkit.fake :as fake]
@@ -8,7 +9,8 @@
                                               send!
                                               close]]
             [gniazdo.core :as ws]
-            [midje.sweet :as m]))
+            [midje.sweet :as m]
+            [clojure.tools.logging :as log]))
 
 (m/facts "about discord urls"
          (m/fact "giving append-api-suffix a url appends discord's api suffix"
@@ -29,8 +31,8 @@
   (m/facts "about gateways"
            (m/fact "the websocket gateway requires an authorization header"
                    (get-websocket-gateway! (api-url "/gateway/bot") "TEST_TOKEN")
-                   => {::c/url "wss://fake.gateway.api/"
-                       ::c/shard-count 1}
+                   => {::ds/url "wss://fake.gateway.api/"
+                       ::ds/shard-count 1}
                    (get-websocket-gateway! (api-url "/gateway/bot") "INVALID_TOKEN")
                    => nil
                    (get-websocket-gateway! (api-url "/invalid/endpoint") "TEST_TOKEN")
@@ -109,12 +111,12 @@
                                                            "d" {"session_id" "session"}}))))
                                  nil)))]
         (m/fact "the bot connects with a websocket"
-          (do (connect-shard uri t 0 1 (a/chan))
+          (do (connect-shard! uri t 0 1 (a/chan))
               (Thread/sleep 50)
               @success)
           => 1)
         (m/fact "the bot sends heartbeats"
-          (do (connect-shard uri t 0 1 (a/chan))
+          (do (connect-shard! uri t 0 1 (a/chan))
               (Thread/sleep 50)
               (> @heartbeats
                  1))

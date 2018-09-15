@@ -39,10 +39,10 @@
 (defn start-bot
   []
   (let [ch (a/chan 100)
-        bot (c/connect-bot bot-token ch)]
+        bot (c/connect-bot! bot-token ch)]
     (reset! bot-communicate bot)
     (reset! bot-events ch)
-    (e/message-pump ch handle-event nil)))
+    (e/message-pump! ch handle-event nil)))
 
 (defn stop-bot
   []

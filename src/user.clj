@@ -1,6 +1,8 @@
 (ns user
   (:require [discljord.connections :as c]
             [discljord.events :as e]
+            [discljord.messaging :as m]
+            [discljord.specs :as ds]
             [clojure.data.json :as json]
             [clojure.java.io :as io]
             [clojure.string :as str]

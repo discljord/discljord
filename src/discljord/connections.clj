@@ -7,22 +7,9 @@
             [clojure.core.async :as a]
             [clojure.spec.alpha :as s]
             [clojure.string :as str]
-            [clojure.stacktrace :refer [print-stack-trace]]
-            [discljord.specs :as ds]))
+            [discljord.specs :as ds]
+            [discljord.http :refer [api-url]]))
 
-(defn append-api-suffix
-  [url]
-  (str url "?v=6&encoding=json"))
-(s/fdef append-api-suffix
-  :args (s/cat :url ::ds/url)
-  :ret ::ds/url)
-
-(defn api-url
-  [gateway]
-  (append-api-suffix (str "https://discordapp.com/api" gateway)))
-(s/fdef api-url
-  :args (s/cat :url ::ds/url)
-  :ret ::ds/url)
 
 (defn get-websocket-gateway!
   [url token]

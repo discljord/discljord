@@ -106,12 +106,12 @@
                    (fn [_]
                      ;; Put a connection event on the channel
                      (reset! connected true)
-                     (a/go (a/>! out-ch [:shard-connect]))
-                     (a/go (a/>! ch (if init-shard-state
-                                      [:reconnect conn token
-                                       (:session-id @shard-state)
-                                       (:seq @shard-state)]
-                                      [:connect conn token shard]))))
+                     (a/put! out-ch [:shard-connect])
+                     (a/put! ch (if init-shard-state
+                                  [:reconnect conn token
+                                   (:session-id @shard-state)
+                                   (:seq @shard-state)]
+                                  [:connect conn token shard])))
                    :on-receive
                    (fn [msg]
                      ;; Put a recieve event on the channel
@@ -145,12 +145,12 @@
                    (fn [stop-code msg]
                      ;; Put a disconnect event on the channel
                      (reset! connected false)
-                     (a/go (a/>! ch [:disconnect stop-code msg
-                                     #(reconnect-websocket url token conn
-                                                           ch shard out-ch)
-                                     #(reconnect-websocket url token conn
-                                                           ch shard out-ch
-                                                           shard-state)])))
+                     (a/put! ch [:disconnect stop-code msg
+                                 #(reconnect-websocket url token conn
+                                                       ch shard out-ch)
+                                 #(reconnect-websocket url token conn
+                                                       ch shard out-ch
+                                                       shard-state)]))
                    :on-error
                    (fn [err]
                      (log/error err "Error caught on websocket")))))
@@ -274,7 +274,7 @@
 
 (defmethod handle-websocket-event :disconnect
   [out-ch _ & [stop-code msg reconnect resume]]
-  (a/go (a/>! out-ch [:shard-disconnect]))
+  (a/put! out-ch [:shard-disconnect])
   (handle-disconnect stop-code msg reconnect resume))
 
 (defmulti handle-payload
@@ -354,7 +354,7 @@
 (defmethod handle-websocket-event :event
   [out-ch _ & [event-type data shard-state out-ch]]
   (handle-event event-type data shard-state out-ch)
-  (a/go (a/>! out-ch [event-type data])))
+  (a/put! out-ch [event-type data]))
 
 (defn start-event-loop
   "Starts a go loop which takes events from the channel and dispatches them
@@ -421,7 +421,7 @@
 
 (defmethod handle-command :disconnect
   [shards out-ch command-type & command-data]
-  (a/go (a/>! out-ch [:disconnect]))
+  (a/put! out-ch [:disconnect])
   (doseq [fut shards]
     (a/thread
       (swap! @fut #(do (when %
@@ -465,7 +465,7 @@
                                                            token)
         communication-chan (a/chan 100)
         shards (connect-shards url token shard-count out-ch)]
-    (a/go (a/>! out-ch [:connect]))
+    (a/put! out-ch [:connect])
     (start-communication-loop shards communication-chan out-ch)
     communication-chan))
 (s/fdef connect-bot

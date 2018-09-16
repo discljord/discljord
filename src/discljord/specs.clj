@@ -57,7 +57,8 @@
 (s/def ::rate-limits (s/keys :req [::endpoint-specific-rate-limits
                                    ::global-rate-limit]))
 
-(s/def ::process (s/keys :req [::rate-limits]))
+(s/def ::process (s/keys :req [::rate-limits
+                               ::channel]))
 
 (s/def ::message (s/and string?
                         #(< (count %) 2000)))

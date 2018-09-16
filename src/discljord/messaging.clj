@@ -63,8 +63,9 @@
 ;; Put a request on the channel for this major endpoint, return a promise with the return value
 (defn send-message!
   "Sends a Discord message to the specified channel."
-  [token channel & {:keys [] :as opts}]
-  )
+  [token channel & {:keys [user-agent] :as opts}]
+  (a/put! (select-first [ATOM token ::ds/channel] connections)
+          [:create-message token channel opts]))
 (s/fdef send-message!
   :args (s/cat :token ::ds/token
                :channel ::ds/channel-id

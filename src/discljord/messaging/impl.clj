@@ -20,8 +20,11 @@
 (defn start!
   "Starts the internal representation"
   []
-  (let [process nil]
-    process))
+  (let [process (atom nil)]
+    process)
+  ;; TODO: Create the go loop which will handle taking things off the channel
+  ;;       and then dispatch the http request
+  )
 (s/fdef start!
   :args (s/cat)
   :ret (ds/atom-of? ::ds/process))
@@ -93,7 +96,10 @@
                            #(update-rate-limit % response)
                            process)
         body (:body response)]
-    (if (= (:code body)
+    (when (= (:code body)
            429)
-      (log/error "Bot triggered rate limit response in create-message."))
+      ;; This shouldn't happen for anything but emoji stuff, so this shouldn't happen
+      (log/error "Bot triggered rate limit response in create-message.")
+      ;; Resend the event to dispatch, hopefully this time not brekaing the rate limit
+      (a/put! (::ds/channel process) [:create-message token channel opts]))
     process))

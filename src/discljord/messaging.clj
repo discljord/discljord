@@ -5,7 +5,6 @@
             [discljord.messaging.impl :as impl]
             [clojure.spec.alpha :as s]
             [org.httpkit.client :as http]
-            [clojure.data.json :as json]
             [clojure.tools.logging :as log]
             [clojure.core.async :as a]))
 
@@ -24,29 +23,38 @@
 ;; Current major parameters include channel_id guild_id and webhook_id
 
 ;; NOTE: Rate limits for emoji don't follow the same conventions, and are handled per-guild
+;;       as a result, expect lots of 429's
 
 ;; Rate limit headers have these properties:
-;; X-RateLimit-Global: (true) Returned only on a HTTP 429 response if the rate limit headers returned are of the global rate limit (not per-route)
+;; X-RateLimit-Global: (true) Returned only on a HTTP 429 response if the rate limit
+;;                     headers returned are of the global rate limit (not per-route)
 ;; X-RateLimit-Limit: Number of requests that can be made
 ;; X-RateLimit-Remaining: Remaining number of requests than can be made between now and epoch time
-;; X-RateLimit-Reset: Epoch time (seconds since 00:00:00 UTC on January 1, 1970) at which the rate limit resets
+;; X-RateLimit-Reset: Epoch time (seconds since 00:00:00 UTC on January 1, 1970) at
+;;                    which the rate limit resets
 
 ;; If you exceed a rate limit, you'll get a json response body on an HTTP 429 response code
 ;; message: message saying you're getting rate limited
 ;; retry_after: number of milliseconds before trying again
 ;; global: whether or not you are being rate-limited globally.
 
+(def connections (atom {}))
+
 (defn register-connection!
   "Takes a token and starts a messaging process to allow sending messages
   and other events to discord."
   [token]
+  (setval [ATOM token] (impl/start! ) connections)
   nil)
 (s/fdef register-connection!
   :args (s/cat :token ::ds/token)
   :ret nil?)
 
 (defn stop-connection!
+  "Takes a token and stops the current messaging process for that token."
   [token]
+  (impl/stop! (select-first [ATOM token] connections))
+  (setval [ATOM token] NONE connections)
   nil)
 (s/fdef stop-connection!
   :args (s/cat :token ::ds/token)
@@ -54,6 +62,7 @@
 
 ;; Put a request on the channel for this major endpoint, return a promise with the return value
 (defn send-message!
+  "Sends a Discord message to the specified channel."
   [token channel & {:keys [] :as opts}]
   )
 (s/fdef send-message!

@@ -40,15 +40,24 @@
 (s/def ::major-variable-value ::snowflake)
 (s/def ::major-variable (s/keys :req [::major-variable-type
                                       ::major-variable-value]))
+
+;; NOTE(Joshua): This may eventually be turned into a set, containing only
+;;               the supported endpoints
+(s/def ::action keyword?)
+
 (s/def ::endpoint (s/keys :req [::action ::major-variable]))
-(s/def ::rate-limit (s/keys :req [::rate ::remaining ::reset]))
+
+(s/def ::global boolean?)
+(s/def ::rate-limit (s/keys :req [::rate ::remaining ::reset]
+                            :opt [::global]))
 
 (s/def ::endpoint-specific-rate-limits (s/map-of ::endpoint ::rate-limit))
 (s/def ::global-rate-limit ::rate-limit)
 
 (s/def ::rate-limits (s/keys :req [::endpoint-specific-rate-limits
                                    ::global-rate-limit]))
-(s/def ::bot-rate-limits (s/map-of ::token ::rate-limits))
+
+(s/def ::process (s/keys :req [::rate-limits]))
 
 (s/def ::message (s/and string?
                         #(< (count %) 2000)))

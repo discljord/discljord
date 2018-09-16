@@ -8,7 +8,8 @@
             [clojure.spec.alpha :as s]
             [clojure.string :as str]
             [discljord.specs :as ds]
-            [discljord.http :refer [api-url]]))
+            [discljord.http :refer [api-url]]
+            [discljord.util :refer [bot-token]]))
 
 
 (defn get-websocket-gateway!
@@ -425,7 +426,7 @@
   given period. This means that communication to Discord may be bounded based
   on which shard you use to talk to the server immediately after starting the bot."
   [token out-ch]
-  (let [token (str "Bot " token)
+  (let [token (bot-token token)
         {::keys [url shard-count]} (get-websocket-gateway! (api-url "/gateway/bot")
                                                            token)
         communication-chan (a/chan 100)

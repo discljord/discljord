@@ -38,25 +38,27 @@
   :ret nil?)
 
 (defn update-rate-limit
-  "Takes a rate-limit and a response and returns an updated rate-limit"
+  "Takes a rate-limit and a response and returns an updated rate-limit.
+
+  If a rate limit headers are included in the response, then the rate
+  limit is updated to them, otherwise the existing rate limit is used,
+  but the remaining limit is decremented."
   [rate-limit response]
   (let [headers (:headers response)
         rate (or (get headers "X-RateLimit-Limit")
                  (::ds/rate rate-limit))
         remaining (or (get headers "X-RateLimit-Remaining")
-                      (::ds/remaining rate-limit))
+                      (dec (::ds/remaining rate-limit)))
         reset (or (get headers "X-RateLimit-Reset")
                   (::ds/reset rate-limit))
         global (or (get headers "X-RateLimit-Global")
                    (::ds/global rate-limit ::not-found))
-        new-rate-limit (if (= global ::not-found)
-                         {::ds/rate rate
-                          ::ds/remaining remaining
-                          ::ds/reset reset}
-                         {::ds/rate rate
-                          ::ds/remaining remaining
-                          ::ds/reset reset
-                          ::ds/global global})]
+        new-rate-limit {::ds/rate rate
+                        ::ds/remaining remaining
+                        ::ds/reset reset}
+        new-rate-limit (if-not (= global ::not-found)
+                         (assoc new-rate-limit ::ds/global global)
+                         new-rate-limit)]
     new-rate-limit))
 (s/fdef update-rate-limit
   :args (s/cat :rate-limit ::ds/rate-limit

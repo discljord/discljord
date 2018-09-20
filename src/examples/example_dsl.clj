@@ -24,7 +24,7 @@
 ;;     (guild-state+ [:quotes quote-author]
 ;;                   (conj ((:quotes *guild-state*) quote-author)
 ;;                         quote))
-;;     (send-message! (str "Quote added to " quote-author " with id " quote-id "!"))))
+;;     (send-message! channel (str "Quote added to " quote-author " with id " quote-id "!"))))
 ;;
 ;; (defcommand quote-remove "quote remove"
 ;;   [guild channel author args]
@@ -39,7 +39,7 @@
 ;;   (let [[quote-author quotes-vec] (rand-nth (:quotes *guild-state*))
 ;;         quote-id (rand (count quotes-vec))
 ;;         quote (nth quotes-vec quote-id)]
-;;     (send-message! (str quote-id " " quote-author ": \"" quote "\""))))
+;;     (send-message! channel (str quote-id " " quote-author ": \"" quote "\""))))
 ;;
 ;; (def default-prefix "!")
 ;;
@@ -49,7 +49,7 @@
 ;;
 ;; (defhandler user-join :user-join
 ;;   [user]
-;;   (send-message! (str "Greetings, " (:username user) "! Welcome to the server!")))
+;;   (send-message! channel (str "Greetings, " (:username user) "! Welcome to the server!")))
 ;;
 ;; (defhandler handle-commands :message-create
 ;;   [guild channel author message]

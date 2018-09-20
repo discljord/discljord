@@ -65,43 +65,45 @@
                :response (s/keys :req-un [::headers])))
 
 (defmulti dispatch-http
-  "Dispatches a call to Discord's HTTP servers,
-  handling rate limiting if needed.
-
-  Takes the current process state, the action being
-  performed, and the data required to perform that action.
-  Returns a new process state."
-  (fn [process endpoint & data]
+  "Starts dispatch processes for an endpoint, which take input
+  from the passed channel and do any required dispatch and rate
+  limit handling."
+  (fn [process endpoint ch]
     endpoint))
 
 (defmethod dispatch-http :create-message
-  [process endpoint & [token channel & {:keys [user-agent] :as opts}]]
-  ;; Check rate limit state
-  ;; If it's limited, put it back on the end of the queue
-  ;; Otherwise, do the call
-  (let [token (bot-token token)
-        response @(http/post (api-url (str "/channels/"
-                                           channel
-                                           "/messages"))
-                             {:headers {"Authorization" token
-                                        "User-Agent" (str "DiscordBot ("
-                                                          "https://github.com/IGJoshua/discljord"
-                                                          ", "
-                                                          "0.1.0-SNAPSHOT"
-                                                          ") "
-                                                          user-agent)}})
-        endpoint-map {::ds/action endpoint
-                      ::ds/major-variable channel}
-        process (transform [::ds/rate-limits
-                            ::ds/endpoint-specific-rate-limits
-                            endpoint-map]
-                           #(update-rate-limit % response)
-                           process)
-        body (:body response)]
-    (when (= (:code body)
-           429)
-      ;; This shouldn't happen for anything but emoji stuff, so this shouldn't happen
-      (log/error "Bot triggered rate limit response in create-message.")
-      ;; Resend the event to dispatch, hopefully this time not brekaing the rate limit
-      (a/put! (::ds/channel process) [:create-message token channel opts]))
-    process))
+  [process endpoint ch]
+  (a/go-loop []
+    (let [[token channel & {:keys [user-agent] :as opts}] (a/<! ch)]
+      ;; Check rate limit state
+      ;; If it's limited, put it back on the end of the queue
+      ;; Otherwise, do the call
+      (let [token (bot-token token)
+            response @(http/post (api-url (str "/channels/"
+                                               channel
+                                               "/messages"))
+                                 {:headers {"Authorization" token
+                                            "User-Agent" (str "DiscordBot ("
+                                                              "https://github.com/IGJoshua/discljord"
+                                                              ", "
+                                                              "0.1.0-SNAPSHOT"
+                                                              ") "
+                                                              user-agent)}})
+            endpoint-map {::ds/action endpoint
+                          ::ds/major-variable channel}
+            process (transform [::ds/rate-limits
+                                ::ds/endpoint-specific-rate-limits
+                                endpoint-map]
+                               #(update-rate-limit % response)
+                               process)
+            body (:body response)]
+        (when (= (:code body)
+                 429)
+          ;; This shouldn't happen for anything but emoji stuff, so this shouldn't happen
+          (log/error "Bot triggered rate limit response in create-message.")
+          ;; Resend the event to dispatch, hopefully this time not brekaing the rate limit
+          (a/put! (::ds/channel process) [:create-message token channel opts]))
+        process))
+    ;; TODO: Check to see if the process is still running
+    (when true
+      (recur))))

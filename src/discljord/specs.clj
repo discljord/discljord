@@ -46,6 +46,9 @@
 (s/def ::endpoint (s/keys :req [::action]
                           :opt [::major-variable]))
 
+(s/def ::rate number?)
+(s/def ::remaining number?)
+(s/def ::reset number?)
 (s/def ::global boolean?)
 (s/def ::rate-limit (s/keys :req [::rate ::remaining ::reset]
                             :opt [::global]))
@@ -56,10 +59,8 @@
 (s/def ::rate-limits (s/keys :req [::endpoint-specific-rate-limits]
                              :opt [::global-rate-limit]))
 
-(s/def ::running? boolean?)
 (s/def ::process (s/keys :req [::rate-limits
                                ::channel
-                               ::running?
                                ::token]))
 
 (s/def ::message (s/and string?

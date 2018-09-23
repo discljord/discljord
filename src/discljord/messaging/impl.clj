@@ -2,7 +2,7 @@
   (:use com.rpl.specter)
   (:require [discljord.specs :as ds]
             [discljord.http :refer [api-url]]
-            [discljord.util :refer [bot-token]]
+            [discljord.util :refer [bot-token clean-json-input]]
             [org.httpkit.client :as http]
             [clojure.data.json :as json]
             [clojure.spec.alpha :as s]
@@ -43,36 +43,10 @@
 ;; retry_after: number of milliseconds before trying again
 ;; global: whether or not you are being rate-limited globally.
 
-(defn update-rate-limit
-  "Takes a rate-limit and a response and returns an updated rate-limit.
-
-  If a rate limit headers are included in the response, then the rate
-  limit is updated to them, otherwise the existing rate limit is used,
-  but the remaining limit is decremented."
-  [rate-limit response]
-  (let [headers (:headers response)
-        rate (or (get headers "X-RateLimit-Limit")
-                 (::ds/rate rate-limit))
-        remaining (or (get headers "X-RateLimit-Remaining")
-                      (dec (::ds/remaining rate-limit)))
-        reset (or (get headers "X-RateLimit-Reset")
-                  (::ds/reset rate-limit))
-        global (or (get headers "X-RateLimit-Global")
-                   (::ds/global rate-limit ::not-found))
-        new-rate-limit {::ds/rate rate
-                        ::ds/remaining remaining
-                        ::ds/reset reset}
-        new-rate-limit (if-not (= global ::not-found)
-                         (assoc new-rate-limit ::ds/global global)
-                         new-rate-limit)]
-    new-rate-limit))
-(s/fdef update-rate-limit
-  :args (s/cat :rate-limit ::ds/rate-limit
-               :response (s/keys :req-un [::headers])))
-
 (defmulti dispatch-http
   "Takes a process and endpoint, and dispatches an http request.
-  On a 429 response, add it back to the queue and update the rate limit."
+  Must return the response object from the call to allow the runtime
+  to update the rate limit."
   (fn [process endpoint data]
     (::ds/action endpoint)))
 (s/fdef dispatch-http
@@ -82,7 +56,8 @@
                                 :kind vector?)))
 
 (defmethod dispatch-http :create-message
-  [process endpoint [{:keys [user-agent] :as opts}]]
+  [process endpoint [msg prom {:keys [user-agent tts] :as opts :or {tts false
+                                                                    user-agent nil}}]]
   (let [token (bot-token (::ds/token @process))
         channel (-> endpoint
                     ::ds/major-variable
@@ -96,54 +71,106 @@
                                     ", "
                                     "0.1.0-SNAPSHOT"
                                     ") "
-                                    user-agent)}})
-        body (:body response)]
-    (transform [ATOM
-                ::ds/rate-limits
-                ::ds/endpoint-specific-rate-limits
-                endpoint]
-               #(update-rate-limit % response)
-               process)
-    (when (= (:code body)
-             429)
-      ;; This shouldn't happen for anything but emoji stuff, so this shouldn't happen
-      (log/error "Bot triggered rate limit response in create-message.")
-      ;; Resend the event to dispatch, hopefully this time not brekaing the rate limit
-      (a/>! (::ds/channel @process) [:create-message opts]))))
+                                    user-agent)
+                               "Content-Type" "application/json"}
+                              :body (json/write-str {:content msg
+                                                     :tts tts})})
+        json-msg (json/read-str (:body response))]
+    (deliver prom (if json-msg
+                    (clean-json-input json-msg)
+                    nil))
+    response))
 
 (defn rate-limited?
   "Takes a process and an endpoint and checks to see if the
   process is currently rate limited."
   [process endpoint]
-  false)
+  (let [specific-limit (select-first [::ds/rate-limits
+                                      ::ds/endpoint-specific-rate-limits
+                                      (keypath endpoint)]
+                                     process)
+        global-limit (select-first [::ds/rate-limits
+                                    ::ds/global-rate-limit]
+                                   process)
+        remaining (or (::ds/remaining specific-limit)
+                      (::ds/remaining global-limit)
+                      1)
+        reset (or (::ds/reset specific-limit)
+                  (::ds/reset global-limit)
+                  (long (/ (System/currentTimeMillis) 1000.0)))
+        time (long (/ (System/currentTimeMillis) 1000.0))]
+    (and (<= remaining 0)
+         (< time reset))))
 (s/fdef rate-limited?
   :args (s/cat :process ::ds/process
                :endpoint ::ds/endpoint)
   :ret boolean?)
+
+(defn update-rate-limit
+  "Takes a rate-limit and a response and returns an updated rate-limit.
+
+  If a rate limit headers are included in the response, then the rate
+  limit is updated to them, otherwise the existing rate limit is used,
+  but the remaining limit is decremented."
+  [rate-limit response]
+  (let [headers (:headers response)
+        rate (or (Long/parseLong (:x-ratelimit-limit headers))
+                 (::ds/rate rate-limit))
+        remaining (or (Long/parseLong (:x-ratelimit-remaining headers))
+                      (dec (::ds/remaining rate-limit)))
+        reset (or (Long/parseLong (:x-ratelimit-reset headers))
+                  (::ds/reset rate-limit))
+        global-str (:x-ratelimit-global headers)
+        global (or (when global-str
+                     (Long/parseLong global-str))
+                   (::ds/global rate-limit ::not-found))
+        new-rate-limit {::ds/rate rate
+                        ::ds/remaining remaining
+                        ::ds/reset reset}
+        new-rate-limit (if-not (= global ::not-found)
+                         (assoc new-rate-limit ::ds/global global)
+                         new-rate-limit)]
+    (reset! user/response [rate-limit new-rate-limit])
+    new-rate-limit))
+(s/fdef update-rate-limit
+  :args (s/cat :rate-limit (s/nilable ::ds/rate-limit)
+               :response (s/keys :req-un [::headers])))
 
 (defn start!
   "Starts the internal representation"
   [token]
   (let [process (atom {::ds/rate-limits {::ds/endpoint-specific-rate-limits {}}
                        ::ds/channel (a/chan 1000)
-                       ::ds/running? true
                        ::ds/token token})]
     (a/go-loop []
       (let [[endpoint & event-data :as event] (a/<! (::ds/channel @process))]
-        (if (rate-limited? process endpoint)
-          (a/>! (::ds/channel @process) event)
-          (dispatch-http process endpoint event-data)))
-      (when (::ds/running? @process)
-        (recur)))
-    process))
+        (when-not (= endpoint :disconnect)
+          (if (rate-limited? @process endpoint)
+            (a/>! (::ds/channel @process) event)
+            (let [response (a/<! (a/thread (dispatch-http process endpoint event-data)))]
+              (transform [ATOM
+                          ::ds/rate-limits
+                          ::ds/endpoint-specific-rate-limits
+                          (keypath endpoint)]
+                         #(update-rate-limit % response)
+                         process)
+              (when (= (:status response)
+                       429)
+                ;; This shouldn't happen for anything but emoji stuff, so this shouldn't happen
+                (log/error "Bot triggered rate limit response.")
+                ;; Resend the event to dispatch, hopefully this time not brekaing the rate limit
+                (a/>! (::ds/channel @process) event))))
+          (recur))))
+    (alter-var-root #'user/process (fn [_] process))
+    (::ds/channel @process)))
 (s/fdef start!
-  :args (s/cat)
-  :ret (ds/atom-of? ::ds/process))
+  :args (s/cat :token ::ds/token)
+  :ret ::ds/channel)
 
 (defn stop!
   "Stops the internal representation"
-  [process]
-  (setval [ATOM ::ds/running?] false process))
+  [channel]
+  (a/put! channel [:disconnect]))
 (s/fdef stop!
-  :args (s/cat :process (ds/atom-of? ::ds/process))
+  :args (s/cat :channel ::ds/channel)
   :ret nil?)

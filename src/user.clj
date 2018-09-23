@@ -1,9 +1,12 @@
 (ns user
+  (:use com.rpl.specter)
   (:require [discljord.connections :as c]
             [discljord.events :as e]
             [discljord.messaging :as m]
+            [discljord.messaging.impl :as impl]
             [discljord.specs :as ds]
-            [clojure.data.json :as json]
+            [discljord.http :as h]
+            [discljord.util :as u]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [midje.repl :refer :all]
@@ -11,10 +14,14 @@
             [clojure.spec.alpha :as s]
             [clojure.spec.test.alpha :as st]))
 
-(def bot-token (str/trim (slurp (io/resource "token.txt"))))
+(defonce bot-token (str/trim (slurp (io/resource "token.txt"))))
 
-(def bot-events (atom nil))
-(def bot-communicate (atom nil))
+(defonce bot-events (atom nil))
+(defonce bot-communicate (atom nil))
+(defonce bot-message (atom nil))
+
+(defonce process nil)
+(defonce response (atom nil))
 
 (defmulti handle-event
   "Handles an event sent from Discord's servers"
@@ -27,25 +34,42 @@
 
 (defmethod handle-event :connect
   [event-type event-data state]
-  (println "Connected to Discord!"))
+  (println "Connected to Discord!")
+  state)
+
+(defmethod handle-event :ready
+  [event-type event-data state]
+  state)
 
 (defmethod handle-event :message-create
-  [event-type event-data state]
+  [event-type {{:keys [bot] :as author} :author :keys [channel-id content] :as event-data} state]
   (prn event-data)
+  (when-not bot
+    (m/send-message! @bot-message channel-id content))
   state)
 
 (defmethod handle-event :disconnect
   [event-type event-data state]
-  (println "Disconnected from Discord!"))
+  (println "Disconnected from Discord!")
+  state)
 
 (defn start-bot
   []
   (let [ch (a/chan 100)
-        bot (c/connect-bot! bot-token ch)]
+        bot (c/connect-bot! bot-token ch)
+        msg (m/start-connection! bot-token)]
     (reset! bot-communicate bot)
     (reset! bot-events ch)
+    (reset! bot-message msg)
     (e/message-pump! ch handle-event nil)))
 
 (defn stop-bot
   []
-  (a/>!! @bot-communicate [:disconnect]))
+  (when @bot-communicate
+    (a/>!! @bot-communicate [:disconnect]))
+  (when @bot-message
+    (a/>!! @bot-message [:disconnect])))
+
+(defn get-limited
+  [msg channel]
+  (doall (repeatedly 5 #(m/send-message! @bot-message channel msg))))

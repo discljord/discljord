@@ -20,9 +20,6 @@
 (defonce bot-communicate (atom nil))
 (defonce bot-message (atom nil))
 
-(defonce process nil)
-(defonce response (atom nil))
-
 (defmulti handle-event
   "Handles an event sent from Discord's servers"
   (fn [event-type event-data state]

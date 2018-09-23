@@ -1,6 +1,6 @@
 (defproject discljord "0.1.0-SNAPSHOT"
   :description "A Clojure library to allow the creation of Discord bots with a relatively high level of abstraction."
-  :url "http://example.com/FIXME"
+  :url "https://github.com/IGJoshua/discljord"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.9.0"]
@@ -11,6 +11,8 @@
                  [stylefruits/gniazdo "1.0.1"]
                  [com.rpl/specter "1.1.1"]]
   :target-path "target/%s"
+  :jar-name "discljord-%s.jar"
+  :deploy-branches ["master" "release"]
   :profiles {:uberjar {:aot :all}
              :dev {:dependencies [[http-kit.fake "0.2.2"]
                                   [midje "1.9.2"]]}}

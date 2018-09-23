@@ -76,6 +76,9 @@ Discljord also provides a default event pump to assist with simplicity and exten
   (fn [event-type event-data]
     event-type))
     
+(defmethod handle-event :default
+  [event-type event-data])
+
 (defmethod handle-event :message-create
   [event-type {{bot :bot} :author :keys [channel-id content]}]
   (when (= content "!disconnect")

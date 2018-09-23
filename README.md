@@ -109,18 +109,6 @@ Discljord does not currently have an opinion about how you store your state, how
 
 If you find any other issues, please report them, and I'll attempt to fix them as soon as possible!
 
-## How it Works
-
-TODO: Give background on how discljord works under the hood.
-
-### Asynchronous Calls
-
-TODO: Give specific information on how core.async is used in discljord.
-
-### Sharding
-
-TODO: Give specific information on how sharding is handled in dislcjord.
-
 ## License
 
 Copyright © 2017 Joshua Suskalo

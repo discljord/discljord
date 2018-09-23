@@ -99,7 +99,6 @@
         new-rate-limit (if-not (= global ::not-found)
                          (assoc new-rate-limit ::ds/global global)
                          new-rate-limit)]
-    (reset! user/response [rate-limit new-rate-limit])
     new-rate-limit))
 (s/fdef update-rate-limit
   :args (s/cat :rate-limit (s/nilable ::ds/rate-limit)
@@ -131,7 +130,6 @@
                 ;; Resend the event to dispatch, hopefully this time not brekaing the rate limit
                 (a/>! (::ds/channel @process) event))))
           (recur))))
-    (alter-var-root #'user/process (fn [_] process))
     (::ds/channel @process)))
 (s/fdef start!
   :args (s/cat :token ::ds/token)

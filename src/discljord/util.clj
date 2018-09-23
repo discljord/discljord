@@ -15,6 +15,11 @@
   :ret ::ds/token)
 
 (defn json-keyword
+  "Takes a string and converts it to a keyword.
+  The resulting keyword will consist entirely of lower-case letters,
+  and replaces underscores with dashes.
+
+  Results in an unreadable keyword if the string contains spaces."
   [s]
   (keyword (str/replace (str/lower-case s) #"_" "-")))
 (s/fdef json-keyword
@@ -22,6 +27,13 @@
   :ret keyword?)
 
 (defn clean-json-input
+  "Takes in arbitrary JSON data, from clojure.data.json/read-str or similar,
+  and conforms it to a more idiomatic Clojure form.
+
+  Strings and numbers simply return themselves.
+  Objects have their keys and values recursively conformed.
+  Objects with string keys are converted to maps with keyword keys.
+  Arrays are converted to vectors with each element recursively conformed."
   [j]
   (cond
     (map? j) (->> j

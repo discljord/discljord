@@ -6,9 +6,8 @@
   "Pulls events off of the channel and calls handle-event with them,
   and stops when it sees a :disconnect event.
 
-  The handle-event function takes they keyword event type, the event
+  The handle-event function takes the keyword event type, the event
   data, and a state value.
-
   The value returned by handle-event will be used as the new state
   for the next event."
   [event-ch handle-event init-state]

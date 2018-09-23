@@ -13,10 +13,12 @@
 (s/def ::channel (partial satisfies? clojure.core.async.impl.protocols/Channel))
 
 (defn atom-of?
+  "Takes a spec, and returns a spec for a clojure.lang.Atom
+  containing a value of that spec."
   [s]
   (fn [x]
     (and (instance? clojure.lang.Atom x)
-         (s/valid? s x))))
+         (s/valid? s @x))))
 
 (s/def ::snowflake string?)
 

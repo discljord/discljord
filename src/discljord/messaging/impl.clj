@@ -9,39 +9,8 @@
             [clojure.tools.logging :as log]
             [clojure.core.async :as a]))
 
-;; Make a channel that all incoming requests will come over
-;; When a request needs to be made, send it over the channel,
-;; which will check on the rate limit for that particular endpoint.
-
-;; NOTE(Joshua): Ask the discord API chat if each endpoint that has a global
-;;               rate limit all interact with the same rate limit, or if the global
-;;               limit is just a default, and is still applied separately to each endpoint
-
-;; Internally must handle rate limiting.
-
-;; Must parse rate limit headers
-
-;; Both endpoint specific rate limit, and global rate limit
-;; If no endpoint specific rate limit is provided, use the global one
-
-;; rate limits are separate for each endpoint, including each value for a major parameter
-;; Current major parameters include channel_id guild_id and webhook_id
-
 ;; NOTE: Rate limits for emoji don't follow the same conventions, and are handled per-guild
 ;;       as a result, expect lots of 429's
-
-;; Rate limit headers have these properties:
-;; X-RateLimit-Global: (true) Returned only on a HTTP 429 response if the rate limit
-;;                     headers returned are of the global rate limit (not per-route)
-;; X-RateLimit-Limit: Number of requests that can be made
-;; X-RateLimit-Remaining: Remaining number of requests than can be made between now and epoch time
-;; X-RateLimit-Reset: Epoch time (seconds since 00:00:00 UTC on January 1, 1970) at
-;;                    which the rate limit resets
-
-;; If you exceed a rate limit, you'll get a json response body on an HTTP 429 response code
-;; message: message saying you're getting rate limited
-;; retry_after: number of milliseconds before trying again
-;; global: whether or not you are being rate-limited globally.
 
 (defmulti dispatch-http
   "Takes a process and endpoint, and dispatches an http request.
@@ -137,7 +106,8 @@
                :response (s/keys :req-un [::headers])))
 
 (defn start!
-  "Starts the internal representation"
+  "Takes a token for a bot and returns a channel to communicate with the
+  message sending process."
   [token]
   (let [process (atom {::ds/rate-limits {::ds/endpoint-specific-rate-limits {}}
                        ::ds/channel (a/chan 1000)
@@ -168,7 +138,7 @@
   :ret ::ds/channel)
 
 (defn stop!
-  "Stops the internal representation"
+  "Takes the channel returned from start! and stops the messaging process."
   [channel]
   (a/put! channel [:disconnect]))
 (s/fdef stop!

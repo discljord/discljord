@@ -13,6 +13,8 @@
 
 
 (defn get-websocket-gateway!
+  "Gets the gateway from Discord's API, including the number of shards recommended
+  for your bot, and the websocket URL to connect to."
   [url token]
   (if-let [result
            (try
@@ -30,6 +32,7 @@
   :args (s/cat :url ::ds/url :token ::ds/token)
   :ret (s/nilable ::ds/gateway))
 
+;; TODO(Joshua): Change this to make sure that it handles retries
 (defn reconnect-websocket!
   "Takes a websocket connection atom and additional connection information,
   and reconnects a websocket, with options for resume or not."
@@ -329,6 +332,8 @@
   :ret (ds/atom-of? ::ds/connection))
 
 (defn connect-shards!
+  "Calls connect-shard! once per shard in shard-count, and returns a sequence
+  of futures of the return results."
   [url token shard-count out-ch]
   ;; FIXME: This is going to break when there's a high enough shard count
   ;;        that the JVM can't handle having more threads doing this.

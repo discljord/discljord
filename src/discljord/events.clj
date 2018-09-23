@@ -3,25 +3,22 @@
             [clojure.spec.alpha :as s]))
 
 (defn message-pump!
-  "Pulls events off of the channel and calls handle-event with them,
-  and stops when it sees a :disconnect event.
+  "Starts a process which pulls events off of the channel and calls
+  handle-event with them, and stops when it sees a :disconnect event.
+  This takes control of the current thread.
 
-  The handle-event function takes the keyword event type, the event
-  data, and a state value.
-  The value returned by handle-event will be used as the new state
-  for the next event."
-  [event-ch handle-event init-state]
-  (a/go-loop [state init-state]
-    (let [[event-type event-data] (a/<! event-ch)
-          new-state (handle-event event-type event-data state)]
+  The handle-event function takes the keyword event type, and the event
+  data."
+  [event-ch handle-event]
+  (loop []
+    (let [[event-type event-data] (a/<!! event-ch)]
+      (handle-event event-type event-data)
       (when-not (= event-type :disconnect)
-        (recur new-state))))
+        (recur))))
   nil)
 (s/fdef message-pump!
   :args (s/cat :channel any?
                :handle-event (s/fspec :args (s/cat :event-type keyword?
-                                                   :event-data any?
-                                                   :handler-state any?)
-                                      :ret any?)
-               :init-state any?)
+                                                   :event-data any?)
+                                      :ret any?))
   :ret nil?)

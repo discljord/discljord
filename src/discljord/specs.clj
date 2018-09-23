@@ -41,11 +41,10 @@
 (s/def ::major-variable (s/keys :req [::major-variable-type
                                       ::major-variable-value]))
 
-;; NOTE(Joshua): This may eventually be turned into a set, containing only
-;;               the supported endpoints
 (s/def ::action keyword?)
 
-(s/def ::endpoint (s/keys :req [::action ::major-variable]))
+(s/def ::endpoint (s/keys :req [::action]
+                          :opt [::major-variable]))
 
 (s/def ::global boolean?)
 (s/def ::rate-limit (s/keys :req [::rate ::remaining ::reset]
@@ -54,11 +53,14 @@
 (s/def ::endpoint-specific-rate-limits (s/map-of ::endpoint ::rate-limit))
 (s/def ::global-rate-limit ::rate-limit)
 
-(s/def ::rate-limits (s/keys :req [::endpoint-specific-rate-limits
-                                   ::global-rate-limit]))
+(s/def ::rate-limits (s/keys :req [::endpoint-specific-rate-limits]
+                             :opt [::global-rate-limit]))
 
+(s/def ::running? boolean?)
 (s/def ::process (s/keys :req [::rate-limits
-                               ::channel]))
+                               ::channel
+                               ::running?
+                               ::token]))
 
 (s/def ::message (s/and string?
                         #(< (count %) 2000)))

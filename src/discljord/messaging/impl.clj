@@ -43,25 +43,6 @@
 ;; retry_after: number of milliseconds before trying again
 ;; global: whether or not you are being rate-limited globally.
 
-(defn start!
-  "Starts the internal representation"
-  []
-  (let [process (atom nil)]
-    ;; TODO: Create the go loop which will handle taking things off the channel
-    ;;       and then dispatch the http request
-    process))
-(s/fdef start!
-  :args (s/cat)
-  :ret (ds/atom-of? ::ds/process))
-
-(defn stop!
-  "Stops the internal representation"
-  [process]
-  nil)
-(s/fdef stop!
-  :args (s/cat :process (ds/atom-of? ::ds/process))
-  :ret nil?)
-
 (defn update-rate-limit
   "Takes a rate-limit and a response and returns an updated rate-limit.
 
@@ -90,45 +71,79 @@
                :response (s/keys :req-un [::headers])))
 
 (defmulti dispatch-http
-  "Starts dispatch processes for an endpoint, which take input
-  from the passed channel and do any required dispatch and rate
-  limit handling."
-  (fn [process endpoint ch]
-    endpoint))
+  "Takes a process and endpoint, and dispatches an http request.
+  On a 429 response, add it back to the queue and update the rate limit."
+  (fn [process endpoint data]
+    (::ds/action endpoint)))
+(s/fdef dispatch-http
+  :args (s/cat :process ::ds/process
+               :endpoint ::ds/endpoint
+               :data (s/coll-of any?
+                                :kind vector?)))
 
 (defmethod dispatch-http :create-message
-  [process endpoint ch]
-  (a/go-loop []
-    (let [[token channel & {:keys [user-agent] :as opts}] (a/<! ch)]
-      ;; Check rate limit state
-      ;; If it's limited, put it back on the end of the queue
-      ;; Otherwise, do the call
-      (let [token (bot-token token)
-            response @(http/post (api-url (str "/channels/"
-                                               channel
-                                               "/messages"))
-                                 {:headers {"Authorization" token
-                                            "User-Agent" (str "DiscordBot ("
-                                                              "https://github.com/IGJoshua/discljord"
-                                                              ", "
-                                                              "0.1.0-SNAPSHOT"
-                                                              ") "
-                                                              user-agent)}})
-            endpoint-map {::ds/action endpoint
-                          ::ds/major-variable channel}
-            process (transform [::ds/rate-limits
-                                ::ds/endpoint-specific-rate-limits
-                                endpoint-map]
-                               #(update-rate-limit % response)
-                               process)
-            body (:body response)]
-        (when (= (:code body)
-                 429)
-          ;; This shouldn't happen for anything but emoji stuff, so this shouldn't happen
-          (log/error "Bot triggered rate limit response in create-message.")
-          ;; Resend the event to dispatch, hopefully this time not brekaing the rate limit
-          (a/put! (::ds/channel process) [:create-message token channel opts]))
-        process))
-    ;; TODO: Check to see if the process is still running
-    (when true
-      (recur))))
+  [process endpoint [{:keys [user-agent] :as opts}]]
+  (let [token (bot-token (::ds/token @process))
+        channel (-> endpoint
+                    ::ds/major-variable
+                    ::ds/major-variable-value)
+        response @(http/post (api-url (str "/channels/" channel "/messages"))
+                             {:headers
+                              {"Authorization" token
+                               "User-Agent"
+                               (str "DiscordBot ("
+                                    "https://github.com/IGJoshua/discljord"
+                                    ", "
+                                    "0.1.0-SNAPSHOT"
+                                    ") "
+                                    user-agent)}})
+        body (:body response)]
+    (transform [ATOM
+                ::ds/rate-limits
+                ::ds/endpoint-specific-rate-limits
+                endpoint]
+               #(update-rate-limit % response)
+               process)
+    (when (= (:code body)
+             429)
+      ;; This shouldn't happen for anything but emoji stuff, so this shouldn't happen
+      (log/error "Bot triggered rate limit response in create-message.")
+      ;; Resend the event to dispatch, hopefully this time not brekaing the rate limit
+      (a/>! (::ds/channel @process) [:create-message opts]))))
+
+(defn rate-limited?
+  "Takes a process and an endpoint and checks to see if the
+  process is currently rate limited."
+  [process endpoint]
+  false)
+(s/fdef rate-limited?
+  :args (s/cat :process ::ds/process
+               :endpoint ::ds/endpoint)
+  :ret boolean?)
+
+(defn start!
+  "Starts the internal representation"
+  [token]
+  (let [process (atom {::ds/rate-limits {::ds/endpoint-specific-rate-limits {}}
+                       ::ds/channel (a/chan 1000)
+                       ::ds/running? true
+                       ::ds/token token})]
+    (a/go-loop []
+      (let [[endpoint & event-data :as event] (a/<! (::ds/channel @process))]
+        (if (rate-limited? process endpoint)
+          (a/>! (::ds/channel @process) event)
+          (dispatch-http process endpoint event-data)))
+      (when (::ds/running? @process)
+        (recur)))
+    process))
+(s/fdef start!
+  :args (s/cat)
+  :ret (ds/atom-of? ::ds/process))
+
+(defn stop!
+  "Stops the internal representation"
+  [process]
+  (setval [ATOM ::ds/running?] false process))
+(s/fdef stop!
+  :args (s/cat :process (ds/atom-of? ::ds/process))
+  :ret nil?)

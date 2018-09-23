@@ -24,7 +24,7 @@ Bots in discljord are applications which consist of three separate processes. Fi
 
 Communication between these three processes is facilitiated via core.async's channels. To create a connection process, simply call the function `discljord.connections/connect-bot!`, which takes a channel on which you want to communicate with that process, and returns a channel that it will send events on. Starting the process to send messages is done with `discljord.messaging/start-connection!` which takes the token of your bot and returns a channel which you need to keep track of to send it messages, via the other functions in the `discljord.messaging` namespace.
 
-An example process could look like this then:
+Here's a short example, using the minimum of features to get a bot up and running:
 
 ```clojure
 (ns example.hello-world

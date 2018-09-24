@@ -1,6 +1,7 @@
 (ns discljord.events
   (:require [clojure.core.async :as a]
-            [clojure.spec.alpha :as s]))
+            [clojure.spec.alpha :as s]
+            [clojure.core.logging :as log]))
 
 (defn message-pump!
   "Starts a process which pulls events off of the channel and calls
@@ -12,7 +13,9 @@
   [event-ch handle-event]
   (loop []
     (let [[event-type event-data] (a/<!! event-ch)]
-      (handle-event event-type event-data)
+      (try (handle-event event-type event-data)
+           (catch Exception e
+             (log/error e "Exception occurred in event handler.")))
       (when-not (= event-type :disconnect)
         (recur))))
   nil)

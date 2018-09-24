@@ -9,7 +9,10 @@
             [clojure.string :as str]
             [discljord.specs :as ds]
             [discljord.http :refer [api-url]]
-            [discljord.util :refer [bot-token json-keyword clean-json-input]]))
+            [discljord.util :refer [bot-token json-keyword clean-json-input]])
+  (:import [org.eclipse.jetty
+            websocket.client.WebsocketClient
+            util.ssl.SslContextFactory]))
 
 
 (defn get-websocket-gateway!
@@ -36,13 +39,18 @@
 (defn reconnect-websocket!
   "Takes a websocket connection atom and additional connection information,
   and reconnects a websocket, with options for resume or not."
-  [url token conn ch shard out-ch & [init-shard-state]]
+  [url token conn ch shard out-ch & {:keys [init-shard-state
+                                            buffer-size]}]
   (let [ack (atom false)
         connected (atom false)
         shard-state (atom (or init-shard-state
                               {:session-id nil
-                               :seq nil}))]
-    (reset! conn (ws/connect url
+                               :seq nil}))
+        client (WebsocketClient. (SslContextFactory.))]
+    (when buffer-size
+      (.setMaxTextMessageSize (.getPolicy client) buffer-size))
+    (.start client)
+    (reset! conn (ws/connect url :client client
                    :on-connect
                    (fn [_]
                      ;; Put a connection event on the channel
@@ -69,14 +77,16 @@
                                      #(do
                                         (ws/close @conn)
                                         (fn []
-                                          (reconnect-websocket! url token conn
-                                                               ch shard out-ch)))
+                                          (apply reconnect-websocket! url token conn
+                                                 ch shard out-ch
+                                                 %&)))
                                      #(do
                                         (ws/close @conn)
                                         (fn []
-                                          (reconnect-websocket! url token conn
-                                                               ch shard out-ch
-                                                               shard-state)))
+                                          (apply reconnect-websocket! url token conn
+                                                 ch shard out-ch
+                                                 :init-shard-state shard-state
+                                                 %&)))
                                      #(ws/send-msg @conn
                                                    (json/write-str
                                                     {"op" 1
@@ -87,11 +97,13 @@
                      ;; Put a disconnect event on the channel
                      (reset! connected false)
                      (a/put! ch [:disconnect stop-code msg
-                                 #(reconnect-websocket! url token conn
-                                                       ch shard out-ch)
-                                 #(reconnect-websocket! url token conn
-                                                       ch shard out-ch
-                                                       shard-state)]))
+                                 #(apply reconnect-websocket! url token conn
+                                         ch shard out-ch
+                                         %&)
+                                 #(apply reconnect-websocket! url token conn
+                                         ch shard out-ch
+                                         :init-shard-state shard-state
+                                         %&)]))
                    :on-error
                    (fn [err]
                      (log/error err "Error caught on websocket")))))
@@ -212,6 +224,11 @@
 (defmethod handle-disconnect! 1001
   [stop-code msg reconnect resume]
   (log/info "Disconnected from Discord by client"))
+
+(defmethod handle-disconnect! 1009
+  [stop-code msg reconnect resume]
+  (log/info "Websocket size wasn't big enough! Resuming with a bigger buffer.")
+  (resume :buffer-size 500000))
 
 (defmethod handle-websocket-event! :disconnect
   [out-ch _ & [stop-code msg reconnect resume]]
@@ -402,7 +419,7 @@
   Keep in mind that Discord sets a limit to how many shards can connect in a
   given period. This means that communication to Discord may be bounded based
   on which shard you use to talk to the server immediately after starting the bot."
-  [token out-ch]
+  [token out-ch & {:keys [buffer-size]}]
   (let [token (bot-token token)
         {url ::ds/url
          shard-count ::ds/shard-count} (get-websocket-gateway! (api-url "/gateway/bot")

@@ -9,6 +9,7 @@
                  [org.clojure/tools.logging "0.4.1"]
                  [http-kit "2.2.0"]
                  [stylefruits/gniazdo "1.0.1"]
+                 [org.eclipse.jetty.websocket/websocket-client "9.4.12.v20180830"]
                  [com.rpl/specter "1.1.1"]]
   :target-path "target/%s"
   :jar-name "discljord-%s.jar"
@@ -16,4 +17,5 @@
   :profiles {:uberjar {:aot :all}
              :dev {:dependencies [[http-kit.fake "0.2.2"]
                                   [midje "1.9.2"]]}}
-  :jvm-opts ["--add-modules" "java.xml.bind"])
+  :jvm-opts ["--add-modules" "java.xml.bind"
+             "-Dorg.eclipse.jetty.websocket.client.LEVEL=WARN"])

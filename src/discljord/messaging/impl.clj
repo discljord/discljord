@@ -19,10 +19,9 @@
   (fn [process endpoint data]
     (::ds/action endpoint)))
 (s/fdef dispatch-http
-  :args (s/cat :process ::ds/process
+  :args (s/cat :process (ds/atom-of? ::ds/process)
                :endpoint ::ds/endpoint
-               :data (s/coll-of any?
-                                :kind vector?)))
+               :data (s/coll-of any?)))
 
 (defmethod dispatch-http :create-message
   [process endpoint [msg prom {:keys [user-agent tts] :as opts :or {tts false

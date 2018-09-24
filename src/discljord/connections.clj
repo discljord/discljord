@@ -11,7 +11,7 @@
             [discljord.http :refer [api-url]]
             [discljord.util :refer [bot-token json-keyword clean-json-input]])
   (:import [org.eclipse.jetty
-            websocket.client.WebsocketClient
+            websocket.client.WebSocketClient
             util.ssl.SslContextFactory]))
 
 
@@ -43,10 +43,13 @@
                                             buffer-size]}]
   (let [ack (atom false)
         connected (atom false)
-        shard-state (atom (or init-shard-state
-                              {:session-id nil
-                               :seq nil}))
-        client (WebsocketClient. (SslContextFactory.))]
+        shard-state (atom (assoc (or init-shard-state
+                                     {:session-id nil
+                                      :seq nil
+                                      :buffer-size buffer-size})
+                                 :disconnect false))
+        client (WebSocketClient. (SslContextFactory.))
+        buffer-size (:buffer-size @shard-state)]
     (when buffer-size
       (.setMaxTextMessageSize (.getPolicy client) buffer-size))
     (.start client)
@@ -96,7 +99,7 @@
                    (fn [stop-code msg]
                      ;; Put a disconnect event on the channel
                      (reset! connected false)
-                     (a/put! ch [:disconnect stop-code msg
+                     (a/put! ch [:disconnect shard-state stop-code msg
                                  #(apply reconnect-websocket! url token conn
                                          ch shard out-ch
                                          %&)
@@ -106,8 +109,8 @@
                                          %&)]))
                    :on-error
                    (fn [err]
-                     (log/error err "Error caught on websocket")))))
-  nil)
+                     (log/error err "Error caught on websocket"))))
+    shard-state))
 (s/fdef reconnect-websocket!
   :args (s/cat :url ::ds/url
                :token ::ds/token
@@ -115,7 +118,8 @@
                :event-channel ::ds/channel
                :shard (s/tuple ::ds/shard-id ::ds/shard-count)
                :out-channel ::ds/channel
-               :init-shard-state (s/? any?)))
+               :init-shard-state (s/? any?))
+  :ret (ds/atom-of? ::ds/shard-state))
 
 (defmulti handle-websocket-event!
   "Handles events sent from discord over the websocket.
@@ -150,62 +154,62 @@
 
   Takes an integer stop code, the message, a function to reconnect
   the shard, and a function to reconnect the shard with resume."
-  (fn [stop-code msg reconnect resume]
+  (fn [socket-state stop-code msg reconnect resume]
     stop-code))
 
 (defmethod handle-disconnect! :default
-  [stop-code msg reconnect resume]
+  [socket-state stop-code msg reconnect resume]
   (log/warn (str "Unknown stop code "
                  stop-code
                  " encountered with message:\n\t"
                  msg)))
 
 (defmethod handle-disconnect! 4000
-  [stop-code msg reconnect resume]
+  [socket-state stop-code msg reconnect resume]
   (log/info "Unknown error, reconnect and resume")
   (resume))
 
 (defmethod handle-disconnect! 4001
-  [stop-code msg reconnect resume]
+  [socket-state stop-code msg reconnect resume]
   (log/fatal "Invalid op code sent to Discord servers"))
 
 (defmethod handle-disconnect! 4002
-  [stop-code msg reconnect resume]
+  [socket-state stop-code msg reconnect resume]
   (log/fatal "Invalid payload sent to Discord servers"))
 
 (defmethod handle-disconnect! 4003
-  [stop-code msg reconnect resume]
+  [socket-state stop-code msg reconnect resume]
   (log/fatal "Sent data to Discord without authenticating"))
 
 (defmethod handle-disconnect! 4004
-  [stop-code msg reconnect resume]
+  [socket-state stop-code msg reconnect resume]
   (log/error "Invalid token sent to Discord servers")
   (throw (Exception. "Invalid token sent to Discord servers")))
 
 (defmethod handle-disconnect! 4005
-  [stop-code msg reconnect resume]
+  [socket-state stop-code msg reconnect resume]
   (log/fatal "Sent identify packet to Discord twice from same shard"))
 
 (defmethod handle-disconnect! 4007
-  [stop-code msg reconnect resume]
+  [socket-state stop-code msg reconnect resume]
   (log/info "Sent invalid seq to Discord on resume, reconnect")
   (reconnect))
 
 (defmethod handle-disconnect! 4008
-  [stop-code msg reconnect resume]
+  [socket-state stop-code msg reconnect resume]
   (log/fatal "Rate limited by Discord"))
 
 (defmethod handle-disconnect! 4009
-  [stop-code msg reconnect resume]
+  [socket-state stop-code msg reconnect resume]
   (log/info "Session timed out, reconnecting")
   (reconnect))
 
 (defmethod handle-disconnect! 4010
-  [stop-code msg reconnect resume]
+  [socket-state stop-code msg reconnect resume]
   (log/fatal "Invalid shard set to discord servers"))
 
 (defmethod handle-disconnect! 4011
-  [stop-code msg reconnect resume]
+  [socket-state stop-code msg reconnect resume]
   ;; NOTE(Joshua): This should never happen, unless discord sends
   ;;               this as the bot joins more servers. If so, then
   ;;               make this cause a full disconnect and reconnect
@@ -213,27 +217,29 @@
   (log/fatal "Bot requires sharding"))
 
 (defmethod handle-disconnect! 1006
-  [stop-code msg reconnect resume]
-  (log/info "Disconnected from Discord by server, reconnecting")
-  (reconnect))
+  [socket-state stop-code msg reconnect resume]
+  (if-not (:disconnect @socket-state)
+    (do (log/info "Disconnected from Discord by server, reconnecting")
+        (reconnect))
+    (log/info "Disconnected from Discord by event")))
 
 (defmethod handle-disconnect! 1000
-  [stop-code msg reconnect resume]
+  [socket-state stop-code msg reconnect resume]
   (log/info "Disconnected from Discord by client"))
 
 (defmethod handle-disconnect! 1001
-  [stop-code msg reconnect resume]
+  [socket-state stop-code msg reconnect resume]
   (log/info "Disconnected from Discord by client"))
 
 (defmethod handle-disconnect! 1009
-  [stop-code msg reconnect resume]
+  [socket-state stop-code msg reconnect resume]
   (log/info "Websocket size wasn't big enough! Resuming with a bigger buffer.")
   (resume :buffer-size 500000))
 
 (defmethod handle-websocket-event! :disconnect
-  [out-ch _ & [stop-code msg reconnect resume]]
+  [out-ch _ & [socket-state stop-code msg reconnect resume]]
   (a/put! out-ch [:shard-disconnect])
-  (handle-disconnect! stop-code msg reconnect resume))
+  (handle-disconnect! socket-state stop-code msg reconnect resume))
 
 (defmulti handle-payload!
   "Handles a command payload sent from Discord.
@@ -336,17 +342,18 @@
   Discord's servers, and returns a function of no arguments which disconnects it"
   [url token shard-id shard-count out-ch]
   (let [event-ch (a/chan 100)
-        conn (atom nil)]
-    (reconnect-websocket! url token conn event-ch [shard-id shard-count] out-ch)
+        conn (atom nil)
+        shard-state (reconnect-websocket! url token conn event-ch [shard-id shard-count] out-ch)]
     (start-event-loop! conn event-ch out-ch)
-    conn))
+    [conn shard-state]))
 (s/fdef connect-shard!
   :args (s/cat :url ::ds/url
                :token ::ds/token
                :shard-id int?
                :shard-count pos-int?
                :out-channel ::ds/channel)
-  :ret (ds/atom-of? ::ds/connection))
+  :ret (s/tuple (ds/atom-of? ::ds/connection)
+                (ds/atom-of? ::ds/shard-state)))
 
 (defn connect-shards!
   "Calls connect-shard! once per shard in shard-count, and returns a sequence
@@ -384,9 +391,11 @@
   (a/put! out-ch [:disconnect])
   (doseq [fut shards]
     (a/thread
-      (swap! @fut #(do (when %
-                         (ws/close %))
-                       nil)))))
+      (let [[conn shard-state] @fut]
+        (swap! conn #(do (when %
+                           (ws/close %))
+                         nil))
+        (swap! shard-state assoc :disconnect true)))))
 
 (defn start-communication-loop!
   "Takes a vector of futures representing the atoms of websocket connections of the shards."
@@ -432,3 +441,12 @@
 (s/fdef connect-bot!
   :args (s/cat :token ::ds/token :out-ch ::ds/channel)
   :ret ::ds/channel)
+
+(defn disconnect-bot!
+  "Takes the channel returned by connect-bot! and stops the connection."
+  [connection-ch]
+  (a/put! connection-ch [:disconnect])
+  nil)
+(s/fdef disconnect-bot!
+  :args (s/cat :channel ::ds/channel)
+  :ret nil?)

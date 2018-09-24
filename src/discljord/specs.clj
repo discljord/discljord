@@ -31,7 +31,10 @@
 
 (s/def ::session-id (s/nilable string?))
 (s/def ::seq (s/nilable int?))
-(s/def ::shard-state (s/keys :req-un [::session-id ::seq]))
+(s/def ::buffer-size number?)
+(s/def ::disconnect boolean?)
+(s/def ::shard-state (s/keys :req-un [::session-id ::seq
+                                      ::buffer-size ::disconnect]))
 
 (s/def ::connection any?)
 

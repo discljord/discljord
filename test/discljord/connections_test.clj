@@ -1,5 +1,7 @@
 (ns discljord.connections-test
   (:require [discljord.connections :refer :all :as c]
+            [discljord.http :refer :all]
+            [discljord.util :refer :all]
             [discljord.specs :as ds]
             [clojure.data.json :as json]
             [clojure.core.async :as a]

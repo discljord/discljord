@@ -9,10 +9,7 @@
             [clojure.string :as str]
             [discljord.specs :as ds]
             [discljord.http :refer [api-url]]
-            [discljord.util :refer [bot-token json-keyword clean-json-input]])
-  (:import [org.eclipse.jetty
-            websocket.client.WebSocketClient
-            util.ssl.SslContextFactory]))
+            [discljord.util :refer [bot-token json-keyword clean-json-input]]))
 
 
 (defn get-websocket-gateway!
@@ -48,11 +45,11 @@
                                       :seq nil
                                       :buffer-size buffer-size})
                                  :disconnect false))
-        client (WebSocketClient. (SslContextFactory.))
-        buffer-size (:buffer-size @shard-state)]
-    (when buffer-size
-      (.setMaxTextMessageSize (.getPolicy client) buffer-size))
-    (.start client)
+        buffer-size (:buffer-size @shard-state)
+        client (doto (ws/client)
+                 (.setMaxBinaryMessageBufferSize buffer-size)
+                 (.setMaxTextMessageBufferSize buffer-size)
+                 (.start))]
     (reset! conn (ws/connect url :client client
                    :on-connect
                    (fn [_]

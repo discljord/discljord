@@ -88,7 +88,7 @@
                                         (fn []
                                           (apply reconnect-websocket! url token conn
                                                  ch shard out-ch
-                                                 :init-shard-state shard-state
+                                                 :init-shard-state @shard-state
                                                  %&)))
                                      #(ws/send-msg @conn
                                                    (json/write-str
@@ -105,7 +105,7 @@
                                          %&)
                                  #(apply reconnect-websocket! url token conn
                                          ch shard out-ch
-                                         :init-shard-state shard-state
+                                         :init-shard-state @shard-state
                                          %&)]))
                    :on-error
                    (fn [err]
@@ -439,7 +439,8 @@
     (start-communication-loop! shards communication-chan out-ch)
     communication-chan))
 (s/fdef connect-bot!
-  :args (s/cat :token ::ds/token :out-ch ::ds/channel)
+  :args (s/cat :token ::ds/token :out-ch ::ds/channel
+               :optional-args (s/keys* :opt-un [::ds/buffer-size]))
   :ret ::ds/channel)
 
 (defn disconnect-bot!

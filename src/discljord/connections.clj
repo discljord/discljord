@@ -162,10 +162,13 @@
 
 (defmethod handle-disconnect! :default
   [socket-state stop-code msg reconnect resume]
-  (log/warn (str "Unknown stop code "
-                 stop-code
-                 " encountered with message:\n\t"
-                 msg)))
+  (log/debug (str "Stop code "
+                  stop-code
+                  " encountered with message:\n\t"
+                  msg))
+  ;; NOTE(Joshua): Not sure if this should do a reconnect or a resume
+  (when-not (:disconnect @socket-state)
+    (reconnect)))
 
 (defmethod handle-disconnect! 4000
   [socket-state stop-code msg reconnect resume]
@@ -218,21 +221,6 @@
   ;;               make this cause a full disconnect and reconnect
   ;;               of the whole bot, not just this shard.
   (log/fatal "Bot requires sharding"))
-
-(defmethod handle-disconnect! 1006
-  [socket-state stop-code msg reconnect resume]
-  (if-not (:disconnect @socket-state)
-    (do (log/info "Disconnected from Discord by server, reconnecting")
-        (reconnect))
-    (log/info "Disconnected from Discord by event")))
-
-(defmethod handle-disconnect! 1000
-  [socket-state stop-code msg reconnect resume]
-  (log/info "Disconnected from Discord by client"))
-
-(defmethod handle-disconnect! 1001
-  [socket-state stop-code msg reconnect resume]
-  (log/info "Disconnected from Discord by client"))
 
 (defmethod handle-disconnect! 1009
   [socket-state stop-code msg reconnect resume]

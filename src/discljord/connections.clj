@@ -56,63 +56,65 @@
     (.setMaxTextMessageBufferSize client buffer-size)
     (.setMaxBinaryMessageBufferSize client buffer-size)
     (.start client)
-    (reset! conn (ws/connect url :client client
-                             :on-connect
-                             (fn [_]
-                               ;; Put a connection event on the channel
-                               (reset! connected true)
-                               (a/put! out-ch [:shard-connect])
-                               (a/put! ch (if init-shard-state
-                                            [:reconnect conn token
-                                             (:session-id @shard-state)
-                                             (:seq @shard-state)]
-                                            [:connect conn token shard])))
-                             :on-receive
-                             (fn [msg]
-                               ;; Put a recieve event on the channel
-                               (a/go
-                                 (let [msg (clean-json-input (json/read-str msg))
-                                       op (:op msg)
-                                       data (:d msg)]
-                                   (a/>! ch (if (= op 0)
-                                              (let [new-seq (:s msg)
-                                                    msg-type (json-keyword (:t msg))]
-                                                (swap! shard-state assoc :seq new-seq)
-                                                [:event msg-type data shard-state out-ch])
-                                              [:command op data
-                                               #(do
-                                                  (ws/close @conn)
-                                                  (fn []
-                                                    (apply reconnect-websocket! url token conn
-                                                           ch shard out-ch
-                                                           %&)))
-                                               #(do
-                                                  (ws/close @conn)
-                                                  (fn []
-                                                    (apply reconnect-websocket! url token conn
-                                                           ch shard out-ch
-                                                           :init-shard-state @shard-state
-                                                           %&)))
-                                               #(ws/send-msg @conn
-                                                             (json/write-str
-                                                              {"op" 1
-                                                               "d" (:seq @shard-state)}))
-                                               ack connected shard-state])))))
-                             :on-close
-                             (fn [stop-code msg]
-                               ;; Put a disconnect event on the channel
-                               (reset! connected false)
-                               (a/put! ch [:disconnect shard-state stop-code msg
-                                           #(apply reconnect-websocket! url token conn
-                                                   ch shard out-ch
-                                                   %&)
-                                           #(apply reconnect-websocket! url token conn
-                                                   ch shard out-ch
-                                                   :init-shard-state @shard-state
-                                                   %&)]))
-                             :on-error
-                             (fn [err]
-                               (log/error err "Error caught on websocket"))))
+    (reset! conn
+            (ws/connect url
+              :client client
+              :on-connect
+              (fn [_]
+                ;; Put a connection event on the channel
+                (reset! connected true)
+                (a/put! out-ch [:shard-connect])
+                (a/put! ch (if init-shard-state
+                             [:reconnect conn token
+                              (:session-id @shard-state)
+                              (:seq @shard-state)]
+                             [:connect conn token shard])))
+              :on-receive
+              (fn [msg]
+                ;; Put a recieve event on the channel
+                (a/go
+                  (let [msg (clean-json-input (json/read-str msg))
+                        op (:op msg)
+                        data (:d msg)]
+                    (a/>! ch (if (= op 0)
+                               (let [new-seq (:s msg)
+                                     msg-type (json-keyword (:t msg))]
+                                 (swap! shard-state assoc :seq new-seq)
+                                 [:event msg-type data shard-state out-ch])
+                               [:command op data
+                                #(do
+                                   (ws/close @conn)
+                                   (fn []
+                                     (apply reconnect-websocket! url token conn
+                                            ch shard out-ch
+                                            %&)))
+                                #(do
+                                   (ws/close @conn)
+                                   (fn []
+                                     (apply reconnect-websocket! url token conn
+                                            ch shard out-ch
+                                            :init-shard-state @shard-state
+                                            %&)))
+                                #(ws/send-msg @conn
+                                              (json/write-str
+                                               {"op" 1
+                                                "d" (:seq @shard-state)}))
+                                ack connected shard-state])))))
+              :on-close
+              (fn [stop-code msg]
+                ;; Put a disconnect event on the channel
+                (reset! connected false)
+                (a/put! ch [:disconnect shard-state stop-code msg
+                            #(apply reconnect-websocket! url token conn
+                                    ch shard out-ch
+                                    %&)
+                            #(apply reconnect-websocket! url token conn
+                                    ch shard out-ch
+                                    :init-shard-state @shard-state
+                                    %&)]))
+              :on-error
+              (fn [err]
+                (log/error err "Error caught on websocket"))))
     shard-state))
 (s/fdef reconnect-websocket!
   :args (s/cat :url ::ds/url

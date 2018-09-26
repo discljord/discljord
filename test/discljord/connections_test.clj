@@ -31,14 +31,14 @@
                           {:status 401
                            :body (json/write-str {"code" 0 "message" "401: Unauthorized"})}))]
   (m/facts "about gateways"
-           (m/fact "the websocket gateway requires an authorization header"
-                   (get-websocket-gateway! (api-url "/gateway/bot") "TEST_TOKEN")
-                   => {::ds/url "wss://fake.gateway.api/"
-                       ::ds/shard-count 1}
-                   (get-websocket-gateway! (api-url "/gateway/bot") "INVALID_TOKEN")
-                   => nil
-                   (get-websocket-gateway! (api-url "/invalid/endpoint") "TEST_TOKEN")
-                   => nil)))
+    (m/fact "the websocket gateway requires an authorization header"
+      (get-websocket-gateway! (api-url "/gateway/bot") "TEST_TOKEN")
+      => {::ds/url "wss://fake.gateway.api/"
+          ::ds/shard-count 1})
+    (m/fact "the websocket gateway does not respond to invalid tokens"
+      (get-websocket-gateway! (api-url "/gateway/bot") "INVALID_TOKEN") => nil)
+    (m/fact "the websocket gateway does not respond to invalid endpoints"
+      (get-websocket-gateway! (api-url "/invalid/endpoint") "TEST_TOKEN") => nil)))
 
 (m/facts "about json conversions to keywords"
          (m/fact "strings are converted to keywords"
@@ -113,15 +113,19 @@
                                                            "d" {"session_id" "session"}}))))
                                  nil)))]
         (m/fact "the bot connects with a websocket"
-          (do (connect-shard! uri t 0 1 (a/chan))
-              (Thread/sleep 50)
-              @success)
+          (let [[conn shard-state] (connect-shard! uri t 0 1 (a/chan))
+                result (do (Thread/sleep 50)
+                           @success)]
+            (swap! shard-state assoc :disconnect true)
+            result)
           => 1)
         (m/fact "the bot sends heartbeats"
-          (do (connect-shard! uri t 0 1 (a/chan))
-              (Thread/sleep 50)
-              (> @heartbeats
-                 1))
+          (let [[conn shard-state] (connect-shard! uri t 0 1 (a/chan))
+                result (do (Thread/sleep 50)
+                           (> @heartbeats
+                              1))]
+            (swap! shard-state assoc :disconnect true)
+            result)
           => true))
       ;; Add more tests for different websocket behaviors
       )))

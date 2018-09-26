@@ -41,6 +41,7 @@
   and reconnects a websocket, with options for resume or not."
   [url token conn ch shard out-ch & {:keys [init-shard-state
                                             buffer-size]}]
+  (log/debug (str "Connecting shard " shard))
   (let [ack (atom false)
         connected (atom false)
         shard-state (atom (assoc (or init-shard-state
@@ -170,11 +171,12 @@
                   msg))
   ;; NOTE(Joshua): Not sure if this should do a reconnect or a resume
   (when-not (:disconnect @socket-state)
+    (log/debug "Reconnecting")
     (reconnect)))
 
 (defmethod handle-disconnect! 4000
   [socket-state stop-code msg reconnect resume]
-  (log/info "Unknown error, reconnect and resume")
+  (log/debug "Unknown error, reconnect and resume")
   (resume))
 
 (defmethod handle-disconnect! 4001
@@ -200,7 +202,7 @@
 
 (defmethod handle-disconnect! 4007
   [socket-state stop-code msg reconnect resume]
-  (log/info "Sent invalid seq to Discord on resume, reconnect")
+  (log/debug "Sent invalid seq to Discord on resume, reconnect")
   (reconnect))
 
 (defmethod handle-disconnect! 4008
@@ -209,7 +211,7 @@
 
 (defmethod handle-disconnect! 4009
   [socket-state stop-code msg reconnect resume]
-  (log/info "Session timed out, reconnecting")
+  (log/debug "Session timed out, reconnecting")
   (reconnect))
 
 (defmethod handle-disconnect! 4010
@@ -232,6 +234,7 @@
 
 (defmethod handle-websocket-event! :disconnect
   [out-ch _ & [socket-state stop-code msg reconnect resume]]
+  (log/debug "Shard disconnected from Discord")
   (a/put! out-ch [:shard-disconnect])
   (handle-disconnect! socket-state stop-code msg reconnect resume))
 
@@ -249,16 +252,19 @@
 
 (defmethod handle-payload! 1
   [op data reconnect resume heartbeat ack connected shard-state]
+  (log/trace "Heartbeat requested by Discord")
   (when @connected
     (swap! shard-state assoc :seq data)
     (heartbeat)))
 
 (defmethod handle-payload! 7
   [op data reconnect resume heartbeat ack connected shard-state]
+  (log/debug "Reconnect payload sent from Discord")
   (reconnect))
 
 (defmethod handle-payload! 9
   [op data reconnect resume heartbeat ack connected shard-state]
+  (log/debug "Invalid session sent from Discord, reconnecting")
   (if data
     (resume)
     (reconnect)))

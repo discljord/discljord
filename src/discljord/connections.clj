@@ -123,7 +123,8 @@
                :event-channel ::ds/channel
                :shard (s/tuple ::ds/shard-id ::ds/shard-count)
                :out-channel ::ds/channel
-               :init-shard-state (s/? any?))
+               :keyword-args (s/keys* :opt-un [::ds/init-shard-state
+                                               ::ds/buffer-size]))
   :ret (ds/atom-of? ::ds/shard-state))
 
 (defmulti handle-websocket-event!

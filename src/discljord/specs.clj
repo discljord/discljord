@@ -35,6 +35,7 @@
 (s/def ::disconnect boolean?)
 (s/def ::shard-state (s/keys :req-un [::session-id ::seq
                                       ::buffer-size ::disconnect]))
+(s/def ::init-shard-state ::shard-state)
 
 (s/def ::connection any?)
 

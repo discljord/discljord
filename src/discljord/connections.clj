@@ -73,11 +73,10 @@
               :on-receive
               (fn [msg]
                 ;; Put a recieve event on the channel
-                (a/go
-                  (let [msg (clean-json-input (json/read-str msg))
-                        op (:op msg)
-                        data (:d msg)]
-                    (a/>! ch (if (= op 0)
+                (let [msg (clean-json-input (json/read-str msg))
+                      op (:op msg)
+                      data (:d msg)]
+                  (a/put! ch (if (= op 0)
                                (let [new-seq (:s msg)
                                      msg-type (json-keyword (:t msg))]
                                  (swap! shard-state assoc :seq new-seq)
@@ -100,7 +99,7 @@
                                               (json/write-str
                                                {"op" 1
                                                 "d" (:seq @shard-state)}))
-                                ack connected shard-state])))))
+                                ack connected shard-state]))))
               :on-close
               (fn [stop-code msg]
                 ;; Put a disconnect event on the channel
@@ -365,10 +364,12 @@
   ;;        that the JVM can't handle having more threads doing this.
   (doall
    (for [shard-id (range shard-count)]
-     (future
-       (a/<!! (a/go (a/<! (a/timeout (* 5000 shard-id)))
-                    (connect-shard! url token shard-id shard-count out-ch
-                                    :buffer-size buffer-size)))))))
+     (let [prom (promise)]
+       (a/thread
+         (Thread/sleep (* 5000 shard-id))
+         (deliver prom (connect-shard! url token shard-id shard-count out-ch
+                                       :buffer-size buffer-size)))
+       prom))))
 (s/fdef connect-shards!
   :args (s/cat :url ::ds/url
                :token ::ds/token

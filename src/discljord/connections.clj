@@ -183,8 +183,11 @@
                   " encountered with message:\n\t"
                   msg))
   ;; NOTE(Joshua): Not sure if this should do a reconnect or a resume
-  (when-not (:disconnect @socket-state)
+  (when-not (or (:disconnect @socket-state)
+                (> (inc (:retries @socket-state))
+                   (:max-retries @socket-state)))
     (log/debug "Reconnecting")
+    (transform [ATOM :retries] inc socket-state)
     (reconnect)))
 
 (defmethod handle-disconnect! 4000

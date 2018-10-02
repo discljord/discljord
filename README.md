@@ -123,7 +123,7 @@ If you find any other issues, please report them, and I'll attempt to fix them a
 
 ## License
 
-Copyright © 2017 Joshua Suskalo
+Copyright © 2017-2018 Joshua Suskalo
 
 Distributed under the Eclipse Public License either version 1.0 or (at
 your option) any later version.

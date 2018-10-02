@@ -7,7 +7,7 @@ Discljord is a library for the easy creation of Discord Bots in Clojure! It work
 Add the following to your project.clj in leiningen:
 
 ```clojure
-[org.suskalo/discljord "0.1.6-SNAPSHOT"]
+[org.suskalo/discljord "0.1.6"]
 ```
 
 ## Usage
@@ -26,7 +26,7 @@ Lein example:
 ```clojure
 (defproject example
   :dependencies [[org.clojure/clojure "1.9.0"]
-                 [org.suskalo/discljord "0.1.6-SNAPSHOT"]]
+                 [org.suskalo/discljord "0.1.6"]]
   :jvm-opts ["--add-modules" "java.xml.bind"])
 ```
 

@@ -61,6 +61,9 @@ All notable changes to this project will be documented in this file. This change
 
 ## [0.1.0] - 2018-09-23
 ### Added
+ - Connection process
+ - Shard handling
+ - Messaging process
  - Copyright notice in README
  - Proper description for project
  - Set up deployment

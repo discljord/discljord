@@ -19,6 +19,4 @@
   :deploy-branches ["master" "release"]
   :profiles {:uberjar {:aot :all}
              :dev {:dependencies [[http-kit.fake "0.2.2"]
-                                  [midje "1.9.2"]]}}
-  :jvm-opts ["--add-modules" "java.xml.bind"
-             "-Dorg.eclipse.jetty.websocket.client.LEVEL=WARN"])
+                                  [midje "1.9.2"]]}})

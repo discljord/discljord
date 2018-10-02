@@ -7,7 +7,7 @@ Discljord is a library for the easy creation of Discord Bots in Clojure! It work
 Add the following to your project.clj in leiningen:
 
 ```clojure
-[org.suskalo/discljord "0.1.5"]
+[org.suskalo/discljord "0.1.6-SNAPSHOT"]
 ```
 
 ## Usage
@@ -17,6 +17,18 @@ To use discljord, add it to the project dependencies in leiningen and run
 lein deps
 ```
 After that, discljord should be ready to go, and you can start building a bot!
+
+#### Note
+
+Discljord on Java 9 and later makes use of libraries that internally use the java module `java.xml.bind`. If you are on Java 9 or later and are experiencing `ClassNotFoundException`s for classes in the `java.xml.bind` package, then you will need to pass `--add-modules java.xml.bind` to the JVM when you run your bot.
+
+Lein example:
+```clojure
+(defproject example
+  :dependencies [[org.clojure/clojure "1.9.0"]
+                 [org.suskalo/discljord "0.1.6-SNAPSHOT"]]
+  :jvm-opts ["--add-modules" "java.xml.bind"])
+```
 
 ### Basic Bot Construction
 

@@ -18,7 +18,7 @@ lein deps
 ```
 After that, discljord should be ready to go, and you can start building a bot!
 
-#### Note
+#### Java 9 and Later
 
 Discljord on Java 9 and later makes use of libraries that internally use the java module `java.xml.bind`. If you are on Java 9 or later and are experiencing `ClassNotFoundException`s for classes in the `java.xml.bind` package, then you will need to pass `--add-modules java.xml.bind` to the JVM when you run your bot.
 

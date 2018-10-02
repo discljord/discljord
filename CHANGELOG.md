@@ -2,6 +2,9 @@
 All notable changes to this project will be documented in this file. This change log follows the conventions of [keepachangelog.com](http://keepachangelog.com/).
 
 ## [Unreleased]
+### Added
+ - Changelog
+
 ### Removed
  - Uberjar profile in Leiningen
  
@@ -66,7 +69,7 @@ All notable changes to this project will be documented in this file. This change
  - README follows new API
  - Project name from `discljord-functional` to `discljord` 
 
-[Unreleased]: https://github.com/IGJoshua/discljord/compare/0.1.6..HEAD
+[Unreleased]: https://github.com/IGJoshua/discljord/compare/0.1.6..develop
 [0.1.6]: https://github.com/IGJoshua/discljord/compare/0.1.5..0.1.6
 [0.1.5]: https://github.com/IGJoshua/discljord/compare/0.1.4..0.1.5
 [0.1.4]: https://github.com/IGJoshua/discljord/compare/0.1.3..0.1.4

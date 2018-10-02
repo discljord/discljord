@@ -38,7 +38,6 @@
 (s/def ::max-connection-retries number?)
 (s/def ::shard-state (s/keys :req-un [::session-id ::seq
                                       ::buffer-size ::disconnect
-                                      ::retries ::max-retries
                                       ::max-connection-retries]))
 (s/def ::init-shard-state ::shard-state)
 

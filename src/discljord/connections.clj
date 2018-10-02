@@ -35,7 +35,6 @@
   :args (s/cat :url ::ds/url :token ::ds/token)
   :ret (s/nilable ::ds/gateway))
 
-;; TODO(Joshua): Change this to make sure that it handles retries
 (defn reconnect-websocket!
   "Takes a websocket connection atom and additional connection information,
   and reconnects a websocket, with options for resume or not."
@@ -49,8 +48,6 @@
                                       :seq nil
                                       :buffer-size (or buffer-size
                                                        100000)
-                                      :retries 0
-                                      :max-retries 10
                                       :max-connection-retries 10})
                                  :disconnect false))
         client (WebSocketClient. (SslContextFactory.))
@@ -93,6 +90,7 @@
                                                   (fn []
                                                     (apply reconnect-websocket! url token conn
                                                            ch shard out-ch
+                                                           :buffer-size buffer-size
                                                            %&)))
                                                #(do
                                                   (ws/close @conn)
@@ -100,6 +98,7 @@
                                                     (apply reconnect-websocket! url token conn
                                                            ch shard out-ch
                                                            :init-shard-state @shard-state
+                                                           :buffer-size buffer-size
                                                            %&)))
                                                #(ws/send-msg @conn
                                                              (json/write-str
@@ -113,10 +112,12 @@
                                (a/put! ch [:disconnect shard-state stop-code msg
                                            #(apply reconnect-websocket! url token conn
                                                    ch shard out-ch
+                                                   :buffer-size buffer-size
                                                    %&)
                                            #(apply reconnect-websocket! url token conn
                                                    ch shard out-ch
                                                    :init-shard-state @shard-state
+                                                   :buffer-size buffer-size
                                                    %&)]))
                              :on-error
                              (fn [err]
@@ -183,11 +184,8 @@
                   " encountered with message:\n\t"
                   msg))
   ;; NOTE(Joshua): Not sure if this should do a reconnect or a resume
-  (when-not (or (:disconnect @socket-state)
-                (> (inc (:retries @socket-state))
-                   (:max-retries @socket-state)))
+  (when-not (:disconnect @socket-state)
     (log/debug "Reconnecting")
-    (transform [ATOM :retries] inc socket-state)
     (reconnect)))
 
 (defmethod handle-disconnect! 4000

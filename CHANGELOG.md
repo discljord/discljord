@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file. This change
  - Changelog
  - Logging about retries during connections
  - Request :guild-members-chunk events
+ - Ability to update bot's status on Discord
 
 ### Removed
  - Uberjar profile in Leiningen

@@ -441,6 +441,44 @@
                                             "query" query
                                             "limit" limit}}))))
 
+(defn create-activity
+  "Takes keyword arguments and constructs an activity to be used in status updates.
+
+  Keyword Arguments:
+  name: a string which will display as the bot's status message, required
+  type: keywords :game, :stream, or :music which change how the status message displays, as \"Playing\", \"Streaming\", or \"Listening to\" respectively, defaults to :game
+  url: link to display with the :stream type, currently only urls starting with https://twitch.tv/ will work, defaults to nil"
+  [& {:keys [name type url] :or {type :game} :as args}]
+  (let [args (into {} (filter (fn [[key val]] val) args))
+        args (if (:type args)
+               args
+               (assoc args :type :game))
+        type (case (:type args)
+               :game 0
+               :stream 1
+               :music 2
+               0 0
+               1 1
+               2 2)]
+    (assert (:name args) "A name should be provided to an activity")
+    (assoc args :type type)))
+(s/fdef create-activity
+  :args (s/keys* :req-un [::ds/name]
+                 :opt-un [::ds/type
+                          ::ds/url])
+  :ret ::ds/activity)
+
+(defmethod handle-command! :status-update
+  [shards out-ch command-type & {:keys [idle-since activity status afk]
+                                 :or {afk false
+                                      status "online"}}]
+  (let [[conn shard-state] @(nth shards 0)]
+    (ws/send-msg @conn (json/write-str {:op 3
+                                        :d {"since" idle-since
+                                            "game" activity
+                                            "status" status
+                                            "afk" afk}}))))
+
 (defn start-communication-loop!
   "Takes a vector of futures representing the atoms of websocket connections of the shards."
   [shards ch out-ch]
@@ -509,3 +547,23 @@
                :guild-id ::ds/snowflake
                :keyword-args (s/keys* :opt-un [::ds/query
                                                ::ds/limit])))
+
+(defn status-update!
+  "Takes the channel returned by connect-bot! and a set of keyword options, and updates
+  Discord with a new status for your bot.
+
+  Keyword Arguments:
+  idle-since: epoch time in milliseconds of when the bot went idle, defaults to nil
+  activity: an activity map, from create-activity, which is used for the bot, defaults to nil
+  status: a keyword representing the current status of the bot, can be :online, :dnd, :idle, :invisible, or :offline, defaults to :online
+  afk: a boolean to say if the bot is afk, defaults to false"
+  [connection-ch & {:keys [idle-since activity status afk]
+                    :as args}]
+  (a/put! connection-ch (apply vector :status-update
+                               (transduce cat conj args))))
+(s/fdef status-update!
+  :args (s/cat :channel ::ds/channel
+               :keyword-args (s/keys* :opt-un [::ds/idle-since
+                                               ::ds/activity
+                                               ::ds/status
+                                               ::ds/afk])))

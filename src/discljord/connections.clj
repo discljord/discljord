@@ -557,8 +557,7 @@
   query: a string that the username of the searched user starts with, or empty string for all users, defaults to empty string
   limit: the maximum number of members to give based on the query"
   [connection-ch guild-id & args]
-  (a/put! connection-ch (apply vector :guild-request-members :guild-id guild-id
-                               (into [] cat args))))
+  (a/put! connection-ch (apply vector :guild-request-members :guild-id guild-id args)))
 (s/fdef guild-request-members!
   :args (s/cat :channel ::ds/channel
                :guild-id ::ds/snowflake
@@ -574,9 +573,8 @@
   activity: an activity map, from create-activity, which is used for the bot, defaults to nil
   status: a keyword representing the current status of the bot, can be :online, :dnd, :idle, :invisible, or :offline, defaults to :online
   afk: a boolean to say if the bot is afk, defaults to false"
-  [connection-ch & {:keys [idle-since activity status afk] :as args}]
-  (a/put! connection-ch (apply vector :status-update
-                               (into [] cat args))))
+  [connection-ch & args]
+  (a/put! connection-ch (apply vector :status-update args)))
 (s/fdef status-update!
   :args (s/cat :channel ::ds/channel
                :keyword-args (s/keys* :opt-un [::ds/idle-since
@@ -592,9 +590,8 @@
   channel-id: the new channel id snowflake that your bot is in, disconnect if nil, defaults to nil
   mute: boolean which says if the bot is muted
   deaf: boolean which says if the bot is deafened"
-  [connection-ch guild-id & {:keys [channel-id mute deaf] :as args}]
-  (a/put! connection-ch (apply vector :voice-state-update :guild-id guild-id
-                               (into [] cat args))))
+  [connection-ch guild-id & args]
+  (a/put! connection-ch (apply vector :voice-state-update :guild-id guild-id args)))
 (s/fdef voice-state-update!
   :args (s/cat :channel ::ds/channel
                :guild-id ::ds/snowflake

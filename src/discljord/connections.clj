@@ -558,7 +558,7 @@
   limit: the maximum number of members to give based on the query"
   [connection-ch guild-id & args]
   (a/put! connection-ch (apply vector :guild-request-members :guild-id guild-id
-                               (transduce cat conj args))))
+                               (into [] cat args))))
 (s/fdef guild-request-members!
   :args (s/cat :channel ::ds/channel
                :guild-id ::ds/snowflake
@@ -576,7 +576,7 @@
   afk: a boolean to say if the bot is afk, defaults to false"
   [connection-ch & {:keys [idle-since activity status afk] :as args}]
   (a/put! connection-ch (apply vector :status-update
-                               (transduce cat conj args))))
+                               (into [] cat args))))
 (s/fdef status-update!
   :args (s/cat :channel ::ds/channel
                :keyword-args (s/keys* :opt-un [::ds/idle-since

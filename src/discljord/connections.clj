@@ -421,6 +421,26 @@
                          nil))
         (swap! shard-state assoc :disconnect true)))))
 
+(defn get-shard-from-guild
+  [guild-id guild-count]
+  (mod (bit-shift-right (Long. guild-id) 22) guild-count))
+(s/fdef get-shard-from-guild
+  :args (s/cat :guild-id ::ds/snowflake
+               :guild-cound pos-int?)
+  :ret int?)
+
+(defmethod handle-command! :guild-request-members
+  [shards out-ch command-type & {:keys [guild-id query limit]
+                                 :or {query ""
+                                      limit 0}}]
+  (assert guild-id "did not provide a guild id to guild-request-members")
+  (let [shard-id (get-shard-from-guild guild-id (count shards))
+        [conn shard-state] @(nth shards shard-id)]
+    (ws/send-msg @conn (json/write-str {:op 8
+                                        :d {"guild_id" guild-id
+                                            "query" query
+                                            "limit" limit}}))))
+
 (defn start-communication-loop!
   "Takes a vector of futures representing the atoms of websocket connections of the shards."
   [shards ch out-ch]
@@ -476,3 +496,16 @@
 (s/fdef disconnect-bot!
   :args (s/cat :channel ::ds/channel)
   :ret nil?)
+
+(defn guild-request-members!
+  "Takes the channel returned by connect-bot!, the snowflake guild id, and optional arguments
+  about the members you want to get information about, and signals Discord to send you
+  :guild-members-chunk events."
+  [connection-ch guild-id & args]
+  (a/put! connection-ch (apply vector :guild-request-members :guild-id guild-id
+                               (transduce cat conj args))))
+(s/fdef guild-request-members!
+  :args (s/cat :channel ::ds/channel
+               :guild-id ::ds/snowflake
+               :keyword-args (s/keys* :opt-un [::ds/query
+                                               ::ds/limit])))

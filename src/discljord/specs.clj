@@ -43,6 +43,9 @@
 
 (s/def ::connection any?)
 
+(s/def ::query string?)
+(s/def ::limit number?)
+
 ;; -------------------------------------------------
 ;; discljord.messaging specs
 

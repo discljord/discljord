@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file. This change
 ### Added
  - Changelog
  - Logging about retries during connections
+ - Request :guild-members-chunk events
 
 ### Removed
  - Uberjar profile in Leiningen

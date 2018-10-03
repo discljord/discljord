@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file. This change
 ## [Unreleased]
 ### Added
  - Changelog
+ - Logging about retries during connections
 
 ### Removed
  - Uberjar profile in Leiningen

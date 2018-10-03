@@ -126,9 +126,13 @@
                              (log/error e "Exception while trying to connect websocket to Discord")
                              nil))]
                   (if connection
-                    connection
-                    (when (> (:max-connection-retries @shard-state) retries)
-                      (recur (inc retries))))))))
+                    (do (log/trace "Successfully connected to Discord")
+                        connection)
+                    (if (> (:max-connection-retries @shard-state) retries)
+                      (do (log/debug "Failed to connect to Discord, retrying in 10 seconds")
+                          (a/<!! (a/timeout 10000))
+                          (recur (inc retries)))
+                      (log/info (str "Could not connect to discord after " retries " retries, aborting"))))))))
     shard-state))
 (s/fdef reconnect-websocket!
   :args (s/cat :url ::ds/url

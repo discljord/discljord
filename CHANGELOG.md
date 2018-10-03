@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file. This change
  - Request :guild-members-chunk events
  - Ability to update bot's status on Discord
  - Ability to update bot's voice state on Discord
+ - Ability to get roles from a guild using the messaging api
 
 ### Removed
  - Uberjar profile in Leiningen

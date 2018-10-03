@@ -23,26 +23,42 @@
                :endpoint ::ds/endpoint
                :data (s/coll-of any?)))
 
+(defn auth-headers
+  [token user-agent]
+  {"Authorization" (bot-token token)
+   "User-Agent"
+   (str "DiscordBot ("
+        "https://github.com/IGJoshua/discljord"
+        ", "
+        "0.1.0-SNAPSHOT"
+        ") "
+        user-agent)
+   "Content-Type" "application/json"})
+
 (defmethod dispatch-http :create-message
-  [process endpoint [msg prom {:keys [user-agent tts] :as opts :or {tts false
-                                                                    user-agent nil}}]]
-  (let [token (bot-token (::ds/token @process))
-        channel (-> endpoint
+  [process endpoint [prom msg & {:keys [user-agent tts]
+                                 :or {tts false}
+                                 :as opts}]]
+  (let [channel (-> endpoint
                     ::ds/major-variable
                     ::ds/major-variable-value)
         response @(http/post (api-url (str "/channels/" channel "/messages"))
-                             {:headers
-                              {"Authorization" token
-                               "User-Agent"
-                               (str "DiscordBot ("
-                                    "https://github.com/IGJoshua/discljord"
-                                    ", "
-                                    "0.1.0-SNAPSHOT"
-                                    ") "
-                                    user-agent)
-                               "Content-Type" "application/json"}
+                             {:headers (auth-headers (::ds/token @process) user-agent)
                               :body (json/write-str {:content msg
                                                      :tts tts})})
+        json-msg (json/read-str (:body response))]
+    (deliver prom (if json-msg
+                    (clean-json-input json-msg)
+                    nil))
+    response))
+
+(defmethod dispatch-http :get-guild-roles
+  [process endpoint [prom guild-id & {:keys [user-agent]}]]
+  (let [channel (-> endpoint
+                    ::ds/major-variable
+                    ::ds/major-variable-value)
+        response @(http/get (api-url (str "/guilds/" guild-id "/roles"))
+                            {:headers (auth-headers (::ds/token @process) user-agent)})
         json-msg (json/read-str (:body response))]
     (deliver prom (if json-msg
                     (clean-json-input json-msg)

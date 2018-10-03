@@ -27,7 +27,7 @@
   "Takes a core.async channel returned by start-connection!, a Discord
   channel id as a string, and the message you want to send to Discord.
 
-  Also allows keyword arguments for the following:
+  Keyword Arguments:
   :user-agent changes the User-Agent header sent to Discord.
   :tts is a boolean, defaulting to false, which tells Discord to read
        your message out loud."
@@ -36,12 +36,29 @@
     (a/put! conn [{::ds/action :create-message
                    ::ds/major-variable {::ds/major-variable-type ::ds/channel-id
                                         ::ds/major-variable-value channel}}
-                  msg
                   p
-                  {:user-agent user-agent}])
+                  msg
+                  :user-agent user-agent])
     p))
 (s/fdef send-message!
   :args (s/cat :conn ::ds/channel
                :channel ::ds/channel-id
-               :msg ::ds/message)
+               :msg ::ds/message
+               :keyword-args (s/keys* :opt-un [::ds/user-agent
+                                               ::ds/tts]))
   :ret ::ds/promise)
+
+(defn get-guild-roles!
+  [conn guild-id & {:keys [user-agent]}]
+  (let [p (promise)]
+    (a/put! conn [{::ds/action :get-guild-roles
+                   ::ds/major-variable {::ds/major-variable-type ::ds/guild-id
+                                        ::ds/major-variable-value guild-id}}
+                  p
+                  guild-id
+                  :user-agent user-agent])
+    p))
+(s/fdef get-guild-roles!
+  :args (s/cat :conn ::ds/channel
+               :guild-id ::ds/guild-id
+               :keyword-args (s/keys* :opt-un [::ds/user-agent])))

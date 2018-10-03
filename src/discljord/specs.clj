@@ -23,6 +23,7 @@
 (s/def ::snowflake string?)
 
 (s/def ::channel-id ::snowflake)
+(s/def ::guild-id ::snowflake)
 
 ;; -------------------------------------------------
 ;; discljord.connection specs
@@ -93,3 +94,6 @@
 
 (s/def ::message (s/and string?
                         #(< (count %) 2000)))
+
+(s/def ::user-agent string?)
+(s/def ::tts boolean?)

@@ -551,7 +551,11 @@
 (defn guild-request-members!
   "Takes the channel returned by connect-bot!, the snowflake guild id, and optional arguments
   about the members you want to get information about, and signals Discord to send you
-  :guild-members-chunk events."
+  :guild-members-chunk events.
+
+  Keyword Arguments:
+  query: a string that the username of the searched user starts with, or empty string for all users, defaults to empty string
+  limit: the maximum number of members to give based on the query"
   [connection-ch guild-id & args]
   (a/put! connection-ch (apply vector :guild-request-members :guild-id guild-id
                                (transduce cat conj args))))
@@ -570,8 +574,7 @@
   activity: an activity map, from create-activity, which is used for the bot, defaults to nil
   status: a keyword representing the current status of the bot, can be :online, :dnd, :idle, :invisible, or :offline, defaults to :online
   afk: a boolean to say if the bot is afk, defaults to false"
-  [connection-ch & {:keys [idle-since activity status afk]
-                    :as args}]
+  [connection-ch & {:keys [idle-since activity status afk] :as args}]
   (a/put! connection-ch (apply vector :status-update
                                (transduce cat conj args))))
 (s/fdef status-update!

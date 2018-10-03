@@ -479,6 +479,19 @@
                                             "status" status
                                             "afk" afk}}))))
 
+(defmethod handle-command! :voice-state-update
+  [shards out-ch command-type & {:keys [guild-id channel-id mute deaf]
+                                 :or {mute false
+                                      deaf false}}]
+  (assert guild-id "did not provide a guild id to voice-state-update")
+  (let [shard-id (get-shard-from-guild guild-id (count shards))
+        [conn shard-state] @(nth shards shard-id)]
+    (ws/send-msg @conn (json/write-str {:op 4
+                                        :d {"guild_id" guild-id
+                                            "channel_id" channel-id
+                                            "self_mute" mute
+                                            "self_deaf" deaf}}))))
+
 (defn start-communication-loop!
   "Takes a vector of futures representing the atoms of websocket connections of the shards."
   [shards ch out-ch]
@@ -567,3 +580,21 @@
                                                ::ds/activity
                                                ::ds/status
                                                ::ds/afk])))
+
+(defn voice-state-update!
+  "Takes the channel returned by connect-bot!, a guild id, and a set of keyword options and
+  updates Discord with a new voice state.
+
+  Keyword Arguments:
+  channel-id: the new channel id snowflake that your bot is in, disconnect if nil, defaults to nil
+  mute: boolean which says if the bot is muted
+  deaf: boolean which says if the bot is deafened"
+  [connection-ch guild-id & {:keys [channel-id mute deaf] :as args}]
+  (a/put! connection-ch (apply vector :voice-state-update :guild-id guild-id
+                               (into [] cat args))))
+(s/fdef voice-state-update!
+  :args (s/cat :channel ::ds/channel
+               :guild-id ::ds/snowflake
+               :keyword-args (s/keys* :opt-un [::ds/channel-id
+                                               ::ds/mute
+                                               ::ds/deaf])))

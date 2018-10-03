@@ -22,6 +22,8 @@
 
 (s/def ::snowflake string?)
 
+(s/def ::channel-id ::snowflake)
+
 ;; -------------------------------------------------
 ;; discljord.connection specs
 
@@ -56,6 +58,9 @@
 (s/def ::status #{:online :offline :invisible :idle :dnd})
 (s/def ::afk boolean?)
 
+(s/def ::mute boolean?)
+(s/def ::deaf boolean?)
+
 ;; -------------------------------------------------
 ;; discljord.messaging specs
 
@@ -88,5 +93,3 @@
 
 (s/def ::message (s/and string?
                         #(< (count %) 2000)))
-
-(s/def ::channel-id ::snowflake)

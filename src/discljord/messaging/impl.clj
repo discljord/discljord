@@ -77,13 +77,13 @@
                                     ::ds/global-rate-limit]
                                    process)
         remaining (or (::ds/remaining specific-limit)
-                      (::ds/remaining global-limit)
-                      1)
+                      (::ds/remaining global-limit))
         reset (or (::ds/reset specific-limit)
-                  (::ds/reset global-limit)
-                  (long (/ (System/currentTimeMillis) 1000.0)))
+                  (::ds/reset global-limit))
         time (long (/ (System/currentTimeMillis) 1000.0))]
-    (and (<= remaining 0)
+    (and remaining
+         (<= remaining 0)
+         reset
          (< time reset))))
 (s/fdef rate-limited?
   :args (s/cat :process ::ds/process
@@ -98,16 +98,24 @@
   but the remaining limit is decremented."
   [rate-limit response]
   (let [headers (:headers response)
-        rate (or (Long/parseLong (:x-ratelimit-limit headers))
-                 (::ds/rate rate-limit))
-        remaining (or (Long/parseLong (:x-ratelimit-remaining headers))
-                      (dec (::ds/remaining rate-limit)))
-        reset (or (Long/parseLong (:x-ratelimit-reset headers))
-                  (::ds/reset rate-limit))
+        rate (:x-ratelimit-limit headers)
+        rate (if rate
+               (Long. rate)
+               (::ds/rate rate-limit))
+        remaining (:x-ratelimit-remaining headers)
+        remaining (if remaining
+                    (Long. remaining)
+                    (::ds/remaining rate-limit))
+        remaining (when remaining
+                    (dec remaining))
+        reset (:x-ratelimit-reset headers)
+        reset (if reset
+                (Long. reset)
+                (::ds/reset rate-limit))
         global-str (:x-ratelimit-global headers)
-        global (or (when global-str
-                     (Long/parseLong global-str))
-                   (::ds/global rate-limit ::not-found))
+        global (if global-str
+                 (Boolean. global-str)
+                 (::ds/global rate-limit ::not-found))
         new-rate-limit {::ds/rate rate
                         ::ds/remaining remaining
                         ::ds/reset reset}
@@ -134,7 +142,9 @@
             (let [response (a/<! (a/thread (dispatch-http process endpoint event-data)))]
               (transform [ATOM
                           ::ds/rate-limits
-                          ::ds/endpoint-specific-rate-limits
+                          (if (select-first [:headers :x-ratelimit-global] response)
+                            ::ds/global-rate-limit
+                            ::ds/endpoint-specific-rate-limits)
                           (keypath endpoint)]
                          #(update-rate-limit % response)
                          process)

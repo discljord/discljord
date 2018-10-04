@@ -75,10 +75,10 @@
 (s/def ::endpoint (s/keys :req [::action]
                           :opt [::major-variable]))
 
-(s/def ::rate number?)
-(s/def ::remaining number?)
-(s/def ::reset number?)
-(s/def ::global boolean?)
+(s/def ::rate (s/nilable number?))
+(s/def ::remaining (s/nilable number?))
+(s/def ::reset (s/nilable number?))
+(s/def ::global (s/nilable boolean?))
 (s/def ::rate-limit (s/keys :req [::rate ::remaining ::reset]
                             :opt [::global]))
 

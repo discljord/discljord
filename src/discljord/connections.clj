@@ -526,7 +526,8 @@
   on which shard you use to talk to the server immediately after starting the bot."
   [token out-ch & {:keys [buffer-size]}]
   (let [token (bot-token token)
-        {:keys [ds/url cs/shard-count]} (get-websocket-gateway! (api-url "/gateway/bot") token)
+        {:keys [discljord.specs/url discljord.connections.specs/shard-count]}
+        (get-websocket-gateway! (api-url "/gateway/bot") token)
         communication-chan (a/chan 100)
         shards (connect-shards! url token shard-count out-ch
                                 :buffer-size buffer-size)]

@@ -17,6 +17,5 @@
   :target-path "target/%s"
   :jar-name "discljord-%s.jar"
   :deploy-branches ["master" "release"]
-  :profiles {:dev {:dependencies [[http-kit.fake "0.2.2"]
-                                  [midje "1.9.2"]]
+  :profiles {:dev {:dependencies [[http-kit.fake "0.2.2"]]
                    :jvm-opts ["--add-modules" "java.xml.bind"]}})

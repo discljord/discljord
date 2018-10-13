@@ -4,6 +4,7 @@
             [discljord.http :refer [api-url]]
             [discljord.messaging.impl :as impl]
             [clojure.spec.alpha :as s]
+            [discljord.messaging.specs :as ms]
             [clojure.core.async :as a]))
 
 (defn start-connection!

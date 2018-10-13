@@ -1,6 +1,7 @@
 (ns discljord.messaging.impl
   (:use com.rpl.specter)
   (:require [discljord.specs :as ds]
+            [discljord.messaging.specs :as ms]
             [discljord.http :refer [api-url]]
             [discljord.util :refer [bot-token clean-json-input]]
             [org.httpkit.client :as http]
@@ -17,10 +18,10 @@
   Must return the response object from the call to allow the runtime
   to update the rate limit."
   (fn [process endpoint data]
-    (::ds/action endpoint)))
+    (::ms/action endpoint)))
 (s/fdef dispatch-http
-  :args (s/cat :process (ds/atom-of? ::ds/process)
-               :endpoint ::ds/endpoint
+  :args (s/cat :process (ds/atom-of? ::ms/process)
+               :endpoint ::ms/endpoint
                :data (s/coll-of any?)))
 
 (defn auth-headers
@@ -40,8 +41,8 @@
                                  :or {tts false}
                                  :as opts}]]
   (let [channel (-> endpoint
-                    ::ds/major-variable
-                    ::ds/major-variable-value)
+                    ::ms/major-variable
+                    ::ms/major-variable-value)
         response @(http/post (api-url (str "/channels/" channel "/messages"))
                              {:headers (auth-headers (::ds/token @process) user-agent)
                               :body (json/write-str {:content msg
@@ -55,8 +56,8 @@
 (defmethod dispatch-http :get-guild-roles
   [process endpoint [prom guild-id & {:keys [user-agent]}]]
   (let [channel (-> endpoint
-                    ::ds/major-variable
-                    ::ds/major-variable-value)
+                    ::ms/major-variable
+                    ::ms/major-variable-value)
         response @(http/get (api-url (str "/guilds/" guild-id "/roles"))
                             {:headers (auth-headers (::ds/token @process) user-agent)})
         json-msg (json/read-str (:body response))]
@@ -69,25 +70,25 @@
   "Takes a process and an endpoint and checks to see if the
   process is currently rate limited."
   [process endpoint]
-  (let [specific-limit (select-first [::ds/rate-limits
-                                      ::ds/endpoint-specific-rate-limits
+  (let [specific-limit (select-first [::ms/rate-limits
+                                      ::ms/endpoint-specific-rate-limits
                                       (keypath endpoint)]
                                      process)
-        global-limit (select-first [::ds/rate-limits
-                                    ::ds/global-rate-limit]
+        global-limit (select-first [::ms/rate-limits
+                                    ::ms/global-rate-limit]
                                    process)
-        remaining (or (::ds/remaining specific-limit)
-                      (::ds/remaining global-limit))
-        reset (or (::ds/reset specific-limit)
-                  (::ds/reset global-limit))
+        remaining (or (::ms/remaining specific-limit)
+                      (::ms/remaining global-limit))
+        reset (or (::ms/reset specific-limit)
+                  (::ms/reset global-limit))
         time (long (/ (System/currentTimeMillis) 1000.0))]
     (and remaining
          (<= remaining 0)
          reset
          (< time reset))))
 (s/fdef rate-limited?
-  :args (s/cat :process ::ds/process
-               :endpoint ::ds/endpoint)
+  :args (s/cat :process ::ms/process
+               :endpoint ::ms/endpoint)
   :ret boolean?)
 
 (defn update-rate-limit
@@ -101,37 +102,37 @@
         rate (:x-ratelimit-limit headers)
         rate (if rate
                (Long. rate)
-               (::ds/rate rate-limit))
+               (::ms/rate rate-limit))
         remaining (:x-ratelimit-remaining headers)
         remaining (if remaining
                     (Long. remaining)
-                    (::ds/remaining rate-limit))
+                    (::ms/remaining rate-limit))
         remaining (when remaining
                     (dec remaining))
         reset (:x-ratelimit-reset headers)
         reset (if reset
                 (Long. reset)
-                (::ds/reset rate-limit))
+                (::ms/reset rate-limit))
         global-str (:x-ratelimit-global headers)
         global (if global-str
                  (Boolean. global-str)
-                 (::ds/global rate-limit ::not-found))
-        new-rate-limit {::ds/rate rate
-                        ::ds/remaining remaining
-                        ::ds/reset reset}
+                 (::ms/global rate-limit ::not-found))
+        new-rate-limit {::ms/rate rate
+                        ::ms/remaining remaining
+                        ::ms/reset reset}
         new-rate-limit (if-not (= global ::not-found)
-                         (assoc new-rate-limit ::ds/global global)
+                         (assoc new-rate-limit ::ms/global global)
                          new-rate-limit)]
     new-rate-limit))
 (s/fdef update-rate-limit
-  :args (s/cat :rate-limit (s/nilable ::ds/rate-limit)
+  :args (s/cat :rate-limit (s/nilable ::ms/rate-limit)
                :response (s/keys :req-un [::headers])))
 
 (defn start!
   "Takes a token for a bot and returns a channel to communicate with the
   message sending process."
   [token]
-  (let [process (atom {::ds/rate-limits {::ds/endpoint-specific-rate-limits {}}
+  (let [process (atom {::ms/rate-limits {::ms/endpoint-specific-rate-limits {}}
                        ::ds/channel (a/chan 1000)
                        ::ds/token token})]
     (a/go-loop []
@@ -141,10 +142,10 @@
             (a/>! (::ds/channel @process) event)
             (let [response (a/<! (a/thread (dispatch-http process endpoint event-data)))]
               (transform [ATOM
-                          ::ds/rate-limits
+                          ::ms/rate-limits
                           (if (select-first [:headers :x-ratelimit-global] response)
-                            ::ds/global-rate-limit
-                            ::ds/endpoint-specific-rate-limits)
+                            ::ms/global-rate-limit
+                            ::ms/endpoint-specific-rate-limits)
                           (keypath endpoint)]
                          #(update-rate-limit % response)
                          process)

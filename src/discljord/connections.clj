@@ -8,6 +8,7 @@
             [clojure.spec.alpha :as s]
             [clojure.string :as str]
             [discljord.specs :as ds]
+            [discljord.connections.specs :as cs]
             [discljord.http :refer [api-url]]
             [discljord.util :refer [bot-token json-keyword clean-json-input]])
   (:import [org.eclipse.jetty
@@ -21,19 +22,19 @@
   [url token]
   (if-let [result
            (try
-             (let [response (json/read-str
-                             (:body @(http/get url
-                                               {:headers
-                                                {"Authorization" token}})))]
-               {::ds/url (response "url")
-                ::ds/shard-count (response "shards")})
+             (when-let [response (:body @(http/get url
+                                                   {:headers
+                                                    {"Authorization" token}}))]
+               (when-let [json-body (json/read-str response)]
+                 {::ds/url (json-body "url")
+                  ::cs/shard-count (json-body "shards")}))
              (catch Exception e
                nil))]
     (when (::ds/url result)
       result)))
 (s/fdef get-websocket-gateway!
   :args (s/cat :url ::ds/url :token ::ds/token)
-  :ret (s/nilable ::ds/gateway))
+  :ret (s/nilable ::cs/gateway))
 
 (defn reconnect-websocket!
   "Takes a websocket connection atom and additional connection information,
@@ -139,11 +140,11 @@
                :token ::ds/token
                :connection (ds/atom-of? ::ds/connection)
                :event-channel ::ds/channel
-               :shard (s/tuple ::ds/shard-id ::ds/shard-count)
+               :shard (s/tuple ::cs/shard-id ::cs/shard-count)
                :out-channel ::ds/channel
-               :keyword-args (s/keys* :opt-un [::ds/init-shard-state
-                                               ::ds/buffer-size]))
-  :ret (ds/atom-of? ::ds/shard-state))
+               :keyword-args (s/keys* :opt-un [::cs/init-shard-state
+                                               ::cs/buffer-size]))
+  :ret (ds/atom-of? ::cs/shard-state))
 
 (defmulti handle-websocket-event!
   "Handles events sent from discord over the websocket.
@@ -350,7 +351,7 @@
       (recur)))
   nil)
 (s/fdef start-event-loop!
-  :args (s/cat :connection (ds/atom-of? ::ds/connection)
+  :args (s/cat :connection (ds/atom-of? ::cs/connection)
                :event-channel ::ds/channel
                :out-channel ::ds/channel)
   :ret nil?)
@@ -371,9 +372,9 @@
                :shard-id int?
                :shard-count pos-int?
                :out-channel ::ds/channel
-               :keyword-args (s/keys* :opt-un [::ds/buffer-size]))
-  :ret (s/tuple (ds/atom-of? ::ds/connection)
-                (ds/atom-of? ::ds/shard-state)))
+               :keyword-args (s/keys* :opt-un [::cs/buffer-size]))
+  :ret (s/tuple (ds/atom-of? ::cs/connection)
+                (ds/atom-of? ::cs/shard-state)))
 
 (defn connect-shards!
   "Calls connect-shard! once per shard in shard-count, and returns a sequence
@@ -394,7 +395,7 @@
                :token ::ds/token
                :shard-count pos-int?
                :out-ch ::ds/channel
-               :keyword-args (s/keys* :opt-un [::ds/buffer-size]))
+               :keyword-args (s/keys* :opt-un [::cs/buffer-size]))
   :ret (s/coll-of ::ds/future))
 
 (defmulti handle-command!
@@ -463,10 +464,10 @@
     (assert (:name args) "A name should be provided to an activity")
     (assoc args :type type)))
 (s/fdef create-activity
-  :args (s/keys* :req-un [::ds/name]
-                 :opt-un [::ds/type
+  :args (s/keys* :req-un [::cs/name]
+                 :opt-un [::cs/type
                           ::ds/url])
-  :ret ::ds/activity)
+  :ret ::cs/activity)
 
 (defmethod handle-command! :status-update
   [shards out-ch command-type & {:keys [idle-since activity status afk]
@@ -525,9 +526,7 @@
   on which shard you use to talk to the server immediately after starting the bot."
   [token out-ch & {:keys [buffer-size]}]
   (let [token (bot-token token)
-        {url ::ds/url
-         shard-count ::ds/shard-count} (get-websocket-gateway! (api-url "/gateway/bot")
-                                                               token)
+        {:keys [ds/url cs/shard-count]} (get-websocket-gateway! (api-url "/gateway/bot") token)
         communication-chan (a/chan 100)
         shards (connect-shards! url token shard-count out-ch
                                 :buffer-size buffer-size)]
@@ -536,7 +535,7 @@
     communication-chan))
 (s/fdef connect-bot!
   :args (s/cat :token ::ds/token :out-ch ::ds/channel
-               :keyword-args (s/keys* :opt-un [::ds/buffer-size]))
+               :keyword-args (s/keys* :opt-un [::cs/buffer-size]))
   :ret ::ds/channel)
 
 (defn disconnect-bot!
@@ -561,8 +560,8 @@
 (s/fdef guild-request-members!
   :args (s/cat :channel ::ds/channel
                :guild-id ::ds/snowflake
-               :keyword-args (s/keys* :opt-un [::ds/query
-                                               ::ds/limit])))
+               :keyword-args (s/keys* :opt-un [::cs/query
+                                               ::cs/limit])))
 
 (defn status-update!
   "Takes the channel returned by connect-bot! and a set of keyword options, and updates
@@ -577,10 +576,10 @@
   (a/put! connection-ch (apply vector :status-update args)))
 (s/fdef status-update!
   :args (s/cat :channel ::ds/channel
-               :keyword-args (s/keys* :opt-un [::ds/idle-since
-                                               ::ds/activity
-                                               ::ds/status
-                                               ::ds/afk])))
+               :keyword-args (s/keys* :opt-un [::cs/idle-since
+                                               ::cs/activity
+                                               ::cs/status
+                                               ::cs/afk])))
 
 (defn voice-state-update!
   "Takes the channel returned by connect-bot!, a guild id, and a set of keyword options and
@@ -596,5 +595,5 @@
   :args (s/cat :channel ::ds/channel
                :guild-id ::ds/snowflake
                :keyword-args (s/keys* :opt-un [::ds/channel-id
-                                               ::ds/mute
-                                               ::ds/deaf])))
+                                               ::cs/mute
+                                               ::cs/deaf])))

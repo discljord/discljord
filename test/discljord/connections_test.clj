@@ -3,6 +3,7 @@
             [discljord.http :refer :all]
             [discljord.util :refer :all]
             [discljord.specs :as ds]
+            [discljord.connections.specs :as cs]
             [clojure.data.json :as json]
             [clojure.core.async :as a]
             [org.httpkit.fake :as fake]
@@ -34,7 +35,7 @@
     (m/fact "the websocket gateway requires an authorization header"
       (get-websocket-gateway! (api-url "/gateway/bot") "TEST_TOKEN")
       => {::ds/url "wss://fake.gateway.api/"
-          ::ds/shard-count 1})
+          ::cs/shard-count 1})
     (m/fact "the websocket gateway does not respond to invalid tokens"
       (get-websocket-gateway! (api-url "/gateway/bot") "INVALID_TOKEN") => nil)
     (m/fact "the websocket gateway does not respond to invalid endpoints"

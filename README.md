@@ -118,6 +118,8 @@ Discljord does not currently have an opinion about how you store your state, how
 ## Known Issues
 
 - If you exceed the rate limit of an endpoint, any other messages sent to that endpoint may arrive out of order.
+- If your bot is added to enough servers without a restart, Discord may request that your bot disconnect and reconnect with more shards. This is not yet implemented in discljord
+- If multiple shards disconnect at once, they do not respect the identify packet rate limit
 
 If you find any other issues, please report them, and I'll attempt to fix them as soon as possible!
 

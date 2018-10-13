@@ -140,7 +140,10 @@
         (when-not (= endpoint :disconnect)
           (if (rate-limited? @process endpoint)
             (a/>! (::ds/channel @process) event)
-            (let [response (a/<! (a/thread (dispatch-http process endpoint event-data)))]
+            (when-let [response (a/<! (a/thread (try (dispatch-http process endpoint event-data)
+                                                     (catch Exception e
+                                                       (log/error e "Exception in dispatch-http")
+                                                       nil))))]
               (transform [ATOM
                           ::ms/rate-limits
                           (if (select-first [:headers :x-ratelimit-global] response)
@@ -152,7 +155,7 @@
               (when (= (:status response)
                        429)
                 ;; This shouldn't happen for anything but emoji stuff, so this shouldn't happen
-                (log/error "Bot triggered rate limit response.")
+                (log/info "Bot triggered rate limit response.")
                 ;; Resend the event to dispatch, hopefully this time not brekaing the rate limit
                 (a/>! (::ds/channel @process) event))))
           (recur))))

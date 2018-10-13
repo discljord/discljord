@@ -294,12 +294,16 @@
     (a/go-loop []
       ;; Send heartbeat
       (reset! ack false)
-      (heartbeat)
+      (try (heartbeat)
+           (catch Exception e
+             (log/error e "Unable to send heartbeat")))
       ;; Wait the interval
       (a/<! (a/timeout interval))
       ;; If there's no ack, disconnect and reconnect with resume
       (if-not @ack
-        (resume)
+        (try (resume)
+             (catch Exception e
+               (log/error e "Unable to resume")))
         ;; Make this check to see if we've disconnected
         (when @connected
           (recur))))))
@@ -499,7 +503,9 @@
   (a/go-loop []
     (let [command (a/<! ch)]
       ;; Handle the communication command
-      (apply handle-command! shards out-ch command)
+      (try (apply handle-command! shards out-ch command)
+           (catch Exception e
+             (log/error e "Exception in handle-command!")))
       ;; Handle the rate limit
       (a/<! (a/timeout 500))
       (when-not (= command [:disconnect])

@@ -10,9 +10,18 @@ Discljord follows semantic versioning.
  - Ability to update bot's status on Discord
  - Ability to update bot's voice state on Discord
  - Ability to get roles from a guild using the messaging api
+ - Support for re-sharding a bot as it grows
+ - Docstrings for many namespaces
+ 
+### Changed
+ - Moved many functions from `discljord.connections` to an implementation namespace
+ - Added new `create-message!` function to replace `send-message!`
  
 ### Fixed
  - Improper handling of rate limits when none is found
+ 
+### Depricated
+ - `send-message!` function
 
 ### Removed
  - Uberjar profile in Leiningen

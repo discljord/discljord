@@ -1,14 +1,16 @@
 (ns discljord.messaging.impl
-  (:use com.rpl.specter)
-  (:require [discljord.specs :as ds]
-            [discljord.messaging.specs :as ms]
-            [discljord.http :refer [api-url]]
-            [discljord.util :refer [bot-token clean-json-input]]
-            [org.httpkit.client :as http]
-            [clojure.data.json :as json]
-            [clojure.spec.alpha :as s]
-            [clojure.tools.logging :as log]
-            [clojure.core.async :as a]))
+  "Implementation namespace for `discljord.messaging`."
+  (:require
+   [clojure.core.async :as a]
+   [clojure.data.json :as json]
+   [clojure.spec.alpha :as s]
+   [clojure.tools.logging :as log]
+   [com.rpl.specter :refer [ATOM keypath select-first transform]]
+   [discljord.http :refer [api-url]]
+   [discljord.messaging.specs :as ms]
+   [discljord.specs :as ds]
+   [discljord.util :refer [bot-token clean-json-input]]
+   [org.httpkit.client :as http]))
 
 ;; NOTE: Rate limits for emoji don't follow the same conventions, and are handled per-guild
 ;;       as a result, expect lots of 429's

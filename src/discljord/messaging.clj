@@ -1,11 +1,12 @@
 (ns discljord.messaging
-  (:use com.rpl.specter)
-  (:require [discljord.specs :as ds]
-            [discljord.http :refer [api-url]]
-            [discljord.messaging.impl :as impl]
-            [clojure.spec.alpha :as s]
-            [discljord.messaging.specs :as ms]
-            [clojure.core.async :as a]))
+  "Contains functions for communicating with Discord, sending messages, and recieving data."
+  (:require
+   [clojure.core.async :as a]
+   [clojure.spec.alpha :as s]
+   [discljord.http :refer [api-url]]
+   [discljord.messaging.impl :as impl]
+   [discljord.messaging.specs :as ms]
+   [discljord.specs :as ds]))
 
 (defn start-connection!
   "Takes a token for a bot, and returns a channel which is passed

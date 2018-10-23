@@ -57,7 +57,7 @@ Here's a short example, using the minimum of features to get a bot up and runnin
         (when (and (= :create-message event-type)
                    (= (:channel event-data) channel)
                    (not (:bot (:author event-data))))
-          (m/send-message! message-ch channel "Hello, World!"))
+          (m/create-message! message-ch channel "Hello, World!"))
         (when (= :channel-pins-update event-type)
           (a/>!! connection-ch [:disconnect]))
         (when-not (= :disconnect event-type)
@@ -67,7 +67,7 @@ Here's a short example, using the minimum of features to get a bot up and runnin
 
 This is a very simple example, which will send the message "Hello, world!" once for each message it recieves in the hard-coded channel from a non-bot user, and disconnects when a message is pinned or unpinned in any channel it can see.
 
-This small example should also help clarify what the three processes are. The first is where you're getting your events, the second is the loop in the above `-main` function, and the third is the messaging connection which you communicate with when calling `send-message!`.
+This small example should also help clarify what the three processes are. The first is where you're getting your events, the second is the loop in the above `-main` function, and the third is the messaging connection which you communicate with when calling `create-message!`.
 
 ### Event Handlers
 
@@ -97,7 +97,7 @@ Discljord also provides a default event pump to assist with simplicity and exten
     (a/put! (:connection @state) [:disconnect])
     (m/stop-connection!))
   (when-not bot
-    (m/send-message! (:messaging @state) channel-id "Hello, World!")))
+    (m/create-message! (:messaging @state) channel-id "Hello, World!")))
     
 (defn -main
   [& args]

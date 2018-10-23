@@ -34,9 +34,9 @@
        your message out loud."
   [conn channel msg & {:keys [user-agent tts] :as opts}]
   (let [p (promise)]
-    (a/put! conn [{::ds/action :create-message
-                   ::ds/major-variable {::ds/major-variable-type ::ds/channel-id
-                                        ::ds/major-variable-value channel}}
+    (a/put! conn [{::ms/action :create-message
+                   ::ms/major-variable {::ms/major-variable-type ::ds/channel-id
+                                        ::ms/major-variable-value channel}}
                   p
                   msg
                   :user-agent user-agent])
@@ -44,17 +44,17 @@
 (s/fdef send-message!
   :args (s/cat :conn ::ds/channel
                :channel ::ds/channel-id
-               :msg ::ds/message
-               :keyword-args (s/keys* :opt-un [::ds/user-agent
-                                               ::ds/tts]))
+               :msg ::ms/message
+               :keyword-args (s/keys* :opt-un [::ms/user-agent
+                                               ::ms/tts]))
   :ret ::ds/promise)
 
 (defn get-guild-roles!
   [conn guild-id & {:keys [user-agent]}]
   (let [p (promise)]
-    (a/put! conn [{::ds/action :get-guild-roles
-                   ::ds/major-variable {::ds/major-variable-type ::ds/guild-id
-                                        ::ds/major-variable-value guild-id}}
+    (a/put! conn [{::ms/action :get-guild-roles
+                   ::ms/major-variable {::ms/major-variable-type ::ds/guild-id
+                                        ::ms/major-variable-value guild-id}}
                   p
                   guild-id
                   :user-agent user-agent])
@@ -62,4 +62,4 @@
 (s/fdef get-guild-roles!
   :args (s/cat :conn ::ds/channel
                :guild-id ::ds/guild-id
-               :keyword-args (s/keys* :opt-un [::ds/user-agent])))
+               :keyword-args (s/keys* :opt-un [::ms/user-agent])))

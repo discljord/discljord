@@ -55,9 +55,23 @@
                     nil))
     response))
 
+(defmethod dispatch-http :create-guild-ban
+  [process endpoint [prom user-id
+                     & {:keys [user-agent delete-message-days reason]}]]
+  (let [guild-id (-> endpoint
+                     ::ms/major-variable
+                     ::ms/major-variable-value)
+        response @(http/put (api-url (str "/guilds/" guild-id "/bans/" user-id))
+                            {:headers (auth-headers (::ds/token @process) user-agent)
+                             :body (json/write-str {:delete-message-days delete-message-days
+                                                    :reason reason})})
+        success? (= 204 (:code response))]
+    (deliver prom success?)
+    response))
+
 (defmethod dispatch-http :get-guild-roles
-  [process endpoint [prom guild-id & {:keys [user-agent]}]]
-  (let [channel (-> endpoint
+  [process endpoint [prom & {:keys [user-agent]}]]
+  (let [guild-id (-> endpoint
                     ::ms/major-variable
                     ::ms/major-variable-value)
         response @(http/get (api-url (str "/guilds/" guild-id "/roles"))

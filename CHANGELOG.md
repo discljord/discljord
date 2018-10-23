@@ -9,10 +9,12 @@ Discljord follows semantic versioning.
  - Request :guild-members-chunk events
  - Ability to update bot's status on Discord
  - Ability to update bot's voice state on Discord
- - Ability to get roles from a guild using the messaging api
  - Support for re-sharding a bot as it grows
  - Docstrings for many namespaces
  - Support for tts in messages
+ - New HTTP endpoint support
+   - get-guild-roles
+   - create-guild-ban
  
 ### Changed
  - Moved many functions from `discljord.connections` to an implementation namespace

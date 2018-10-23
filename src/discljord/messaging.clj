@@ -57,7 +57,7 @@
   :user-agent changes the User-Agent header sent to Discord.
   :tts is a boolean, defaulting to false, which tells Discord to read
        your message out loud."
-  [conn channel msg & {:keys [user-agent tts] :as opts}]
+  [conn channel msg & {:keys [tts user-agent]}]
   (let [p (promise)]
     (a/put! conn [{::ms/action :create-message
                    ::ms/major-variable {::ms/major-variable-type ::ds/channel-id
@@ -204,7 +204,18 @@
   [])
 
 (defn create-guild-ban!
-  [])
+  [conn guild-id user-id & {:keys [delete-message-days reason user-agent]}]
+  (let [p (promise)]
+    (a/put! conn [{::ms/action :create-guild-ban
+                   ::ms/major-variable {::ms/major-variable-type ::ds/guild-id
+                                        ::ms/major-variable-value guild-id}}])))
+(s/fdef create-guild-ban!
+  :args (s/cat :conn ::ds/channel
+               :guild-id ::ds/guild-id
+               :user-id ::ds/user-id
+               :keyword-args (s/keys* :opt-un [::ms/delete-message-days
+                                               ::ms/reason
+                                               ::ms/user-agent])))
 
 (defn remove-guild-ban!
   [])
@@ -216,7 +227,6 @@
                    ::ms/major-variable {::ms/major-variable-type ::ds/guild-id
                                         ::ms/major-variable-value guild-id}}
                   p
-                  guild-id
                   :user-agent user-agent])
     p))
 (s/fdef get-guild-roles!

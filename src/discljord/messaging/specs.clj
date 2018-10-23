@@ -32,5 +32,11 @@
 (s/def ::message (s/and string?
                         #(< (count %) 2000)))
 
+(s/def ::delete-message-days (s/and int?
+                                    (complement neg?)
+                                    #(< % 8)))
+
+(s/def ::reason string?)
+
 (s/def ::user-agent string?)
 (s/def ::tts boolean?)

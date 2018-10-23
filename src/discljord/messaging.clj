@@ -25,7 +25,7 @@
 (s/fdef stop-connection!
   :args (s/cat :conn ::ds/channel))
 
-(defn send-message!
+(defn create-message!
   "Takes a core.async channel returned by start-connection!, a Discord
   channel id as a string, and the message you want to send to Discord.
 
@@ -42,13 +42,15 @@
                   msg
                   :user-agent user-agent])
     p))
-(s/fdef send-message!
+(s/fdef create-message!
   :args (s/cat :conn ::ds/channel
                :channel ::ds/channel-id
                :msg ::ms/message
                :keyword-args (s/keys* :opt-un [::ms/user-agent
                                                ::ms/tts]))
   :ret ::ds/promise)
+
+(def ^:depricated send-message! create-message!)
 
 (defn get-guild-roles!
   [conn guild-id & {:keys [user-agent]}]

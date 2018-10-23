@@ -1,5 +1,6 @@
 (ns discljord.connections-test
   (:require [discljord.connections :refer :all :as c]
+            [discljord.connections.impl :refer :all :as c.impl]
             [discljord.http :refer :all]
             [discljord.util :refer :all]
             [discljord.specs :as ds]

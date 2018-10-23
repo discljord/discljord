@@ -1,4 +1,5 @@
 (ns discljord.connections.specs
+  "Contains all the specs required for the `discljord.connections` namespace."
   (:require [clojure.spec.alpha :as s]
             [discljord.specs :as ds]))
 

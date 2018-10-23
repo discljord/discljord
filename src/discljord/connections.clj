@@ -1,19 +1,23 @@
 (ns discljord.connections
-  (:use com.rpl.specter)
-  (:require [org.httpkit.client :as http]
-            [clojure.data.json :as json]
-            [clojure.tools.logging :as log]
-            [gniazdo.core :as ws]
-            [clojure.core.async :as a]
-            [clojure.spec.alpha :as s]
-            [clojure.string :as str]
-            [discljord.specs :as ds]
-            [discljord.connections.specs :as cs]
-            [discljord.http :refer [api-url]]
-            [discljord.util :refer [bot-token json-keyword clean-json-input]])
-  (:import [org.eclipse.jetty
-            websocket.client.WebSocketClient
-            util.ssl.SslContextFactory]))
+  "Namespace for creating a connection to Discord, and recieving messages.
+  Contains functionality required to create and maintain a sharded and auto-reconnecting
+  connection object which will recieve messages from Discord, and pass them on to client
+  code."
+  (:require
+   [clojure.core.async :as a]
+   [clojure.data.json :as json]
+   [clojure.spec.alpha :as s]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [discljord.connections.specs :as cs]
+   [discljord.http :refer [api-url]]
+   [discljord.specs :as ds]
+   [discljord.util :refer [bot-token json-keyword clean-json-input]]
+   [gniazdo.core :as ws]
+   [org.httpkit.client :as http])
+  (:import
+   (org.eclipse.jetty websocket.client.WebSocketClient
+                      util.ssl.SslContextFactory)))
 
 
 (defn get-websocket-gateway!

@@ -26,22 +26,15 @@
           "URLs are to the correct Discord website")))
 
 (t/deftest gateways
-  (fake/with-fake-http ["https://discordapp.com/api/gateway/bot?v=6&encoding=json"
-                        (fn [orig-fn opts callback]
-                          (if (= (:headers opts) {"Authorization" "TEST_TOKEN"})
-                            {:status 200 :body (json/write-str
-                                                {"url" "wss://fake.gateway.api/" "shards" 1})}
-                            {:status 401
-                             :body (json/write-str {"code" 0 "message" "401: Unauthorized"})}))]
-    (t/testing "gateways require authorization"
-      (t/is (= {::ds/url "wss://fake.gateway.api/"
-                ::cs/shard-count 1}
-               (get-websocket-gateway! (api-url "/gateway/bot") "TEST_TOKEN"))
-            "Correct authorization and URL is valid")
-      (t/is (not (get-websocket-gateway! (api-url "/gateway/bot") "INVALID_TOKEN"))
-            "Invalid tokens will return nil")
-      (t/is (not (get-websocket-gateway! (api-url "/invalid/endpoint") "TEST_TOKEN"))
-            "Invalid endpoints will return nil"))))
+  (t/testing "gateways require authorization"
+    (t/is (= {::ds/url "wss://fake.gateway.api/"
+              ::cs/shard-count 1}
+             (get-websocket-gateway! (api-url "/gateway/bot") "TEST_TOKEN"))
+          "Correct authorization and URL is valid")
+    (t/is (not (get-websocket-gateway! (api-url "/gateway/bot") "INVALID_TOKEN"))
+          "Invalid tokens will return nil")
+    (t/is (not (get-websocket-gateway! (api-url "/invalid/endpoint") "TEST_TOKEN"))
+          "Invalid endpoints will return nil")))
 
 (t/deftest json-conversion
   (t/testing "keywords are produced from strings"
@@ -105,8 +98,8 @@
                                                 "t" "READY"
                                                 "d" {"session_id" "session"}})))
                         nil)))]
-      (let [[conn shard-state] (connect-shard! uri t 0 1 (a/chan 10))]
-        (Thread/sleep 100)
+      (let [[conn shard-state] (connect-shard! uri t 0 1 (a/chan 10) (a/chan 10))]
+        (Thread/sleep 200)
         (swap! shard-state assoc :disconnect true)
         (t/is (< 0 @success) "Connection can be established")
         (t/is (< 0 @heartbeats) "Heartbeats are sent")))))
@@ -119,7 +112,14 @@
 
 (defn test-ns-hook
   []
-  (urls)
-  (gateways)
-  (json-conversion)
-  (server-fixture websockets))
+  (fake/with-fake-http ["https://discordapp.com/api/gateway/bot?v=6&encoding=json"
+                        (fn [orig-fn opts callback]
+                          (if (= (:headers opts) {"Authorization" "TEST_TOKEN"})
+                            {:status 200 :body (json/write-str
+                                                {"url" "wss://fake.gateway.api/" "shards" 1})}
+                            {:status 401
+                             :body (json/write-str {"code" 0 "message" "401: Unauthorized"})}))]
+    (urls)
+    (gateways)
+    (json-conversion)
+    (server-fixture websockets)))

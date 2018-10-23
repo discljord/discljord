@@ -27,15 +27,18 @@
   on which shard you use to talk to the server immediately after starting the bot."
   [token out-ch & {:keys [buffer-size]}]
   (let [token (bot-token token)
-        {:keys [discljord.specs/url discljord.connections.specs/shard-count]}
-        (impl/get-websocket-gateway! (api-url "/gateway/bot") token)
-        communication-chan (a/chan 100)
-        shards (atom (impl/connect-shards! url token shard-count out-ch
-                                           communication-chan
-                                           :buffer-size buffer-size))]
-    (a/put! out-ch [:connect])
-    (impl/start-communication-loop! shards token communication-chan out-ch communication-chan)
-    communication-chan))
+        {:keys [discljord.specs/url discljord.connections.specs/shard-count
+                discljord.connections.specs/session-start-limit]}
+        (impl/get-websocket-gateway! (api-url "/gateway/bot") token)]
+    (when (< (:remaining session-start-limit) shard-count)
+      (throw (RuntimeException. "Not enough remaining identify packets for number of shards.")))
+    (let [communication-chan (a/chan 100)
+          shards (atom (impl/connect-shards! url token shard-count out-ch
+                                             communication-chan
+                                             :buffer-size buffer-size))]
+      (a/put! out-ch [:connect])
+      (impl/start-communication-loop! shards token communication-chan out-ch communication-chan)
+      communication-chan)))
 (s/fdef connect-bot!
   :args (s/cat :token ::ds/token :out-ch ::ds/channel
                :keyword-args (s/keys* :opt-un [::cs/buffer-size]))

@@ -24,9 +24,10 @@
              (when-let [response (:body @(http/get url
                                                    {:headers
                                                     {"Authorization" token}}))]
-               (when-let [json-body (json/read-str response)]
-                 {::ds/url (json-body "url")
-                  ::cs/shard-count (json-body "shards")}))
+               (when-let [json-body (clean-json-input (json/read-str response))]
+                 {::ds/url (:url json-body)
+                  ::cs/shard-count (:shards json-body)
+                  ::cs/session-start-limit (:session-start-limit json-body)}))
              (catch Exception e
                (log/error e "Failed to get websocket gateway")
                nil))]
@@ -439,8 +440,12 @@
       (swap! conn #(do (when %
                          (ws/close %))
                        nil))))
-  (let [{:keys [discljord.specs/url discljord.connections.specs/shard-count]}
+  (let [{:keys [discljord.specs/url discljord.connections.specs/shard-count
+                discljord.connections.specs/session-start-limit]}
         (get-websocket-gateway! (api-url "/gateway/bot") token)]
+    (when (< (:remaining session-start-limit) shard-count)
+      (a/put! comm-ch [:disconnect])
+      (throw (RuntimeException. "Attempted to re-shard a bot with no more session starts.")))
     (reset! shards (connect-shards! url token shard-count out-ch
                                     comm-ch
                                     :buffer-size buffer-size))))

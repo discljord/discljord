@@ -21,8 +21,7 @@
 
 
 (defn get-websocket-gateway!
-  "Gets the gateway from Discord's API, including the number of shards recommended
-  for your bot, and the websocket URL to connect to."
+  "Gets the shard count and websocket endpoint from Discord's API."
   [url token]
   (if-let [result
            (try
@@ -33,6 +32,7 @@
                  {::ds/url (json-body "url")
                   ::cs/shard-count (json-body "shards")}))
              (catch Exception e
+               (log/error e "Failed to get websocket gateway")
                nil))]
     (when (::ds/url result)
       result)))

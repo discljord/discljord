@@ -1,5 +1,5 @@
 (ns discljord.connections.impl
-  ""
+  "Implementation namespace for `discljord.connections`."
   (:require
    [clojure.core.async :as a]
    [clojure.data.json :as json]

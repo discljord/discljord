@@ -64,7 +64,8 @@
                                         ::ms/major-variable-value channel}}
                   p
                   msg
-                  :user-agent user-agent])
+                  :user-agent user-agent
+                  :tts tts])
     p))
 (s/fdef create-message!
   :args (s/cat :conn ::ds/channel

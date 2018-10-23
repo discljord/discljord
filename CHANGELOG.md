@@ -12,6 +12,7 @@ Discljord follows semantic versioning.
  - Ability to get roles from a guild using the messaging api
  - Support for re-sharding a bot as it grows
  - Docstrings for many namespaces
+ - Support for tts in messages
  
 ### Changed
  - Moved many functions from `discljord.connections` to an implementation namespace

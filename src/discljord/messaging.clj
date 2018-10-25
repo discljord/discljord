@@ -208,7 +208,13 @@
   (let [p (promise)]
     (a/put! conn [{::ms/action :create-guild-ban
                    ::ms/major-variable {::ms/major-variable-type ::ds/guild-id
-                                        ::ms/major-variable-value guild-id}}])))
+                                        ::ms/major-variable-value guild-id}}
+                  p
+                  user-id
+                  :delete-message-days delete-message-days
+                  :reason reason
+                  :user-agent user-agent])
+    p))
 (s/fdef create-guild-ban!
   :args (s/cat :conn ::ds/channel
                :guild-id ::ds/guild-id

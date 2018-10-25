@@ -61,11 +61,17 @@
   (let [guild-id (-> endpoint
                      ::ms/major-variable
                      ::ms/major-variable-value)
+        query {}
+        query (if delete-message-days
+               (assoc query :delete-message-days delete-message-days)
+               query)
+        query (if reason
+               (assoc query :reason reason)
+               query)
         response @(http/put (api-url (str "/guilds/" guild-id "/bans/" user-id))
                             {:headers (auth-headers (::ds/token @process) user-agent)
-                             :body (json/write-str {:delete-message-days delete-message-days
-                                                    :reason reason})})
-        success? (= 204 (:code response))]
+                             :query-params query})
+        success? (= 204 (:status response))]
     (deliver prom success?)
     response))
 

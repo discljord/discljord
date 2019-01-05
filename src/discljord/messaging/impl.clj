@@ -88,6 +88,17 @@
                     nil))
     response))
 
+(defmethod dispatch-http :create-dm
+  [process endpoint [prom user-id & {:keys [user-agent]}]]
+  (let [response @(http/post (api-url "/users/@me/channels")
+                             {:headers (auth-headers (::ds/token @process) user-agent)
+                              :body (json/write-str {:recipient_id user-id})})
+        json-msg (json/read-str (:body response))]
+    (deliver prom (if json-msg
+                    (clean-json-input json-msg)
+                    nil))
+    response))
+
 (defn rate-limited?
   "Takes a process and an endpoint and checks to see if the
   process is currently rate limited."

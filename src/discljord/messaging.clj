@@ -319,7 +319,17 @@
   [])
 
 (defn create-dm!
-  [])
+  [conn user-id & {:keys [user-agent]}]
+  (let [p (promise)]
+    (a/put! conn [{::ms/action :create-dm}
+                  p
+                  user-id
+                  :user-agent user-agent])
+    p))
+(s/fdef create-dm!
+  :args (s/cat :conn ::ds/channel
+               :user-id ::ds/user-id
+               :keyword-args (s/keys* :opt-un [::ms/user-agent])))
 
 (defn create-group-dm!
   [])

@@ -485,22 +485,28 @@
                                                     limit 0}}]
   (assert guild-id "did not provide a guild id to guild-request-members")
   (let [shard-id (get-shard-from-guild guild-id (count @shards))
-        [conn shard-state] @(nth @shards shard-id)]
-    (ws/send-msg @conn (json/write-str {:op 8
-                                        :d {"guild_id" guild-id
-                                            "query" query
-                                            "limit" limit}}))))
+        [conn shard-state] @(nth @shards shard-id)
+        msg (json/write-str {:op 8
+                             :d {"guild_id" guild-id
+                                 "query" query
+                                 "limit" limit}})]
+    (when (> (count msg) 4096)
+      (throw (RuntimeException. "Attempting to send too large a message in guild-request-members")))
+    (ws/send-msg @conn msg)))
 
 (defmethod handle-command! :status-update
   [shards token out-ch comm-ch command-type & {:keys [idle-since activity status afk]
                                                :or {afk false
                                                     status "online"}}]
-  (let [[conn shard-state] @(nth @shards 0)]
-    (ws/send-msg @conn (json/write-str {:op 3
-                                        :d {"since" idle-since
-                                            "game" activity
-                                            "status" status
-                                            "afk" afk}}))))
+  (let [[conn shard-state] @(nth @shards 0)
+        msg (json/write-str {:op 3
+                             :d {"since" idle-since
+                                 "game" activity
+                                 "status" status
+                                 "afk" afk}})]
+    (when (> (count msg) 4096)
+      (throw (RuntimeException. "Attempting to send too large a message in status-update")))
+    (ws/send-msg @conn msg)))
 
 (defmethod handle-command! :voice-state-update
   [shards token out-ch comm-ch command-type & {:keys [guild-id channel-id mute deaf]
@@ -508,9 +514,12 @@
                                                     deaf false}}]
   (assert guild-id "did not provide a guild id to voice-state-update")
   (let [shard-id (get-shard-from-guild guild-id (count @shards))
-        [conn shard-state] @(nth @shards shard-id)]
-    (ws/send-msg @conn (json/write-str {:op 4
-                                        :d {"guild_id" guild-id
-                                            "channel_id" channel-id
-                                            "self_mute" mute
-                                            "self_deaf" deaf}}))))
+        [conn shard-state] @(nth @shards shard-id)
+        msg (json/write-str {:op 4
+                             :d {"guild_id" guild-id
+                                 "channel_id" channel-id
+                                 "self_mute" mute
+                                 "self_deaf" deaf}})]
+    (when (> (count msg) 4096)
+      (throw (RuntimeException. "Attempting to send too large a message in voice-state-update")))
+    (ws/send-msg @conn msg)))

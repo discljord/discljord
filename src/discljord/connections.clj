@@ -6,6 +6,7 @@
   (:require
    [clojure.core.async :as a]
    [clojure.spec.alpha :as s]
+   [clojure.tools.logging :as log]
    [discljord.connections.impl :as impl]
    [discljord.connections.specs :as cs]
    [discljord.http :refer [api-url]]
@@ -30,15 +31,17 @@
         {:keys [discljord.specs/url discljord.connections.specs/shard-count
                 discljord.connections.specs/session-start-limit]}
         (impl/get-websocket-gateway! (api-url "/gateway/bot") token)]
-    (when (< (:remaining session-start-limit) shard-count)
-      (throw (RuntimeException. "Not enough remaining identify packets for number of shards.")))
-    (let [communication-chan (a/chan 100)
-          shards (atom (impl/connect-shards! url token shard-count out-ch
-                                             communication-chan
-                                             :buffer-size buffer-size))]
-      (a/put! out-ch [:connect])
-      (impl/start-communication-loop! shards token communication-chan out-ch communication-chan)
-      communication-chan)))
+    (if (and url shard-count session-start-limit)
+      (do (when (< (:remaining session-start-limit) shard-count)
+            (throw (RuntimeException. "Not enough remaining identify packets for number of shards.")))
+          (let [communication-chan (a/chan 100)
+                shards (atom (impl/connect-shards! url token shard-count out-ch
+                                                   communication-chan
+                                                   :buffer-size buffer-size))]
+            (a/put! out-ch [:connect])
+            (impl/start-communication-loop! shards token communication-chan out-ch communication-chan)
+            communication-chan))
+      (log/debug "Unable to recieve gateway information."))))
 (s/fdef connect-bot!
   :args (s/cat :token ::ds/token :out-ch ::ds/channel
                :keyword-args (s/keys* :opt-un [::cs/buffer-size]))

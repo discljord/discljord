@@ -6,7 +6,12 @@
 ;; ---------------------------------------------------
 (s/def ::shard-id int?)
 (s/def ::shard-count pos-int?)
-(s/def ::gateway (s/keys :req [::ds/url ::shard-count]))
+(s/def ::total number?)
+(s/def ::remaining number?)
+(s/def ::reset-after number?)
+(s/def ::session-start-limit (s/keys :req-un [::total ::remaining ::reset-after]))
+(s/def ::gateway (s/keys :req [::ds/url ::shard-count
+                               ::session-start-limit]))
 
 (s/def ::session-id (s/nilable string?))
 (s/def ::seq (s/nilable int?))

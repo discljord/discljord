@@ -12,6 +12,7 @@
   stylefruits/gniazdo {:mvn/version "1.0.1"}
   com.rpl/specter {:mvn/version "1.1.1"}}
 
- :aliases {:java/modules {:jvm-opts ["--add-modules" "java.xml.bind"]}}
+ :aliases {:java/modules {:jvm-opts ["--add-modules" "java.xml.bind"]}
+           :test {:extra-paths ["test"]}}
 
  :paths ["src"]}

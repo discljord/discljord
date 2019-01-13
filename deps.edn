@@ -1,6 +1,6 @@
 {:deps
- {org.clojure/clojure {:mvn/version "1.9.0"}
-  org.clojure/core.async {:mvn/version "0.4.474"}
+ {org.clojure/clojure {:mvn/version "1.10.0"}
+  org.clojure/core.async {:mvn/version "0.4.490"}
   org.clojure/data.json {:mvn/version "0.2.6"}
   org.clojure/tools.logging {:mvn/version "0.4.1"}
   log4j/log4j {:mvn/version "1.2.17"

@@ -25,7 +25,7 @@ Discljord on Java 9 and later makes use of libraries that internally use the jav
 Lein example:
 ```clojure
 (defproject example
-  :dependencies [[org.clojure/clojure "1.9.0"]
+  :dependencies [[org.clojure/clojure "1.10.0"]
                  [org.suskalo/discljord "0.2.0"]]
   :jvm-opts ["--add-modules" "java.xml.bind"])
 ```

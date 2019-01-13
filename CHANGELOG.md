@@ -32,6 +32,10 @@ Discljord follows semantic versioning.
 ### Removed
  - Uberjar profile in Leiningen
  
+## [0.1.7] - 2019-01-13
+### Fixed
+ - README.md example bots
+ 
 ## [0.1.6] - 2018-10-02
 ### Added
  - log4j backend for `core.tools.logging`
@@ -96,7 +100,8 @@ Discljord follows semantic versioning.
  - README follows new API
  - Project name from `discljord-functional` to `discljord` 
 
-[Unreleased]: https://github.com/IGJoshua/discljord/compare/0.1.6..develop
+[Unreleased]: https://github.com/IGJoshua/discljord/compare/0.1.7..develop
+[0.1.7]: https://github.com/IGJoshua/discljord/compare/0.1.6..0.1.7
 [0.1.6]: https://github.com/IGJoshua/discljord/compare/0.1.5..0.1.6
 [0.1.5]: https://github.com/IGJoshua/discljord/compare/0.1.4..0.1.5
 [0.1.4]: https://github.com/IGJoshua/discljord/compare/0.1.3..0.1.4

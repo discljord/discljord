@@ -4,6 +4,7 @@
    [clojure.core.async :as a]
    [clojure.data.json :as json]
    [clojure.spec.alpha :as s]
+   [clojure.string :as str]
    [clojure.tools.logging :as log]
    [com.rpl.specter :refer [ATOM keypath select-first transform]]
    [discljord.http :refer [api-url]]
@@ -38,66 +39,105 @@
         user-agent)
    "Content-Type" "application/json"})
 
-(defmethod dispatch-http :create-message
-  [process endpoint [prom msg & {:keys [user-agent tts]
-                                 :or {tts false}
-                                 :as opts}]]
-  (let [channel (-> endpoint
-                    ::ms/major-variable
-                    ::ms/major-variable-value)
-        response @(http/post (api-url (str "/channels/" channel "/messages"))
-                             {:headers (auth-headers (::ds/token @process) user-agent)
-                              :body (json/write-str {:content msg
-                                                     :tts tts})})
-        json-msg (json/read-str (:body response))]
-    (deliver prom (if json-msg
-                    (clean-json-input json-msg)
-                    nil))
-    response))
+(defmacro defdispatch
+  ""
+  [endpoint-name [major-var & params] opts opts-sym
+   method status-sym body-sym url-str
+   method-params promise-val]
+  `(defmethod dispatch-http ~endpoint-name
+     [process# endpoint# [prom# ~@params & {user-agent# :user-agent :keys ~opts :as opts#}]]
+     (let [~opts-sym (dissoc opts# :user-agent)
+           ~major-var (-> endpoint#
+                          ::ms/major-variable
+                          ::ms/major-variable-value)
+           response# @(~(symbol "org.httpkit.client" (name method))
+                       (api-url ~url-str)
+                       (assoc ~method-params
+                              :headers (auth-headers (::ds/token @process#) user-agent#)))
+           ~status-sym (:status response#)
+           ~body-sym (:body response#)]
+       (deliver prom# ~promise-val)
+       response#)))
 
-(defmethod dispatch-http :create-guild-ban
-  [process endpoint [prom user-id
-                     & {:keys [user-agent delete-message-days reason]}]]
-  (let [guild-id (-> endpoint
-                     ::ms/major-variable
-                     ::ms/major-variable-value)
-        query {}
-        query (if delete-message-days
-               (assoc query :delete-message-days delete-message-days)
-               query)
-        query (if reason
-               (assoc query :reason reason)
-               query)
-        response @(http/put (api-url (str "/guilds/" guild-id "/bans/" user-id))
-                            {:headers (auth-headers (::ds/token @process) user-agent)
-                             :query-params query})
-        success? (= 204 (:status response))]
-    (deliver prom success?)
-    response))
+(defn ^:private json-body
+  [body]
+  (if-let [json-msg (json/read-str body)]
+    (clean-json-input json-msg)
+    nil))
 
-(defmethod dispatch-http :get-guild-roles
-  [process endpoint [prom & {:keys [user-agent]}]]
-  (let [guild-id (-> endpoint
-                    ::ms/major-variable
-                    ::ms/major-variable-value)
-        response @(http/get (api-url (str "/guilds/" guild-id "/roles"))
-                            {:headers (auth-headers (::ds/token @process) user-agent)})
-        json-msg (json/read-str (:body response))]
-    (deliver prom (if json-msg
-                    (clean-json-input json-msg)
-                    nil))
-    response))
+(defdispatch :get-guild-audit-log
+  [guild-id] [] _ :get _ body
+  (str "/guilds/" guild-id "/audit-logs")
+  {}
+  (json-body body))
 
-(defmethod dispatch-http :create-dm
-  [process endpoint [prom user-id & {:keys [user-agent]}]]
-  (let [response @(http/post (api-url "/users/@me/channels")
-                             {:headers (auth-headers (::ds/token @process) user-agent)
-                              :body (json/write-str {:recipient_id user-id})})
-        json-msg (json/read-str (:body response))]
-    (deliver prom (if json-msg
-                    (clean-json-input json-msg)
-                    nil))
-    response))
+(defdispatch :get-channel
+  [channel-id] [] _ :get _ body
+  (str "/channels/" channel-id)
+  {}
+  (json-body body))
+
+(defdispatch :modify-channel
+  [channel-id] [] opts :patch _ body
+  (str "/channels/" channel-id)
+  {:body (json/write-str
+          (into {}
+                (map (fn [[k v]]
+                       [(str/replace (name k) #"-" "_") v]))
+                opts))}
+  (json-body body))
+
+(defdispatch :delete-channel
+  [channel-id] [] _ :delete _ body
+  (str "/channels/" channel-id)
+  {}
+  (json-body body))
+
+(defdispatch :get-channel-messages
+  [channel-id] [] opts :get _ body
+  (str "/channels/" channel-id "/messages")
+  {:query-params opts}
+  (json-body body))
+
+(defdispatch :get-channel-message
+  [channel-id message-id] [] _ :get _ body
+  (str "/channels/" channel-id "/messages/" message-id)
+  {}
+  (json-body body))
+
+(defdispatch :create-message
+  [channel-id msg] [tts] _ :post _ body
+  (str "/channels/" channel-id "/messages")
+  {:body (json/write-str {:content msg
+                          :tts (or tts false)})}
+  (json-body body))
+
+(defdispatch :create-reaction
+  [channel-id message-id emoji] [] _ :put status _
+  (str "/channels/" channel-id "/messages/" message-id "/reactions/" emoji "/@me")
+  {}
+  (= status 204))
+
+(defdispatch :create-guild-ban
+  [guild-id user-id] [delete-message-days reason] opts :put status _
+  (str "/guilds/" guild-id "/bans/" user-id)
+  {:query-params (into {}
+                       (map (fn [[k v]]
+                              [(str/replace (name k) #"-" "_") v]))
+                       opts)}
+  (= status 204))
+
+(defdispatch :get-guild-roles
+  [guild-id] [] _ :get _ body
+  (str "/guilds/" guild-id "/roles")
+  {}
+  (json-body body))
+
+(defdispatch :create-dm
+  [_ user-id] [] _ :post _ body
+  "/users/@me/channels"
+  {:body (json/write-str {:recipient_id user-id})}
+  (json-body body))
 
 (defn rate-limited?
   "Takes a process and an endpoint and checks to see if the

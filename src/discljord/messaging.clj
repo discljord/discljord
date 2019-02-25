@@ -3,6 +3,7 @@
   (:require
    [clojure.core.async :as a]
    [clojure.spec.alpha :as s]
+   [clojure.string :as str]
    [discljord.http :refer [api-url]]
    [discljord.messaging.impl :as impl]
    [discljord.messaging.specs :as ms]
@@ -25,31 +26,70 @@
 (s/fdef stop-connection!
   :args (s/cat :conn ::ds/channel))
 
+(defmacro defendpoint
+  "Creates a new non-blocking function for a discord endpoint. `endpoint-name` must end with an '!'"
+  [endpoint-name major-var-type doc-str params opts]
+  (let [major-var (when major-var-type
+                    (symbol (name major-var-type)))
+        sym-name (name endpoint-name)
+        action (keyword (subs sym-name 0 (dec (count sym-name))))
+        opts (conj opts 'user-agent)]
+    `(defn ~endpoint-name
+       ~doc-str
+       [~'conn ~@(when major-var-type [major-var]) ~@params ~'& {:keys ~opts :as ~'opts}]
+       (let [user-agent# (:user-agent ~'opts)
+             p# (promise)
+             action# {::ms/action ~action}]
+         (a/put! ~'conn (into [(if ~major-var-type
+                                 (assoc action#
+                                        ::ms/major-variable {::ms/major-variable-type ~major-var-type
+                                                             ::ms/major-variable-value ~major-var})
+                                 action#)
+                               p#
+                               ~@params
+                               :user-agent user-agent#]
+                              cat
+                              (dissoc ~'opts :user-agent)))
+         p#))))
+
 ;; --------------------------------------------------
 ;; Audit Log
 
-(defn get-guild-audit-log!
+(defendpoint get-guild-audit-log! ::ds/guild-id
+  ""
+  []
   [])
 
 ;; --------------------------------------------------
 ;; Channel
 
-(defn get-channel!
+(defendpoint get-channel! ::ds/channel-id
+  ""
+  []
   [])
 
-(defn modify-channel!
+(defendpoint modify-channel! ::ds/channel-id
+  ""
+  []
+  [name position topic nsfw rate-limit-per-user bitrate
+   user-limit permission-overwrites parent-id])
+
+(defendpoint delete-channel! ::ds/channel-id
+  ""
+  []
+  [user-agent])
+
+(defendpoint get-channel-messages! ::ds/channel-id
+  ""
+  []
+  [around before after limit])
+
+(defendpoint get-channel-message! ::ds/channel-id
+  ""
+  [message-id]
   [])
 
-(defn delete-channel!
-  [])
-
-(defn get-channel-messages!
-  [])
-
-(defn get-channel-message!
-  [])
-
-(defn create-message!
+(defendpoint create-message! ::ds/channel-id
   "Takes a core.async channel returned by start-connection!, a Discord
   channel id as a string, and the message you want to send to Discord.
 
@@ -57,19 +97,11 @@
   :user-agent changes the User-Agent header sent to Discord.
   :tts is a boolean, defaulting to false, which tells Discord to read
        your message out loud."
-  [conn channel msg & {:keys [tts user-agent]}]
-  (let [p (promise)]
-    (a/put! conn [{::ms/action :create-message
-                   ::ms/major-variable {::ms/major-variable-type ::ds/channel-id
-                                        ::ms/major-variable-value channel}}
-                  p
-                  msg
-                  :user-agent user-agent
-                  :tts tts])
-    p))
+  [msg]
+  [tts])
 (s/fdef create-message!
   :args (s/cat :conn ::ds/channel
-               :channel ::ds/channel-id
+               :channel-id ::ds/channel-id
                :msg ::ms/message
                :keyword-args (s/keys* :opt-un [::ms/user-agent
                                                ::ms/tts]))
@@ -77,7 +109,9 @@
 
 (def ^:depricated send-message! create-message!)
 
-(defn create-reaction!
+(defendpoint create-reaction! ::ds/channel-id
+  ""
+  [message-id emoji]
   [])
 
 (defn delete-own-reaction!
@@ -203,18 +237,10 @@
 (defn get-guild-ban!
   [])
 
-(defn create-guild-ban!
-  [conn guild-id user-id & {:keys [delete-message-days reason user-agent]}]
-  (let [p (promise)]
-    (a/put! conn [{::ms/action :create-guild-ban
-                   ::ms/major-variable {::ms/major-variable-type ::ds/guild-id
-                                        ::ms/major-variable-value guild-id}}
-                  p
-                  user-id
-                  :delete-message-days delete-message-days
-                  :reason reason
-                  :user-agent user-agent])
-    p))
+(defendpoint create-guild-ban! ::ds/guild-id
+  ""
+  [user-id]
+  [delete-message-days reason user-agent])
 (s/fdef create-guild-ban!
   :args (s/cat :conn ::ds/channel
                :guild-id ::ds/guild-id
@@ -226,15 +252,10 @@
 (defn remove-guild-ban!
   [])
 
-(defn get-guild-roles!
-  [conn guild-id & {:keys [user-agent]}]
-  (let [p (promise)]
-    (a/put! conn [{::ms/action :get-guild-roles
-                   ::ms/major-variable {::ms/major-variable-type ::ds/guild-id
-                                        ::ms/major-variable-value guild-id}}
-                  p
-                  :user-agent user-agent])
-    p))
+(defendpoint get-guild-roles! ::ds/guild-id
+  ""
+  []
+  [])
 (s/fdef get-guild-roles!
   :args (s/cat :conn ::ds/channel
                :guild-id ::ds/guild-id
@@ -318,14 +339,10 @@
 (defn get-user-dms!
   [])
 
-(defn create-dm!
-  [conn user-id & {:keys [user-agent]}]
-  (let [p (promise)]
-    (a/put! conn [{::ms/action :create-dm}
-                  p
-                  user-id
-                  :user-agent user-agent])
-    p))
+(defendpoint create-dm! nil
+  ""
+  [user-id]
+  [])
 (s/fdef create-dm!
   :args (s/cat :conn ::ds/channel
                :user-id ::ds/user-id

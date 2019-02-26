@@ -65,6 +65,13 @@
     (clean-json-input json-msg)
     nil))
 
+(defn ^:private conform-to-json
+  [opts]
+  (into {}
+        (map (fn [[k v]]
+               [(keyword (str/replace (name k) #"-" "_")) v]))
+        opts))
+
 (defdispatch :get-guild-audit-log
   [guild-id] [] _ :get _ body
   (str "/guilds/" guild-id "/audit-logs")
@@ -80,11 +87,7 @@
 (defdispatch :modify-channel
   [channel-id] [] opts :patch _ body
   (str "/channels/" channel-id)
-  {:body (json/write-str
-          (into {}
-                (map (fn [[k v]]
-                       [(str/replace (name k) #"-" "_") v]))
-                opts))}
+  {:body (json/write-str (conform-to-json opts))}
   (json-body body))
 
 (defdispatch :delete-channel
@@ -118,13 +121,268 @@
   {}
   (= status 204))
 
+(defdispatch :delete-own-reaction
+  [channel-id message-id emoji] [] _ :delete status _
+  (str "/channels/" channel-id "/messages/" message-id "/reactions/" emoji "/@me")
+  {}
+  (= status 204))
+
+(defdispatch :delete-user-reaction
+  [channel-id message-id emoji user-id] [] _ :delete status _
+  (str "/channels/" channel-id "/messages/" message-id "/reactions/" emoji "/" user-id)
+  {}
+  (= status 204))
+
+(defdispatch :get-reactions
+  [channel-id message-id emoji] [] opts :get _ body
+  (str "/channels/" channel-id "/messages/" message-id "/reactions/" emoji)
+  {:query-params opts}
+  (json-body body))
+
+(defdispatch :delete-all-reactions
+  [channel-id message-id] [] _ :delete status _
+  (str "/channels/" channel-id "/messages/" message-id "/reactions")
+  {}
+  (= status 204))
+
+(defdispatch :edit-message
+  [channel-id message-id] [] opts :patch _ body
+  (str "/channels/" channel-id "/messages/" message-id)
+  {:body (json/write-str opts)}
+  (json-body body))
+
+(defdispatch :delete-message
+  [channel-id message-id] [] _ :delete status _
+  (str "/channels/" channel-id "/messages/" message-id)
+  {}
+  (= status 204))
+
+(defdispatch :bulk-delete-messages
+  [channel-id messages] [] _ :post status _
+  (str "/channels/" channel-id "/messages/bulk-delete")
+  {:body (json/write-str messages)}
+  (= status 204))
+
+(defdispatch :edit-channel-permissions
+  [channel-id overwrite-id allow deny type] [] _ :put status _
+  (str "/channels/" channel-id "/permissions/" overwrite-id)
+  {:query-params {:allow allow
+                  :deny deny
+                  :type type}}
+  (= status 204))
+
+(defdispatch :get-channel-invites
+  [channel-id] [] _ :get _ body
+  (str "/channels/" channel-id "/invites")
+  {}
+  (json-body body))
+
+(defdispatch :create-channel-invite
+  [channel-id] [] opts :post _ body
+  (str "/channels/" channel-id "/invites")
+  {:body (json/write-str opts)}
+  (json-body body))
+
+(defdispatch :delete-channel-permission
+  [channel-id overwrite-id] [] _ :delete status _
+  (str "/channels/" channel-id "/permissions/" overwrite-id)
+  {}
+  (= status 204))
+
+(defdispatch :trigger-typing-indicator
+  [channel-id] [] _ :post status _
+  (str "/channels/" channel-id "/typing")
+  {}
+  (= status 204))
+
+(defdispatch :get-pinned-messages
+  [channel-id] [] _ :get _ body
+  (str "/channels/" channel-id "/pins")
+  {}
+  (json-body body))
+
+(defdispatch :add-pinned-channel-message
+  [channel-id message-id] [] _ :put status _
+  (str "/channels/" channel-id "/pins/" message-id)
+  {}
+  (= status 204))
+
+(defdispatch :delete-pinned-channel-message
+  [channel-id message-id] [] _ :delete status _
+  (str "/channels/" channel-id "/pins/" message-id)
+  {}
+  (= status 204))
+
+(defdispatch :group-dm-add-recipient
+  [channel-id user-id] [] opts :put status _
+  (str "/channels/" channel-id "/recipients/" user-id)
+  {:query-params (conform-to-json opts)}
+  (= status 204))
+
+(defdispatch :group-dm-remove-recipient
+  [channel-id user-id] [] _ :delete status _
+  (str "/channels/" channel-id "/recipients/" user-id)
+  {}
+  (= status 204))
+
+(defdispatch :list-guild-emojis
+  [guild-id] [] _ :get _ body
+  (str "/guilds/" guild-id "/emojis")
+  {}
+  (json-body body))
+
+(defdispatch :get-guild-emoji
+  [guild-id emoji-id] [] _ :get _ body
+  (str "/guilds/" guild-id "/emojis/" emoji-id)
+  {}
+  (json-body body))
+
+(defdispatch :create-guild-emoji
+  [guild-id name image roles] [] _ :post _ body
+  (str "/guilds/" guild-id "/emojis")
+  {:body (json/write-str {:name name
+                          :image image
+                          :roles roles})}
+  (json-body body))
+
+(defdispatch :modify-guild-emoji
+  [guild-id emoji-id name roles] [] _ :patch _ body
+  (str "/guilds/" guild-id "/emojis/" emoji-id)
+  {:body (json/write-str {:name name
+                          :roles roles})}
+  (json-body body))
+
+(defdispatch :delete-guild-emoji
+  [guild-id emoji-id] [] _ :delete status _
+  (str "/guilds/" guild-id "/emojis/" emoji-id)
+  {}
+  (= status 204))
+
+(defdispatch :create-guild
+  [name region icon verification-level
+   default-message-notifications
+   explicit-content-filter roles
+   channels] [] _ :post _ body
+  (str "/guilds")
+  {:body (json/write-str {:name name
+                          :region region
+                          :icon icon
+                          :verification-level verification-level
+                          :default-message-notifications default-message-notifications
+                          :explicit-content-filter explicit-content-filter
+                          :roles roles
+                          :channels channels})}
+  (json-body body))
+
+(defdispatch :get-guild
+  [guild-id] [] _ :get _ body
+  (str "/guilds/" guild-id)
+  {}
+  (json-body body))
+
+(defdispatch :modify-guild
+  [guild-id] [] opts :patch _ body
+  (str "/guilds/" guild-id)
+  {:body (json/write-str (conform-to-json opts))}
+  (json-body body))
+
+(defdispatch :delete-guild
+  [guild-id] [] _ :delete status _
+  (str "/guilds/" guild-id)
+  {}
+  (= status 204))
+
+(defdispatch :get-guild-channels
+  [guild-id] [] _ :get _ body
+  (str "/guilds/" guild-id "/channels")
+  {}
+  (json-body body))
+
+(defdispatch :create-guild-channel
+  [guild-id name] [] opts :post _ body
+  (str "/guilds/" guild-id "/channels")
+  {:body (json/write-str (conform-to-json (assoc opts :name name)))}
+  (json-body body))
+
+(defdispatch :modify-guild-channel-positions
+  [guild-id channels] [] _ :patch status _
+  (str "/guilds/" guild-id "/channels")
+  {:body (json/write-str channels)}
+  (= status 204))
+
+(defdispatch :get-guild-member
+  [guild-id user-id] [] _ :get _ body
+  (str "/guilds/" guild-id "/members/" user-id)
+  {}
+  (json-body body))
+
+(defdispatch :list-guild-members
+  [guild-id] [] opts :get _ body
+  (str "/guilds/" guild-id "/members")
+  {:query-params opts}
+  (json-body body))
+
+(defdispatch :add-guild-member
+  [guild-id user-id access-token] [] opts :put status body
+  (str "/guilds/" guild-id "/members/" user-id)
+  {:query-params (assoc opts :access_token access-token)}
+  (if (= status 204)
+    :already-member
+    (json-body body)))
+
+(defdispatch :modify-guild-member
+  [guild-id user-id] [] opts :patch status _
+  (str "/guilds/" guild-id "/members/" user-id)
+  {:body (json/write-str (conform-to-json opts))}
+  (= status 204))
+
+(defdispatch :modify-current-user-nick
+  [guild-id nick] [] _ :patch status body
+  (str "/guilds/" guild-id "/members/@me/nick")
+  {:body (json/write-str {:nick nick})}
+  (when (= status 200)
+    body))
+
+(defdispatch :add-guild-member-role
+  [guild-id user-id role-id] [] _ :put status _
+  (str "/guilds/" guild-id "/members/" user-id "/roles/" role-id)
+  {}
+  (= status 204))
+
+(defdispatch :remove-guild-member-role
+  [guild-id user-id role-id] [] _ :delete status _
+  (str "/guilds/" guild-id "/memebers/" user-id "/roles/" role-id)
+  {}
+  (= status 204))
+
+(defdispatch :remove-guild-member
+  [guild-id user-id] [] _ :delete status _
+  (str "/guilds/" guild-id "/members/" user-id)
+  {}
+  (= status 204))
+
+(defdispatch :get-guild-bans
+  [guild-id] [] _ :get _ body
+  (str "/guilds/" guild-id "/bans")
+  {}
+  (json-body body))
+
+(defdispatch :get-guild-ban
+  [guild-id user-id] [] _ :get _ body
+  (str "/guilds/" guild-id "/bans/" user-id)
+  {}
+  (json-body body))
+
 (defdispatch :create-guild-ban
   [guild-id user-id] [delete-message-days reason] opts :put status _
   (str "/guilds/" guild-id "/bans/" user-id)
-  {:query-params (into {}
-                       (map (fn [[k v]]
-                              [(str/replace (name k) #"-" "_") v]))
-                       opts)}
+  {:query-params (conform-to-json opts)}
+  (= status 204))
+
+(defdispatch :remove-guild-ban
+  [guild-id user-id] [] _ :delete status _
+  (str "/guilds/" guild-id "/bans/" user-id)
+  {}
   (= status 204))
 
 (defdispatch :get-guild-roles
@@ -133,10 +391,178 @@
   {}
   (json-body body))
 
+(defdispatch :create-guild-role
+  [guild-id] [] opts :post _ body
+  (str "/guilds/" guild-id "/roles")
+  {:body (json/write-str (conform-to-json opts))}
+  (json-body body))
+
+(defdispatch :modify-guild-role-positions
+  [guild-id roles] [] _ :patch _ body
+  (str "/guilds/" guild-id "/roles")
+  {:body (json/write-str roles)}
+  (json-body body))
+
+(defdispatch :modify-guild-role
+  [guild-id role-id] [] opts :patch _ body
+  (str "/guilds/" guild-id "/roles/" role-id)
+  {:body (json/write-str opts)}
+  (json-body body))
+
+(defdispatch :delete-guild-role
+  [guild-id role-id] [] _ :delete status _
+  (str "/guilds/" guild-id "/roles/" role-id)
+  {}
+  (= status 204))
+
+(defdispatch :get-guild-prune-count
+  [guild-id] [] opts :get _ body
+  (str "/guilds/" guild-id "/prune")
+  {:body (json/write-str opts)}
+  (json-body body))
+
+(defdispatch :begin-guild-prune
+  [guild-id days compute-prune-count] [] _ :post _ body
+  (str "/guilds/" guild-id "/prune")
+  {:body (json/write-str {:days days
+                          :compute_prune_count compute-prune-count})}
+  (json-body body))
+
+(defdispatch :get-guild-voice-regions
+  [guild-id] [] _ :get _ body
+  (str "/guilds/" guild-id "/regions")
+  {}
+  (json-body body))
+
+(defdispatch :get-guild-invites
+  [guild-id] [] _ :get _ body
+  (str "/guilds/" guild-id "/invites")
+  {}
+  (json-body body))
+
+(defdispatch :get-guild-integrations
+  [guild-id] [] _ :get _ body
+  (str "/guilds/" guild-id "/integrations")
+  {}
+  (json-body body))
+
+(defdispatch :create-guild-integration
+  [guild-id type id] [] _ :post status _
+  (str "/guilds/" guild-id "/integrations")
+  {:body (json/write-str {:type type
+                          :id id})}
+  (= status 204))
+
+(defdispatch :modify-guild-integration
+  [guild-id integration-id expire-behavior expire-grace-period enable-emoticons] [] _ :patch status _
+  (str "/guilds/" guild-id "/integrations/" integration-id)
+  {:body (json/write-str {:expire_behavior expire-behavior
+                          :expire_grace_period expire-grace-period
+                          :enable_emoticons enable-emoticons})}
+  (= status 204))
+
+(defdispatch :delete-guild-integration
+  [guild-id integration-id] [] _ :delete status _
+  (str "/guilds/" guild-id "/integrations")
+  {}
+  (= status 204))
+
+(defdispatch :sync-guild-integration
+  [guild-id integration-id] [] _ :post status _
+  (str "/guilds/" guild-id "/integrations/" integration-id "/sync")
+  {}
+  (= status 204))
+
+(defdispatch :get-guild-embed
+  [guild-id] [] _ :get _ body
+  (str "/guilds/" guild-id "/embed")
+  {}
+  (json-body body))
+
+(defdispatch :modify-guild-embed
+  [guild-id embed] [] _ :patch _ body
+  (str "/guilds/" guild-id "/embed")
+  {:body (json/write-str embed)}
+  (json-body body))
+
+(defdispatch :get-guild-vanity-url
+  [guild-id] [] _ :get _ body
+  (str "/guilds/" guild-id "/vanity-url")
+  {}
+  (json-body body))
+
+(defdispatch :get-guild-widget-image
+  [guild-id] [] opts :get _ body
+  (str "/guilds/" guild-id "/widget.png")
+  {:query-params (:style opts)
+   :body (json/write-str (dissoc opts :style))}
+  (json-body body))
+
+(defdispatch :get-invite
+  [_ invite-code] [] opts :get _ body
+  (str "/invites/" invite-code)
+  {:query-params (conform-to-json opts)}
+  (json-body body))
+
+(defdispatch :delete-invite
+  [_ invite-code] [] _ :delete _ body
+  (str "/invites/" invite-code)
+  {}
+  (json-body body))
+
+(defdispatch :get-current-user
+  [_] [] _ :get _ body
+  "/users/@me"
+  {}
+  (json-body body))
+
+(defdispatch :get-user
+  [_ user-id] [] _ :get _ body
+  (str "/users/" user-id)
+  {}
+  (json-body body))
+
+(defdispatch :modify-current-user
+  [_] [] opts :patch _ body
+  "/users/@me"
+  {:body (json/write-str opts)}
+  (json-body body))
+
+(defdispatch :get-current-user-guilds
+  [_] [] opts :get _ body
+  "/users/@me/guilds"
+  {:query-params opts}
+  (json-body body))
+
+(defdispatch :leave-guild
+  [_ guild-id] [] _ :delete status _
+  (str "/users/@me/guilds/" guild-id)
+  {}
+  (= status 204))
+
+(defdispatch :get-user-dms
+  [_] [] _ :get _ body
+  "/users/@me/channels"
+  {}
+  (json-body body))
+
 (defdispatch :create-dm
   [_ user-id] [] _ :post _ body
   "/users/@me/channels"
   {:body (json/write-str {:recipient_id user-id})}
+  (json-body body))
+
+(defdispatch :create-group-dm
+  [_ access-tokens nicks] [] _ :post _ body
+  "/users/@me/channels"
+  {:body (json/write-str {:access_tokens access-tokens
+                          :nicks nicks})}
+  (json-body body))
+
+(defdispatch :get-user-connections
+  [_] [] _ :get _ body
+  "/users/@me/connections"
+  {}
   (json-body body))
 
 (defn rate-limited?

@@ -114,127 +114,208 @@
   [message-id emoji]
   [])
 
-(defn delete-own-reaction!
+(defendpoint delete-own-reaction! ::ds/channel-id
+  ""
+  [message-id emoji]
   [])
 
-(defn delete-user-reaction!
+(defendpoint delete-user-reaction! ::ds/channel-id
+  ""
+  [message-id emoji user-id]
   [])
 
-(defn get-reactions!
+(defendpoint get-reactions! ::ds/channel-id
+  ""
+  [message-id emoji]
+  [before after limit])
+
+(defendpoint delete-all-reactions! ::ds/channel-id
+  ""
+  [message-id]
   [])
 
-(defn delete-all-reactions!
+(defendpoint edit-message! ::ds/channel-id
+  ""
+  [message-id]
+  [content embed])
+
+(defendpoint delete-message! ::ds/channel-id
+  ""
+  [message-id]
   [])
 
-(defn edit-message!
+(defendpoint bulk-delete-messages! ::ds/channel-id
+  ""
+  [messages]
   [])
 
-(defn delete-message!
+(defendpoint edit-channel-permissions! ::ds/channel-id
+  ""
+  [overwrite-id allow deny type]
   [])
 
-(defn bulk-delete-messages!
+(defendpoint get-channel-invites! ::ds/channel-id
+  ""
+  []
   [])
 
-(defn edit-channel-permissions!
+(defendpoint create-channel-invite! ::ds/channel-id
+  ""
+  []
+  [max-age max-uses temporary unique])
+
+(defendpoint delete-channel-permission! ::ds/channel-id
+  ""
+  [overwrite-id]
   [])
 
-(defn get-channel-invites!
+(defendpoint trigger-typing-indicator! ::ds/channel-id
+  ""
+  []
   [])
 
-(defn create-channel-invite!
+(defendpoint get-pinned-messages! ::ds/channel-id
+  ""
+  []
   [])
 
-(defn delete-channel-permission!
+(defendpoint add-channel-pinned-message! ::ds/channel-id
+  ""
+  [message-id]
   [])
 
-(defn trigger-typing-indicator!
+(defendpoint delete-pinned-channel-message! ::ds/channel-id
+  ""
+  [message-id]
   [])
 
-(defn get-pinned-messages!
-  [])
+(defendpoint group-dm-add-recipient! ::ds/channel-id
+  "NOT INTENDED FOR BOT USE"
+  [user-id]
+  [access-token nick])
 
-(defn add-channel-pinned-message!
-  [])
-
-(defn delete-pinned-channel-message!
-  [])
-
-(defn group-dm-add-recipient!
-  [])
-
-(defn group-dm-remove-recipient!
+(defendpoint group-dm-remove-recipient! ::ds/channel-id
+  "NOT INTENDED FOR BOT USE"
+  [user-id]
   [])
 
 ;; --------------------------------------------------
 ;; Emoji
 
-(defn list-guild-emojis!
+(defendpoint list-guild-emojis! ::ds/guild-id
+  ""
+  []
   [])
 
-(defn get-guild-emoji!
+(defendpoint get-guild-emoji! ::ds/guild-id
+  ""
+  [emoji-id]
   [])
 
-(defn create-guild-emoji!
+(defendpoint create-guild-emoji! ::ds/guild-id
+  ""
+  [name image roles]
   [])
 
-(defn modify-guild-emoji!
+(defendpoint modify-guild-emoji! ::ds/guild-id
+  ""
+  [emoji-id name roles]
   [])
 
-(defn delete-guild-emoji!
+(defendpoint delete-guild-emoji! ::ds/guild-id
+  ""
+  [emoji-id]
   [])
 
 ;; --------------------------------------------------
 ;; Guild
 
-(defn create-guild!
+(defendpoint create-guild! nil
+  ""
+  []
   [])
 
-(defn get-guild!
+(defendpoint get-guild! ::ds/guild-id
+  ""
+  []
   [])
 
-(defn modify-guild!
+(defendpoint modify-guild! ::ds/guild-id
+  ""
+  []
+  [name region verification-level default-message-notifications
+   explicit-content-filter afk-channel-id afk-timeout icon
+   owner-id splash system-channel-id])
+
+(defendpoint delete-guild! ::ds/guild-id
+  ""
+  []
   [])
 
-(defn delete-guild!
+(defendpoint get-guild-channels! ::ds/guild-id
+  ""
+  []
   [])
 
-(defn get-guild-channels!
+(defendpoint create-guild-channel! ::ds/guild-id
+  ""
+  [name]
+  [type topic bitrate user-limit rate-limit-per-user
+   position permission-overwrites parent-id nsfw])
+
+(defendpoint modify-guild-channel-positions! ::ds/guild-id
+  ""
+  [channels]
   [])
 
-(defn create-guild-channel!
+(defendpoint get-guild-member! ::ds/guild-id
+  ""
+  [user-id]
   [])
 
-(defn modify-guild-channel-positions!
+(defendpoint list-guild-members! ::ds/guild-id
+  ""
+  []
+  [limit after])
+
+(defendpoint add-guild-member! ::ds/guild-id
+  ""
+  [user-id access-token]
+  [nick roles mute deaf])
+
+(defendpoint modify-guild-member! ::ds/guild-id
+  ""
+  [user-id]
+  [nick roles mute deaf channel-id])
+
+(defendpoint modify-current-user-nick! ::ds/guild-id
+  ""
+  [nick]
   [])
 
-(defn get-guild-member!
+(defendpoint add-guild-member-role! ::ds/guild-id
+  ""
+  [user-id role-id]
   [])
 
-(defn list-guild-members!
+(defendpoint remove-guild-member-role! ::ds/guild-id
+  ""
+  [user-id role-id]
   [])
 
-(defn add-guild-member!
+(defendpoint remove-guild-member! ::ds/guild-id
+  ""
+  [user-id]
   [])
 
-(defn modify-guild-member!
+(defendpoint get-guild-bans! ::ds/guild-id
+  ""
+  []
   [])
 
-(defn modify-current-user-nick!
-  [])
-
-(defn add-guild-member-role!
-  [])
-
-(defn remove-guild-member-role!
-  [])
-
-(defn remove-guild-member!
-  [])
-
-(defn get-guild-bans!
-  [])
-
-(defn get-guild-ban!
+(defendpoint get-guild-ban! ::ds/guild-id
+  ""
+  [user-id]
   [])
 
 (defendpoint create-guild-ban! ::ds/guild-id
@@ -249,7 +330,9 @@
                                                ::ms/reason
                                                ::ms/user-agent])))
 
-(defn remove-guild-ban!
+(defendpoint remove-guild-ban! ::ds/guild-id
+  ""
+  [user-id]
   [])
 
 (defendpoint get-guild-roles! ::ds/guild-id
@@ -261,82 +344,135 @@
                :guild-id ::ds/guild-id
                :keyword-args (s/keys* :opt-un [::ms/user-agent])))
 
-(defn create-guild-role!
+(defendpoint create-guild-role! ::ds/guild-id
+  ""
+  []
+  [name permissions color hoist mentionable])
+
+(defendpoint modify-guild-role-positions! ::ds/guild-id
+  ""
+  [roles]
   [])
 
-(defn modify-guild-role-positions!
+(defendpoint modifiy-guild-role! ::ds/guild-id
+  ""
+  [role-id]
+  [name permissions color hoist mentionable])
+
+(defendpoint delete-guild-role! ::ds/guild-id
+  ""
+  [role-id]
   [])
 
-(defn modifiy-guild-role!
+(defendpoint get-guild-prune-count! ::ds/guild-id
+  ""
+  []
+  [days])
+
+(defendpoint begin-guild-prune! ::ds/guild-id
+  ""
+  [days compute-prune-count]
   [])
 
-(defn delete-guild-role!
+(defendpoint get-guild-voice-regions! ::ds/guild-id
+  ""
+  []
   [])
 
-(defn get-guild-prune-count!
+(defendpoint get-guild-invites! ::ds/guild-id
+  ""
+  []
   [])
 
-(defn begin-guild-prune!
+(defendpoint get-guild-integrations! ::ds/guild-id
+  ""
+  []
   [])
 
-(defn get-guild-voice-regions!
+(defendpoint create-guild-integration! ::ds/guild-id
+  ""
+  [type id]
   [])
 
-(defn get-guild-invites!
+(defendpoint modify-guild-integration! ::ds/guild-id
+  ""
+  [integration-id expire-behavior expire-grace-period enable-emoticons]
   [])
 
-(defn get-guild-integrations!
+(defendpoint delete-guild-integration! ::ds/guild-id
+  ""
+  [integration-id]
   [])
 
-(defn create-guild-integration!
+(defendpoint sync-guild-integration! ::ds/guild-id
+  ""
+  [integration-id]
   [])
 
-(defn modify-guild-integration!
+(defendpoint get-guild-embed! ::ds/guild-id
+  ""
+  []
   [])
 
-(defn delete-guild-integration!
+(defendpoint modify-guild-embed! ::ds/guild-id
+  ""
+  [embed]
   [])
 
-(defn sync-guild-integration!
+(defendpoint get-guild-vanity-url! ::ds/guild-id
+  ""
+  []
   [])
 
-(defn get-guild-embed!
-  [])
-
-(defn modify-guild-embed!
-  [])
-
-(defn get-guild-vanity-url!
-  [])
+(defendpoint get-guild-widget-image! ::ds/guild-id
+  ""
+  []
+  [style shield banner1 banner2 banner3 banner4])
 
 ;; --------------------------------------------------
 ;; Invite
 
-(defn get-invite!
-  [])
+(defendpoint get-invite! nil
+  ""
+  [invite-code]
+  [with-counts?])
 
-(defn delete-invite!
+(defendpoint delete-invite! nil
+  ""
+  [invite-code]
   [])
 
 ;; --------------------------------------------------
 ;; User
 
-(defn get-current-user!
+(defendpoint get-current-user! nil
+  ""
+  []
   [])
 
-(defn get-user!
+(defendpoint get-user! nil
+  ""
+  [user-id]
   [])
 
-(defn modify-current-user!
+(defendpoint modify-current-user! nil
+  ""
+  []
+  [username avatar])
+
+(defendpoint get-current-user-guilds! nil
+  ""
+  []
+  [before after limit])
+
+(defendpoint leave-guild! nil
+  ""
+  [guild-id]
   [])
 
-(defn get-current-user-guilds!
-  [])
-
-(defn leave-guild!
-  [])
-
-(defn get-user-dms!
+(defendpoint get-user-dms! nil
+  ""
+  []
   [])
 
 (defendpoint create-dm! nil
@@ -348,53 +484,83 @@
                :user-id ::ds/user-id
                :keyword-args (s/keys* :opt-un [::ms/user-agent])))
 
-(defn create-group-dm!
+(defendpoint create-group-dm! nil
+  ""
+  [access-tokens nicks]
   [])
 
-(defn get-user-connections!
+(defendpoint get-user-connections! nil
+  ""
+  []
   [])
 
 ;; --------------------------------------------------
 ;; Voice
 
-(defn list-voice-regions!
+(defendpoint list-voice-regions! nil
+  ""
+  []
   [])
 
 ;; --------------------------------------------------
 ;; Webhook
 
-(defn create-webhook!
+(defendpoint create-webhook! ::ds/webhook-id
+  ""
+  []
   [])
 
-(defn get-channel-webhooks!
+(defendpoint get-channel-webhooks! ::ds/webhook-id
+  ""
+  []
   [])
 
-(defn get-guild-webhooks!
+(defendpoint get-guild-webhooks! ::ds/webhook-id
+  ""
+  []
   [])
 
-(defn get-webhook!
+(defendpoint get-webhook! ::ds/webhook-id
+  ""
+  []
   [])
 
-(defn get-webhook-with-token!
+(defendpoint get-webhook-with-token! ::ds/webhook-id
+  ""
+  []
   [])
 
-(defn modify-webhook!
+(defendpoint modify-webhook! ::ds/webhook-id
+  ""
+  []
   [])
 
-(defn modify-webhook-with-token!
+(defendpoint modify-webhook-with-token! ::ds/webhook-id
+  ""
+  []
   [])
 
-(defn delete-webhook!
+(defendpoint delete-webhook! ::ds/webhook-id
+  ""
+  []
   [])
 
-(defn delete-webhook-with-token!
+(defendpoint delete-webhook-with-token! ::ds/webhook-id
+  ""
+  []
   [])
 
-(defn execute-webhook!
+(defendpoint execute-webhook! ::ds/webhook-id
+  ""
+  []
   [])
 
-(defn execute-slack-compatible-webhook!
+(defendpoint execute-slack-compatible-webhook! ::ds/webhook-id
+  ""
+  []
   [])
 
-(defn execute-github-compatible-webhook!
+(defendpoint execute-github-compatible-webhook! ::ds/webhook-id
+  ""
+  []
   [])

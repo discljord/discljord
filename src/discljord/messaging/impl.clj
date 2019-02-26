@@ -108,12 +108,28 @@
   {}
   (json-body body))
 
-(defdispatch :create-message
-  [channel-id msg] [tts] _ :post _ body
-  (str "/channels/" channel-id "/messages")
-  {:body (json/write-str {:content msg
-                          :tts (or tts false)})}
-  (json-body body))
+(defmethod dispatch-http :create-message
+  [process endpoint [prom & {:keys [^java.io.File file user-agent attachments] :as opts}]]
+  (let [channel-id (-> endpoint
+                       ::ms/major-variable
+                       ::ms/major-variable-value)
+        payload (dissoc opts :user-agent :file :attachments)
+        payload-json (json/write-str payload)
+        multipart [{:name "payload_json" :content payload-json}]
+        multipart (if file
+                    (conj multipart {:name "file" :content file :filename (.getName file)})
+                    multipart)
+        multipart (if attachments
+                    (into multipart (for [attachment attachments]
+                                      {:name "attachment"
+                                       :content attachment
+                                       :filename (.getName attachment)})))
+        response @(http/post (api-url (str "/channels/" channel-id "/messages"))
+                             {:headers (assoc (auth-headers (::ds/token @process) user-agent)
+                                              "Content-Type" "multipart/form-data")
+                              :multipart multipart})]
+    (deliver prom (json-body (:body response)))
+    response))
 
 (defdispatch :create-reaction
   [channel-id message-id emoji] [] _ :put status _
@@ -214,16 +230,16 @@
   (= status 204))
 
 (defdispatch :group-dm-add-recipient
-  [channel-id user-id] [] opts :put status _
+  [channel-id user-id] [] opts :put _ _
   (str "/channels/" channel-id "/recipients/" user-id)
   {:query-params (conform-to-json opts)}
-  (= status 204))
+  nil)
 
 (defdispatch :group-dm-remove-recipient
-  [channel-id user-id] [] _ :delete status _
+  [channel-id user-id] [] _ :delete _ _
   (str "/channels/" channel-id "/recipients/" user-id)
   {}
-  (= status 204))
+  nil)
 
 (defdispatch :list-guild-emojis
   [guild-id] [] _ :get _ body
@@ -232,8 +248,8 @@
   (json-body body))
 
 (defdispatch :get-guild-emoji
-  [guild-id emoji-id] [] _ :get _ body
-  (str "/guilds/" guild-id "/emojis/" emoji-id)
+  [guild-id emoji] [] _ :get _ body
+  (str "/guilds/" guild-id "/emojis/" emoji)
   {}
   (json-body body))
 
@@ -246,22 +262,22 @@
   (json-body body))
 
 (defdispatch :modify-guild-emoji
-  [guild-id emoji-id name roles] [] _ :patch _ body
-  (str "/guilds/" guild-id "/emojis/" emoji-id)
+  [guild-id emoji name roles] [] _ :patch _ body
+  (str "/guilds/" guild-id "/emojis/" emoji)
   {:body (json/write-str {:name name
                           :roles roles})}
   (json-body body))
 
 (defdispatch :delete-guild-emoji
-  [guild-id emoji-id] [] _ :delete status _
-  (str "/guilds/" guild-id "/emojis/" emoji-id)
+  [guild-id emoji] [] _ :delete status _
+  (str "/guilds/" guild-id "/emojis/" emoji)
   {}
   (= status 204))
 
 (defdispatch :create-guild
-  [name region icon verification-level
+  [_ name region icon verification-level
    default-message-notifications
-   explicit-content-filter roles
+   explicit-content-filter role-objects
    channels] [] _ :post _ body
   (str "/guilds")
   {:body (json/write-str {:name name
@@ -270,7 +286,7 @@
                           :verification-level verification-level
                           :default-message-notifications default-message-notifications
                           :explicit-content-filter explicit-content-filter
-                          :roles roles
+                          :roles role-objects
                           :channels channels})}
   (json-body body))
 
@@ -564,6 +580,77 @@
   "/users/@me/connections"
   {}
   (json-body body))
+
+(defdispatch :list-voice-regions
+  [_] [] _ :get _ body
+  "/voice/regions"
+  {}
+  (json-body body))
+
+(defdispatch :create-webhook
+  [channel-id name] [avatar] _ :post _ body
+  (str "/channels/" channel-id "/webhooks")
+  {:body (json/write-str {:name name
+                          :avatar avatar})}
+  (json-body body))
+
+(defdispatch :get-channel-webhooks
+  [channel-id] [] _ :get _ body
+  (str "/channels/" channel-id "/webhooks")
+  {}
+  (json-body body))
+
+(defdispatch :get-guild-webhooks
+  [guild-id] [] _ :get _ body
+  (str "/guilds/" guild-id "/webhooks")
+  {}
+  (json-body body))
+
+(defdispatch :get-webhook
+  [webhook-id] [] _ :get _ body
+  (str "/webhooks/" webhook-id)
+  {}
+  (json-body body))
+
+(defdispatch :get-webhook-with-token
+  [webhook-id webhook-token] [] _ :get _ body
+  (str "/webhooks/" webhook-id "/" webhook-token)
+  {}
+  (json-body body))
+
+(defdispatch :modify-webhook
+  [webhook-id] [] opts :patch _ body
+  (str "/webhooks/" webhook-id)
+  {:body (json/write-str (conform-to-json opts))}
+  (json-body body))
+
+(defdispatch :modify-webhook-with-token
+  [webhook-id webhook-token] [] opts :patch _ body
+  (str "/webhooks/" webhook-id "/" webhook-token)
+  {:body (json/write-str opts)}
+  (json-body body))
+
+(defdispatch :delete-webhook
+  [webhook-id] [] _ :delete status _
+  (str "/webhooks/" webhook-id)
+  {}
+  (= status 204))
+
+(defdispatch :delete-webhook-with-token
+  [webhook-id webhook-token] [] _ :delete status _
+  (str "/webhooks/" webhook-id "/" webhook-token)
+  {}
+  (= status 204))
+
+(defdispatch :execute-webhook
+  [webhook-id webhook-token content file embeds] [] opts :post _ _
+  (str "/webhooks/" webhook-id "/" webhook-token)
+  {:query-params {:wait (:wait opts)}
+   :body (json/write-str (conform-to-json (assoc (dissoc opts :wait)
+                                                 :content content
+                                                 :file file
+                                                 :embeds embeds)))}
+  nil)
 
 (defn rate-limited?
   "Takes a process and an endpoint and checks to see if the

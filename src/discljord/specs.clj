@@ -22,6 +22,7 @@
 
 (s/def ::snowflake (partial re-matches #"\d+"))
 
+(s/def ::id ::snowflake)
 (s/def ::channel-id ::snowflake)
 (s/def ::guild-id ::snowflake)
 (s/def ::user-id ::snowflake)

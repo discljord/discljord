@@ -49,19 +49,20 @@ Here's a short example, using the minimum of features to get a bot up and runnin
 
 (defn -main
   [& args]
-  (let [connection-ch (a/chan 100)
-        event-ch (c/connect-bot! token connection-ch)
+  (let [event-ch (a/chan 100)
+        connection-ch (c/connect-bot! token event-ch)
         message-ch (m/start-connection! token)]
     (loop []
       (let [[event-type event-data] (a/<!! event-ch)]
-        (when (and (= :create-message event-type)
-                   (= (:channel event-data) channel)
+        (when (and (= :message-create event-type)
+                   (= (:channel-id event-data) channel)
                    (not (:bot (:author event-data))))
-          (m/create-message! message-ch channel "Hello, World!"))
+          (m/create-message! message-ch channel :content "Hello, World!"))
         (when (= :channel-pins-update event-type)
           (a/>!! connection-ch [:disconnect]))
         (when-not (= :disconnect event-type)
           (recur))))
+    (c/disconnect-bot! connection-ch)
     (m/stop-connection! message-ch)))
 ```
 
@@ -93,22 +94,23 @@ Discljord also provides a default event pump to assist with simplicity and exten
 
 (defmethod handle-event :message-create
   [event-type {{bot :bot} :author :keys [channel-id content]}]
-  (when (= content "!disconnect")
+  (if (= content "!disconnect")
     (a/put! (:connection @state) [:disconnect])
-    (m/stop-connection!))
-  (when-not bot
-    (m/create-message! (:messaging @state) channel-id "Hello, World!")))
+    (when-not bot
+      (m/create-message! (:messaging @state) channel-id :content "Hello, World!"))))
     
 (defn -main
   [& args]
-  (let [connection-ch (a/chan 100)
-        event-ch (c/connect-bot! token connection-ch)
+  (let [event-ch (a/chan 100)
+        connection-ch (c/connect-bot! token event-ch)
         messaging-ch (m/start-connection! token)
         init-state {:connection connection-ch
                     :event event-ch
                     :messaging messaging-ch}]
     (reset! state init-state)
-    (e/message-pump! event-ch handle-event)))
+    (e/message-pump! event-ch handle-event)
+    (m/stop-connection! messaging-ch)
+    (c/disconnect-bot! connection-ch)))
 ```
 
 This bot builds slightly on the last, in that it sends its message to the channel it was messaged on (which should include DMs), and if that message is "!disconnect" it will disconnect itself.

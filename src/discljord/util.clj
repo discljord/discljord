@@ -7,7 +7,7 @@
    [discljord.specs :as ds]
    [taoensso.timbre :as log]))
 
-(def ^:dynamic *enable-logging* false)
+(def ^:dynamic *enable-logging* true)
 
 (s/def ::logging-level #{:trace :debug :info :warn :error :fatal :report})
 

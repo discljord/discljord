@@ -15,4 +15,5 @@
   :jar-name "discljord-%s.jar"
   :deploy-branches ["master" "release"]
   :profiles {:dev {:dependencies [[http-kit.fake "0.2.2"]]
+                   :plugins [[lein-codox "0.10.6"]]
                    :jvm-opts ["--add-modules" "java.xml.bind"]}})

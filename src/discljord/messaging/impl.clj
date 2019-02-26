@@ -9,7 +9,7 @@
    [discljord.http :refer [api-url]]
    [discljord.messaging.specs :as ms]
    [discljord.specs :as ds]
-   [discljord.util :refer [bot-token clean-json-input]]
+   [discljord.util :refer [bot-token clean-json-input *enable-logging*]]
    [org.httpkit.client :as http]
    [taoensso.timbre :as log]))
 
@@ -729,7 +729,8 @@
             (a/>! (::ds/channel @process) event)
             (when-let [response (a/<! (a/thread (try (dispatch-http process endpoint event-data)
                                                      (catch Exception e
-                                                       (log/error e "Exception in dispatch-http")
+                                                       (when *enable-logging*
+                                                         (log/error e "Exception in dispatch-http"))
                                                        nil))))]
               (transform [ATOM
                           ::ms/rate-limits
@@ -742,7 +743,8 @@
               (when (= (:status response)
                        429)
                 ;; This shouldn't happen for anything but emoji stuff, so this shouldn't happen
-                (log/info "Bot triggered rate limit response.")
+                (when *enable-logging*
+                  (log/info "Bot triggered rate limit response."))
                 ;; Resend the event to dispatch, hopefully this time not brekaing the rate limit
                 (a/>! (::ds/channel @process) event))))
           (recur))))

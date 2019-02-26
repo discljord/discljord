@@ -8,7 +8,7 @@
    [discljord.connections.specs :as cs]
    [discljord.http :refer [api-url]]
    [discljord.specs :as ds]
-   [discljord.util :refer [json-keyword clean-json-input]]
+   [discljord.util :refer [json-keyword clean-json-input *enable-logging*]]
    [gniazdo.core :as ws]
    [org.httpkit.client :as http]
    [taoensso.timbre :as log])
@@ -29,7 +29,8 @@
                   ::cs/shard-count (:shards json-body)
                   ::cs/session-start-limit (:session-start-limit json-body)}))
              (catch Exception e
-               (log/error e "Failed to get websocket gateway")
+               (when *enable-logging*
+                 (log/error e "Failed to get websocket gateway"))
                nil))]
     (when (::ds/url result)
       result)))
@@ -42,7 +43,8 @@
   and reconnects a websocket, with options for resume or not."
   [url token conn ch shard out-ch & {:keys [init-shard-state
                                             buffer-size]}]
-  (log/debug (str "Connecting shard " shard))
+  (when *enable-logging*
+    (log/debug (str "Connecting shard " shard)))
   (let [ack (atom false)
         connected (atom false)
         shard-state (atom (assoc (or init-shard-state
@@ -123,20 +125,25 @@
                                           %&)]))
                     :on-error
                     (fn [err]
-                      (log/error err "Error caught on websocket")))
+                      (when *enable-logging*
+                        (log/error err "Error caught on websocket"))))
                   (catch Exception e
-                    (log/error e "Exception while trying to connect websocket to Discord")
+                    (when *enable-logging*
+                      (log/error e "Exception while trying to connect websocket to Discord"))
                     nil))]
          (if connection
-           (do (log/trace "Successfully connected to Discord")
+           (do (when *enable-logging*
+                 (log/trace "Successfully connected to Discord"))
                connection)
            (if (> (:max-connection-retries @shard-state) retries)
-             (do (log/debug "Failed to connect to Discord, retrying in 10 seconds")
+             (do (when *enable-logging*
+                   (log/debug "Failed to connect to Discord, retrying in 10 seconds"))
                  (a/<!! (a/timeout 10000))
                  (recur (inc retries)))
-             (log/info (str "Could not connect to discord after "
-                            retries
-                            " retries, aborting")))))))
+             (when *enable-logging*
+               (log/info (str "Could not connect to discord after "
+                             retries
+                             " retries, aborting"))))))))
     shard-state))
 (s/fdef reconnect-websocket!
   :args (s/cat :url ::ds/url
@@ -187,58 +194,70 @@
 
 (defmethod handle-disconnect! :default
   [socket-state comm-ch stop-code msg reconnect resume]
-  (log/debug (str "Stop code "
-                  stop-code
-                  " encountered with message:\n\t"
-                  msg))
+  (when *enable-logging*
+    (log/debug (str "Stop code "
+                   stop-code
+                   " encountered with message:\n\t"
+                   msg)))
   ;; NOTE(Joshua): Not sure if this should do a reconnect or a resume
   (when-not (:disconnect @socket-state)
-    (log/debug "Reconnecting")
+    (when *enable-logging*
+      (log/debug "Reconnecting"))
     (reconnect)))
 
 (defmethod handle-disconnect! 4000
   [socket-state comm-ch stop-code msg reconnect resume]
-  (log/debug "Unknown error, reconnect and resume")
+  (when *enable-logging*
+    (log/debug "Unknown error, reconnect and resume"))
   (resume))
 
 (defmethod handle-disconnect! 4001
   [socket-state comm-ch stop-code msg reconnect resume]
-  (log/fatal "Invalid op code sent to Discord servers"))
+  (when *enable-logging*
+    (log/fatal "Invalid op code sent to Discord servers")))
 
 (defmethod handle-disconnect! 4002
   [socket-state comm-ch stop-code msg reconnect resume]
-  (log/fatal "Invalid payload sent to Discord servers"))
+  (when *enable-logging*
+    (log/fatal "Invalid payload sent to Discord servers")))
 
 (defmethod handle-disconnect! 4003
   [socket-state comm-ch stop-code msg reconnect resume]
-  (log/fatal "Sent data to Discord without authenticating"))
+  (when *enable-logging*
+    (log/fatal "Sent data to Discord without authenticating")))
 
 (defmethod handle-disconnect! 4004
   [socket-state comm-ch stop-code msg reconnect resume]
-  (log/error "Invalid token sent to Discord servers")
+  (when *enable-logging*
+    (log/error "Invalid token sent to Discord servers"))
   (throw (Exception. "Invalid token sent to Discord servers")))
 
 (defmethod handle-disconnect! 4005
   [socket-state comm-ch stop-code msg reconnect resume]
-  (log/fatal "Sent identify packet to Discord twice from same shard"))
+  (when *enable-logging*
+    (log/fatal "Sent identify packet to Discord twice from same shard")))
 
 (defmethod handle-disconnect! 4007
   [socket-state comm-ch stop-code msg reconnect resume]
-  (log/debug "Sent invalid seq to Discord on resume, reconnect")
+  (when *enable-logging*
+    (log/debug "Sent invalid seq to Discord on resume, reconnect"))
   (reconnect))
 
 (defmethod handle-disconnect! 4008
   [socket-state comm-ch stop-code msg reconnect resume]
-  (log/fatal "Rate limited by Discord"))
+  (when *enable-logging*
+    (log/fatal "Rate limited by Discord")))
 
 (defmethod handle-disconnect! 4009
   [socket-state comm-ch stop-code msg reconnect resume]
-  (log/debug "Session timed out, reconnecting")
+  (when *enable-logging*
+    (log/debug "Session timed out, reconnecting"))
   (reconnect))
 
 (defmethod handle-disconnect! 4010
   [socket-state comm-ch stop-code msg reconnect resume]
-  (log/fatal "Invalid shard set to discord servers"))
+  (when *enable-logging*
+    (log/fatal "Invalid shard set to discord servers")))
 
 (defmethod handle-disconnect! 4011
   [socket-state comm-ch stop-code msg reconnect resume]
@@ -247,17 +266,20 @@
   ;;               make this cause a full disconnect and reconnect
   ;;               of the whole bot, not just this shard.
   (a/put! comm-ch [:re-shard (::cs/buffer-size @socket-state)])
-  (log/info "Bot requires sharding"))
+  (when *enable-logging*
+    (log/info "Bot requires sharding")))
 
 (defmethod handle-disconnect! 1009
   [socket-state comm-ch stop-code msg reconnect resume]
-  (log/info "Websocket size wasn't big enough! Resuming with a bigger buffer.")
+  (when *enable-logging*
+    (log/info "Websocket size wasn't big enough! Resuming with a bigger buffer."))
   (resume :buffer-size (+ (:buffer-size @socket-state)
                           100000)))
 
 (defmethod handle-websocket-event! :disconnect
   [out-ch comm-ch _ & [socket-state stop-code msg reconnect resume]]
-  (log/debug "Shard disconnected from Discord")
+  (when *enable-logging*
+    (log/debug "Shard disconnected from Discord"))
   (a/put! out-ch [:shard-disconnect])
   (handle-disconnect! socket-state comm-ch stop-code msg reconnect resume))
 
@@ -275,19 +297,22 @@
 
 (defmethod handle-payload! 1
   [op data reconnect resume heartbeat ack connected shard-state]
-  (log/trace "Heartbeat requested by Discord")
+  (when *enable-logging*
+    (log/trace "Heartbeat requested by Discord"))
   (when @connected
     (swap! shard-state assoc :seq data)
     (heartbeat)))
 
 (defmethod handle-payload! 7
   [op data reconnect resume heartbeat ack connected shard-state]
-  (log/debug "Reconnect payload sent from Discord")
+  (when *enable-logging*
+    (log/debug "Reconnect payload sent from Discord"))
   (reconnect))
 
 (defmethod handle-payload! 9
   [op data reconnect resume heartbeat ack connected shard-state]
-  (log/debug "Invalid session sent from Discord, reconnecting")
+  (when *enable-logging*
+    (log/debug "Invalid session sent from Discord, reconnecting"))
   (if data
     (resume)
     (reconnect)))
@@ -300,14 +325,16 @@
       (reset! ack false)
       (try (heartbeat)
            (catch Exception e
-             (log/error e "Unable to send heartbeat")))
+             (when *enable-logging*
+               (log/error e "Unable to send heartbeat"))))
       ;; Wait the interval
       (a/<! (a/timeout interval))
       ;; If there's no ack, disconnect and reconnect with resume
       (if-not @ack
         (try (resume)
              (catch Exception e
-               (log/error e "Unable to resume")))
+               (when *enable-logging*
+                 (log/error e "Unable to resume"))))
         ;; Make this check to see if we've disconnected
         (when @connected
           (recur))))))
@@ -318,7 +345,8 @@
 
 (defmethod handle-payload! :default
   [op data reconnect resume heartbeat ack connected shard-state]
-  (log/error "Recieved an unhandled payload from Discord. op code" op "with data" data))
+  (when *enable-logging*
+    (log/error "Recieved an unhandled payload from Discord. op code" op "with data" data)))
 
 (defmethod handle-websocket-event! :command
   [out-ch comm-ch _ & [op data reconnect resume heartbeat ack connected shard-state]]
@@ -354,7 +382,8 @@
   (a/go-loop []
     (try (apply handle-websocket-event! out-ch comm-ch (a/<! ch))
          (catch Exception e
-           (log/error e "Exception caught from handle-websocket-event!")))
+           (when *enable-logging*
+             (log/error e "Exception caught from handle-websocket-event!"))))
     (when @conn
       (recur)))
   nil)
@@ -458,7 +487,8 @@
       ;; Handle the communication command
       (try (apply handle-command! shards token out-ch comm-ch command)
            (catch Exception e
-             (log/error e "Exception in handle-command!")))
+             (when *enable-logging*
+               (log/error e "Exception in handle-command!"))))
       ;; Handle the rate limit
       (a/<! (a/timeout 500))
       (when-not (= command [:disconnect])

@@ -10,7 +10,7 @@
    [discljord.connections.specs :as cs]
    [discljord.http :refer [api-url]]
    [discljord.specs :as ds]
-   [discljord.util :refer [bot-token]]
+   [discljord.util :refer [bot-token *enable-logging*]]
    [taoensso.timbre :as log]))
 
 (defn connect-bot!
@@ -41,7 +41,8 @@
             (a/put! out-ch [:connect])
             (impl/start-communication-loop! shards token communication-chan out-ch communication-chan)
             communication-chan))
-      (log/debug "Unable to recieve gateway information."))))
+      (when *enable-logging*
+        (log/debug "Unable to recieve gateway information.")))))
 (s/fdef connect-bot!
   :args (s/cat :token ::ds/token :out-ch ::ds/channel
                :keyword-args (s/keys* :opt-un [::cs/buffer-size]))

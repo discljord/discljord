@@ -1,11 +1,21 @@
 (ns discljord.util
   (:use com.rpl.specter)
-  (:require [discljord.specs :as ds]
-            [clojure.spec.alpha :as s]
-            [clojure.data.json :as json]
-            [clojure.string :as str]))
+  (:require
+   [clojure.data.json :as json]
+   [clojure.spec.alpha :as s]
+   [clojure.string :as str]
+   [discljord.specs :as ds]
+   [taoensso.timbre :as log]))
 
 (def ^:dynamic *enable-logging* false)
+
+(s/def ::logging-level #{:trace :debug :info :warn :error :fatal :report})
+
+(defn set-logging-level
+  [logging-level]
+  (log/set-level! logging-level))
+(s/fdef set-logging-level
+  :args (s/cat :logging-level ::logging-level))
 
 (defn bot-token
   "Takes a bot token, and returns the token value that can

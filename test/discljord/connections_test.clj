@@ -1,20 +1,21 @@
 (ns discljord.connections-test
-  (:require [discljord.connections :refer :all :as c]
-            [discljord.connections.impl :refer :all :as c.impl]
-            [discljord.http :refer :all]
-            [discljord.util :refer :all]
-            [discljord.specs :as ds]
-            [discljord.connections.specs :as cs]
-            [clojure.data.json :as json]
-            [clojure.core.async :as a]
-            [org.httpkit.fake :as fake]
-            [org.httpkit.server :as s :refer [with-channel
-                                              run-server
-                                              send!
-                                              close]]
-            [gniazdo.core :as ws]
-            [clojure.tools.logging :as log]
-            [clojure.test :as t]))
+  (:require
+   [clojure.core.async :as a]
+   [clojure.data.json :as json]
+   [clojure.test :as t]
+   [discljord.connections :refer :all :as c]
+   [discljord.connections.impl :refer :all :as c.impl]
+   [discljord.connections.specs :as cs]
+   [discljord.http :refer :all]
+   [discljord.specs :as ds]
+   [discljord.util :refer :all]
+   [gniazdo.core :as ws]
+   [org.httpkit.fake :as fake]
+   [org.httpkit.server :as s :refer [with-channel
+                                     run-server
+                                     send!
+                                     close]]
+   [taoensso.timbre :as log]))
 
 (t/deftest urls
   (t/testing "Api URLs are created properly"

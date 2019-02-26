@@ -7,10 +7,7 @@
                  [org.clojure/core.async "0.4.490"]
                  [org.clojure/data.json "0.2.6"]
                  [org.clojure/tools.logging "0.4.1"]
-                 [log4j/log4j "1.2.17" :exclusions [javax.mail/mail
-                                                    javax.jms/jms
-                                                    com.sun.jmdk/jmxtools
-                                                    com.sun.jmx/jmxri]]
+                 [com.taoensso/timbre "4.10.0"]
                  [http-kit "2.2.0"]
                  [stylefruits/gniazdo "1.0.1"]
                  [com.rpl/specter "1.1.1"]]

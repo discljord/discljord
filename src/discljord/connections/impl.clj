@@ -5,13 +5,13 @@
    [clojure.data.json :as json]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [discljord.connections.specs :as cs]
    [discljord.http :refer [api-url]]
    [discljord.specs :as ds]
    [discljord.util :refer [json-keyword clean-json-input]]
    [gniazdo.core :as ws]
-   [org.httpkit.client :as http])
+   [org.httpkit.client :as http]
+   [taoensso.timbre :as log])
   (:import
    (org.eclipse.jetty websocket.client.WebSocketClient
                       util.ssl.SslContextFactory)))

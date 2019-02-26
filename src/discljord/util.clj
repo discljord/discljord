@@ -5,6 +5,8 @@
             [clojure.data.json :as json]
             [clojure.string :as str]))
 
+(def ^:dynamic *enable-logging* false)
+
 (defn bot-token
   "Takes a bot token, and returns the token value that can
   be used in the \"Authorization\" header for HTTP calls."

@@ -5,13 +5,13 @@
    [clojure.data.json :as json]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [com.rpl.specter :refer [ATOM keypath select-first transform]]
    [discljord.http :refer [api-url]]
    [discljord.messaging.specs :as ms]
    [discljord.specs :as ds]
    [discljord.util :refer [bot-token clean-json-input]]
-   [org.httpkit.client :as http]))
+   [org.httpkit.client :as http]
+   [taoensso.timbre :as log]))
 
 ;; NOTE: Rate limits for emoji don't follow the same conventions, and are handled per-guild
 ;;       as a result, expect lots of 429's

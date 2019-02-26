@@ -6,12 +6,12 @@
   (:require
    [clojure.core.async :as a]
    [clojure.spec.alpha :as s]
-   [clojure.tools.logging :as log]
    [discljord.connections.impl :as impl]
    [discljord.connections.specs :as cs]
    [discljord.http :refer [api-url]]
    [discljord.specs :as ds]
-   [discljord.util :refer [bot-token]]))
+   [discljord.util :refer [bot-token]]
+   [taoensso.timbre :as log]))
 
 (defn connect-bot!
   "Creates a connection process which will handle the services granted by

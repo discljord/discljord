@@ -20,6 +20,7 @@ Discljord follows semantic versioning.
 ### Changed
  - Moved many functions from `discljord.connections` to an implementation namespace
  - Added new `create-message!` function to replace `send-message!`
+ - Exchanged logging framework from log4j to timbre
  
 ### Fixed
  - Improper handling of rate limits when none is found

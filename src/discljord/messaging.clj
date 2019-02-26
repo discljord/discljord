@@ -119,7 +119,7 @@ Currently does not support uploading files."
   [content tts nonce embed file])
 
 (defn ^:depricated send-message!
-  [channel-id msg & {:key [tts none embed file] :as opts}]
+  [channel-id msg & {:keys [tts none embed file] :as opts}]
   (apply create-message! channel-id :content msg (into [] cat opts)))
 
 (defendpoint create-reaction! ::ds/channel-id

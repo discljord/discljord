@@ -118,7 +118,9 @@ Currently does not support uploading files."
   []
   [content tts nonce embed file])
 
-(def ^:depricated send-message! create-message!)
+(defn ^:depricated send-message!
+  [channel-id msg & {:key [tts none embed file] :as opts}]
+  (apply create-message! channel-id :content msg (into [] cat opts)))
 
 (defendpoint create-reaction! ::ds/channel-id
   "Creates a new reaction on the message with the given emoji (either unicode or the id of a custom emoji). Returns a promise containing a boolean, telling you if it succeeded."

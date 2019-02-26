@@ -7,7 +7,7 @@ Discljord is a library for the easy creation of Discord Bots in Clojure! It work
 Add the following to your project.clj in leiningen:
 
 ```clojure
-[org.suskalo/discljord "0.1.7"]
+[org.suskalo/discljord "0.2.0"]
 ```
 
 ## Usage
@@ -26,7 +26,7 @@ Lein example:
 ```clojure
 (defproject example
   :dependencies [[org.clojure/clojure "1.10.0"]
-                 [org.suskalo/discljord "0.1.7"]]
+                 [org.suskalo/discljord "0.2.0"]]
   :jvm-opts ["--add-modules" "java.xml.bind"])
 ```
 
@@ -57,18 +57,18 @@ Here's a short example, using the minimum of features to get a bot up and runnin
         (when (and (= :message-create event-type)
                    (= (:channel-id event-data) channel)
                    (not (:bot (:author event-data))))
-          (m/send-message! message-ch channel "Hello, World!"))
+          (m/create-message! message-ch channel :content "Hello, World!"))
         (when (= :channel-pins-update event-type)
           (a/>!! connection-ch [:disconnect]))
         (when-not (= :disconnect event-type)
           (recur))))
-    (m/stop-connection! message-ch)
-    (c/disconnect-bot! connection-ch)))
+    (c/disconnect-bot! connection-ch)
+    (m/stop-connection! message-ch)))
 ```
 
 This is a very simple example, which will send the message "Hello, world!" once for each message it recieves in the hard-coded channel from a non-bot user, and disconnects when a message is pinned or unpinned in any channel it can see.
 
-This small example should also help clarify what the three processes are. The first is where you're getting your events, the second is the loop in the above `-main` function, and the third is the messaging connection which you communicate with when calling `send-message!`.
+This small example should also help clarify what the three processes are. The first is where you're getting your events, the second is the loop in the above `-main` function, and the third is the messaging connection which you communicate with when calling `create-message!`.
 
 ### Event Handlers
 
@@ -94,12 +94,11 @@ Discljord also provides a default event pump to assist with simplicity and exten
 
 (defmethod handle-event :message-create
   [event-type {{bot :bot} :author :keys [channel-id content]}]
-  (when (= content "!disconnect")
+  (if (= content "!disconnect")
     (a/put! (:connection @state) [:disconnect])
-    (m/stop-connection!))
-  (when-not bot
-    (m/send-message! (:messaging @state) channel-id "Hello, World!")))
-
+    (when-not bot
+      (m/create-message! (:messaging @state) channel-id :content "Hello, World!"))))
+    
 (defn -main
   [& args]
   (let [event-ch (a/chan 100)
@@ -109,8 +108,9 @@ Discljord also provides a default event pump to assist with simplicity and exten
                     :event event-ch
                     :messaging messaging-ch}]
     (reset! state init-state)
-    (e/message-pump! event-ch handle-event))
-    (c/disconnect-bot! connection-ch))
+    (e/message-pump! event-ch handle-event)
+    (m/stop-connection! messaging-ch)
+    (c/disconnect-bot! connection-ch)))
 ```
 
 This bot builds slightly on the last, in that it sends its message to the channel it was messaged on (which should include DMs), and if that message is "!disconnect" it will disconnect itself.
@@ -120,12 +120,14 @@ Discljord does not currently have an opinion about how you store your state, how
 ## Known Issues
 
 - If you exceed the rate limit of an endpoint, any other messages sent to that endpoint may arrive out of order.
+- If your bot is added to enough servers without a restart, Discord may request that your bot disconnect and reconnect with more shards. This is not yet implemented in discljord
+- If multiple shards disconnect at once, they do not respect the identify packet rate limit
 
 If you find any other issues, please report them, and I'll attempt to fix them as soon as possible!
 
 ## License
 
-Copyright © 2017-2018 Joshua Suskalo
+Copyright © 2017-2019 Joshua Suskalo
 
 Distributed under the Eclipse Public License either version 1.0 or (at
 your option) any later version.

@@ -12,11 +12,10 @@ Discljord follows semantic versioning.
  - Support for re-sharding a bot as it grows
  - Docstrings for many namespaces
  - Support for tts in messages
- - New HTTP endpoint support
-   - get-guild-roles
-   - create-guild-ban
-   - create-dm
+ - New HTTP endpoint support (all)
  - Logging when unable to recieve gateway information
+ - Support for embeds (with attachments)
+ - Support for sending files
  
 ### Changed
  - Moved many functions from `discljord.connections` to an implementation namespace

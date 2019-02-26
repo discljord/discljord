@@ -4,7 +4,7 @@ Discljord follows semantic versioning.
 
 ## Unreleased
 
-## [0.2.0]
+## [0.2.0] - 2019-02-26
 ### Added
  - Changelog
  - Logging about retries during connections
@@ -103,7 +103,7 @@ Discljord follows semantic versioning.
  - Project name from `discljord-functional` to `discljord` 
 
 [Unreleased]: https://github.com/IGJoshua/discljord/compare/0.2.0..develop
-[0.1.7]: https://github.com/IGJoshua/discljord/compare/0.1.7..0.2.0
+[0.2.0]: https://github.com/IGJoshua/discljord/compare/0.1.7..0.2.0
 [0.1.7]: https://github.com/IGJoshua/discljord/compare/0.1.6..0.1.7
 [0.1.6]: https://github.com/IGJoshua/discljord/compare/0.1.5..0.1.6
 [0.1.5]: https://github.com/IGJoshua/discljord/compare/0.1.4..0.1.5

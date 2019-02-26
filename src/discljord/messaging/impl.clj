@@ -123,7 +123,8 @@
                     (into multipart (for [attachment attachments]
                                       {:name "attachment"
                                        :content attachment
-                                       :filename (.getName attachment)})))
+                                       :filename (.getName attachment)}))
+                    multipart)
         response @(http/post (api-url (str "/channels/" channel-id "/messages"))
                              {:headers (assoc (auth-headers (::ds/token @process) user-agent)
                                               "Content-Type" "multipart/form-data")

@@ -2,7 +2,9 @@
 All notable changes to this project will be documented in this file. This change log follows the conventions of [keepachangelog.com](http://keepachangelog.com/).
 Discljord follows semantic versioning.
 
-## Unreleased
+## [Unreleased]
+
+## [0.2.1] - 2019-02-27
 ### Changed
  - Spec for files to be used with create-message! now requires a file rather than any?
 
@@ -107,7 +109,8 @@ Discljord follows semantic versioning.
  - README follows new API
  - Project name from `discljord-functional` to `discljord` 
 
-[Unreleased]: https://github.com/IGJoshua/discljord/compare/0.2.0..develop
+[Unreleased]: https://github.com/IGJoshua/discljord/compare/0.2.1..develop
+[0.2.1]: https://github.com/IGJoshua/discljord/compare/0.2.0..0.2.1
 [0.2.0]: https://github.com/IGJoshua/discljord/compare/0.1.7..0.2.0
 [0.1.7]: https://github.com/IGJoshua/discljord/compare/0.1.6..0.1.7
 [0.1.6]: https://github.com/IGJoshua/discljord/compare/0.1.5..0.1.6

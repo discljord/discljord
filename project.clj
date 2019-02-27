@@ -1,4 +1,4 @@
-(defproject org.suskalo/discljord "0.2.0"
+(defproject org.suskalo/discljord "0.2.1"
   :description "A Clojure library to allow the creation of Discord bots with a relatively high level of abstraction."
   :url "https://github.com/IGJoshua/discljord"
   :license {:name "Eclipse Public License"

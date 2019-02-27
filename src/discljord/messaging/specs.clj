@@ -67,7 +67,7 @@
                         #(< (count %) 2000)))
 (s/def ::tts boolean?)
 (s/def ::nonce ::ds/snowflake)
-(s/def ::file any?)
+(s/def ::file (partial instance? java.io.File))
 
 (s/def :embed/title string?)
 (s/def :embed/type string?)

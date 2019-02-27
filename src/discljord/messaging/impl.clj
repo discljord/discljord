@@ -11,7 +11,9 @@
    [discljord.specs :as ds]
    [discljord.util :refer [bot-token clean-json-input *enable-logging*]]
    [org.httpkit.client :as http]
-   [taoensso.timbre :as log]))
+   [taoensso.timbre :as log])
+  (:import
+   (java.util Date)))
 
 ;; NOTE: Rate limits for emoji don't follow the same conventions, and are handled per-guild
 ;;       as a result, expect lots of 429's
@@ -668,7 +670,7 @@
                       (::ms/remaining global-limit))
         reset (or (::ms/reset specific-limit)
                   (::ms/reset global-limit))
-        time (long (/ (System/currentTimeMillis) 1000.0))]
+        time (System/currentTimeMillis)]
     (and remaining
          (<= remaining 0)
          reset
@@ -696,10 +698,15 @@
                     (::ms/remaining rate-limit))
         remaining (when remaining
                     (dec remaining))
+        date (when (:date headers)
+               (Date/parse (:date headers)))
         reset (:x-ratelimit-reset headers)
         reset (if reset
-                (Long. reset)
+                (* (Long. reset) 1000)
                 (::ms/reset rate-limit))
+        reset (if date
+                (+ (- reset date) (System/currentTimeMillis))
+                reset)
         global-str (:x-ratelimit-global headers)
         global (if global-str
                  (Boolean. global-str)

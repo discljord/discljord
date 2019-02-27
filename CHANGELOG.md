@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file. This change
 Discljord follows semantic versioning.
 
 ## Unreleased
+### Changed
+ - Spec for files to be used with create-message! now requires a file rather than any?
+
+### Fixed
+ - Rate limit handling now accounts for server drift
 
 ## [0.2.0] - 2019-02-26
 ### Added

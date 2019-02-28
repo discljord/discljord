@@ -6,7 +6,6 @@
   :dependencies [[org.clojure/clojure "1.10.0"]
                  [org.clojure/core.async "0.4.490"]
                  [org.clojure/data.json "0.2.6"]
-                 [org.clojure/tools.logging "0.4.1"]
                  [com.taoensso/timbre "4.10.0"]
                  [http-kit "2.2.0"]
                  [stylefruits/gniazdo "1.0.1"]

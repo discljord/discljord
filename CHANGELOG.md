@@ -3,6 +3,9 @@ All notable changes to this project will be documented in this file. This change
 Discljord follows semantic versioning.
 
 ## [Unreleased]
+### Fixed
+ - NullPointerException in rare case when dealing with rate limits
+ - Rate-limit decreased by one compared to what it should be if always recieve headers
 
 ## [0.2.3] - 2019-03-01
 ### Fixed

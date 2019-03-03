@@ -54,7 +54,8 @@
                                                        100000)
                                       :max-connection-retries 10})
                                  :disconnect false))
-        client (WebSocketClient. (SslContextFactory.))
+        client (WebSocketClient. (doto (SslContextFactory.)
+                                   (.setEndpointIdentificationAlgorithm "HTTPS")))
         buffer-size (:buffer-size @shard-state)]
     (.setMaxTextMessageSize (.getPolicy client) buffer-size)
     (.setMaxBinaryMessageSize (.getPolicy client) buffer-size)

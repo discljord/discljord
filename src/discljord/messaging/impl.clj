@@ -691,19 +691,20 @@
         rate (:x-ratelimit-limit headers)
         rate (if rate
                (Long. rate)
-               (::ms/rate rate-limit))
+               (or (::ms/rate rate-limit)
+                   5))
         remaining (:x-ratelimit-remaining headers)
         remaining (if remaining
                     (Long. remaining)
-                    (::ms/remaining rate-limit))
-        remaining (when remaining
-                    (dec remaining))
+                    (dec (or (::ms/remaining rate-limit)
+                             5)))
         date (when (:date headers)
                (Date/parse (:date headers)))
         reset (:x-ratelimit-reset headers)
         reset (if reset
                 (* (Long. reset) 1000)
-                (::ms/reset rate-limit))
+                (or (::ms/reset rate-limit)
+                    0))
         reset (if date
                 (+ (- reset date) (System/currentTimeMillis))
                 reset)

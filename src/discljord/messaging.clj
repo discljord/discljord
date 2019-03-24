@@ -118,7 +118,7 @@ Currently does not support uploading files."
   []
   [content tts nonce embed file])
 
-(defn ^:depricated send-message!
+(defn ^:deprecated send-message!
   [conn channel-id msg & {:keys [tts none embed file] :as opts}]
   (apply create-message! conn channel-id :content msg (into [] cat opts)))
 

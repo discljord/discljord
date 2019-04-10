@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file. This change log follows the conventions of [keepachangelog.com](http://keepachangelog.com/).
 Discljord follows semantic versioning.
 
+## [Unreleased]
+### Added
+ - Support for the Watching activity type
+ - Support for pass-through activity types in case discljord doesn't support them all
+
 ## [0.2.4] - 2019-03-24
 ### Fixed
  - NullPointerException in rare case when dealing with rate limits

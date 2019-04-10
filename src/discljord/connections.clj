@@ -8,7 +8,7 @@
    [clojure.spec.alpha :as s]
    [discljord.connections.impl :as impl]
    [discljord.connections.specs :as cs]
-   [discljord.http :refer [api-url]]
+   [discljord.http :refer [gateway-url]]
    [discljord.specs :as ds]
    [discljord.util :refer [bot-token *enable-logging*]]
    [taoensso.timbre :as log]))
@@ -30,7 +30,7 @@
   (let [token (bot-token token)
         {:keys [discljord.specs/url discljord.connections.specs/shard-count
                 discljord.connections.specs/session-start-limit]}
-        (impl/get-websocket-gateway! (api-url "/gateway/bot") token)]
+        (impl/get-websocket-gateway! gateway-url token)]
     (if (and url shard-count session-start-limit)
       (do (when (< (:remaining session-start-limit) shard-count)
             (throw (RuntimeException. "Not enough remaining identify packets for number of shards.")))

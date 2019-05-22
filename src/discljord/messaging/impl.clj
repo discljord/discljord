@@ -43,11 +43,11 @@
 
 (defmacro defdispatch
   ""
-  [endpoint-name [major-var & params] opts opts-sym
+  [endpoint-name [major-var & params] [opts] opts-sym
    method status-sym body-sym url-str
    method-params promise-val]
   `(defmethod dispatch-http ~endpoint-name
-     [process# endpoint# [prom# ~@params & {user-agent# :user-agent :keys ~opts :as opts#}]]
+     [process# endpoint# [prom# ~@params & {user-agent# :user-agent :keys [~@opts] :as opts#}]]
      (let [~opts-sym (dissoc opts# :user-agent)
            ~major-var (-> endpoint#
                           ::ms/major-variable

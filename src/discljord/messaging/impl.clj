@@ -54,8 +54,9 @@
                           ::ms/major-variable-value)
            response# @(~(symbol "org.httpkit.client" (name method))
                        (api-url ~url-str)
-                       (assoc ~method-params
-                              :headers (auth-headers (::ds/token @process#) user-agent#)))
+                       (merge-with merge
+                                   ~method-params
+                                   {:headers (auth-headers (::ds/token @process#) user-agent#)}))
            ~status-sym (:status response#)
            ~body-sym (:body response#)]
        (deliver prom# ~promise-val)

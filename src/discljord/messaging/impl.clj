@@ -301,9 +301,13 @@
   (json-body body))
 
 (defdispatch :modify-guild
-  [guild-id] [] opts :patch _ body
+  [guild-id] [reason] opts :patch _ body
   (str "/guilds/" guild-id)
-  {:body (json/write-str (conform-to-json opts))}
+  (let [req {:body (json/write-str (conform-to-json (dissoc opts :reason)))}]
+    (if reason
+      (assoc req
+             :headers {"X-Audit-Log-Reason" (or reason "")})
+      req))
   (json-body body))
 
 (defdispatch :delete-guild

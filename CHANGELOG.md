@@ -6,6 +6,11 @@ Discljord follows semantic versioning.
 ### Added
  - Support for the Watching activity type
  - Support for pass-through activity types in case discljord doesn't support them all
+ - Audit log reason for modify-guild (this is a framework to add this to all other requests which it would be applicable to)
+
+### Fixed
+ - Incorrect URL used for http api
+ - remove-guild-member-role! makes a DELETE to /memebers instead of /members
 
 ## [0.2.4] - 2019-03-24
 ### Fixed

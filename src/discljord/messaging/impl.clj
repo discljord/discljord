@@ -375,7 +375,7 @@
 
 (defdispatch :remove-guild-member-role
   [guild-id user-id role-id] [] _ :delete status _
-  (str "/guilds/" guild-id "/memebers/" user-id "/roles/" role-id)
+  (str "/guilds/" guild-id "/members/" user-id "/roles/" role-id)
   {}
   (= status 204))
 

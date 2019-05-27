@@ -2,6 +2,18 @@
 All notable changes to this project will be documented in this file. This change log follows the conventions of [keepachangelog.com](http://keepachangelog.com/).
 Discljord follows semantic versioning.
 
+## [Unreleased]
+
+## [0.2.5]
+### Added
+ - Support for the Watching activity type
+ - Support for pass-through activity types in case discljord doesn't support them all
+ - Audit log reason for modify-guild (this is a framework to add this to all other requests which it would be applicable to)
+
+### Fixed
+ - Incorrect URL used for http api
+ - remove-guild-member-role! makes a DELETE to /memebers instead of /members
+
 ## [0.2.4] - 2019-03-24
 ### Fixed
  - NullPointerException in rare case when dealing with rate limits
@@ -125,7 +137,8 @@ Discljord follows semantic versioning.
  - README follows new API
  - Project name from `discljord-functional` to `discljord` 
 
-[Unreleased]: https://github.com/IGJoshua/discljord/compare/0.2.4..develop
+[Unreleased]: https://github.com/IGJoshua/discljord/compare/0.2.5..develop
+[0.2.5]: https://github.com/IGJoshua/discljord/compare/0.2.4..0.2.5
 [0.2.4]: https://github.com/IGJoshua/discljord/compare/0.2.3..0.2.4
 [0.2.3]: https://github.com/IGJoshua/discljord/compare/0.2.2..0.2.3
 [0.2.2]: https://github.com/IGJoshua/discljord/compare/0.2.1..0.2.2

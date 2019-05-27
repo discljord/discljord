@@ -258,7 +258,7 @@ Currently does not support uploading files."
 (defendpoint modify-guild! ::ds/guild-id
   "Modifies an existing guild. Returns a promise containing the modified guild object."
   []
-  [name region verification-level default-message-notifications
+  [reason name region verification-level default-message-notifications
    explicit-content-filter afk-channel-id afk-timeout icon
    owner-id splash system-channel-id])
 

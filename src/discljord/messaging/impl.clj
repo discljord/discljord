@@ -36,26 +36,27 @@
    (str "DiscordBot ("
         "https://github.com/IGJoshua/discljord"
         ", "
-        "0.2.4"
+        "0.2.5"
         ") "
         user-agent)
    "Content-Type" "application/json"})
 
 (defmacro defdispatch
   ""
-  [endpoint-name [major-var & params] opts opts-sym
+  [endpoint-name [major-var & params] [opts] opts-sym
    method status-sym body-sym url-str
    method-params promise-val]
   `(defmethod dispatch-http ~endpoint-name
-     [process# endpoint# [prom# ~@params & {user-agent# :user-agent :keys ~opts :as opts#}]]
+     [process# endpoint# [prom# ~@params & {user-agent# :user-agent :keys [~@opts] :as opts#}]]
      (let [~opts-sym (dissoc opts# :user-agent)
            ~major-var (-> endpoint#
                           ::ms/major-variable
                           ::ms/major-variable-value)
            response# @(~(symbol "org.httpkit.client" (name method))
                        (api-url ~url-str)
-                       (assoc ~method-params
-                              :headers (auth-headers (::ds/token @process#) user-agent#)))
+                       (merge-with merge
+                                   ~method-params
+                                   {:headers (auth-headers (::ds/token @process#) user-agent#)}))
            ~status-sym (:status response#)
            ~body-sym (:body response#)]
        (deliver prom# ~promise-val)
@@ -300,9 +301,13 @@
   (json-body body))
 
 (defdispatch :modify-guild
-  [guild-id] [] opts :patch _ body
+  [guild-id] [reason] opts :patch _ body
   (str "/guilds/" guild-id)
-  {:body (json/write-str (conform-to-json opts))}
+  (let [req {:body (json/write-str (conform-to-json (dissoc opts :reason)))}]
+    (if reason
+      (assoc req
+             :headers {"X-Audit-Log-Reason" (or reason "")})
+      req))
   (json-body body))
 
 (defdispatch :delete-guild
@@ -370,7 +375,7 @@
 
 (defdispatch :remove-guild-member-role
   [guild-id user-id role-id] [] _ :delete status _
-  (str "/guilds/" guild-id "/memebers/" user-id "/roles/" role-id)
+  (str "/guilds/" guild-id "/members/" user-id "/roles/" role-id)
   {}
   (= status 204))
 

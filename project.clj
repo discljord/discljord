@@ -1,4 +1,4 @@
-(defproject org.suskalo/discljord "0.2.5"
+(defproject org.suskalo/discljord "0.2.6-SNAPSHOT"
   :description " A Clojure wrapper library for the Discord API, with full API coverage (except voice, for now), and high scalability."
   :url "https://github.com/IGJoshua/discljord"
   :license {:name "Eclipse Public License"
@@ -15,4 +15,4 @@
   :deploy-branches ["master" "release"]
   :profiles {:dev {:dependencies [[http-kit.fake "0.2.2"]]
                    :plugins [[lein-codox "0.10.6"]]
-                   :jvm-opts ["--add-modules" "java.xml.bind"]}})
+                   :exclusions [http-kit]}})

@@ -241,6 +241,8 @@
     (when (:url result)
       result)))
 
+;; TODO(Joshua): Change this to be creating a set of shards and then stepping
+;; each of them in sequence
 (defn connect-bot!
   [communication-ch output-events token]
   (let [{:keys [shard-count session-start-limit url] :as gateway} (get-websocket-gateway! gateway-url token)
@@ -250,6 +252,9 @@
       (doseq [id (range shard-count)]
         (a/go
           (a/<! (a/timeout (* 5000 id)))
+          ;; TODO(Joshua): Make sure that this doesn't keep connecting shards if
+          ;; we get an event which requires disconnecting all the shards (like a
+          ;; re-shard event)
           (log/info (str "Starting shard " id))
           (let [ch (a/chan 100)]
             (a/tap communication-mult ch)

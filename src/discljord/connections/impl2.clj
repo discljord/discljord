@@ -322,6 +322,11 @@
            :websocket (connect-websocket! buffer-size url event-ch)
            :event-ch event-ch)))
 
+;; TODO(Joshua): Kill off this shard and send an event to re-shard the entire process
+(defmethod handle-shard-fx :re-shard
+  [heartbeat-ch output-events url token shard event]
+  nil)
+
 (defmethod handle-shard-fx :error
   [heartbeat-ch output-events url token shard [_ err]]
   (log/error err (str "Error encountered on shard " (:id shard)))

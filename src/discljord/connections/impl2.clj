@@ -298,12 +298,14 @@
 (defmethod handle-shard-fx :resume
   [heartbeat-ch output-events url token shard event]
   (log/debug (str "Sending resume payload for shard " (:id shard)))
-  (ws/send-msg (:websocket shard)
-               (json/write-str {:op 6
-                                :d {:token (:token shard)
-                                    :session_id (:session-id shard)
-                                    :seq (:seq shard)}}))
-  shard)
+  (let [event-ch (a/chan 100)
+        shard (assoc shard :websocket (connect-websocket! buffer-size url event-ch))]
+    (ws/send-msg (:websocket shard)
+                 (json/write-str {:op 6
+                                  :d {:token (:token shard)
+                                      :session_id (:session-id shard)
+                                      :seq (:seq shard)}}))
+    shard))
 
 ;; TODO(Joshua): Make this actually send an event to the controlling process and kill off this shard
 (defmethod handle-shard-fx :reconnect

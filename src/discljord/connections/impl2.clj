@@ -178,50 +178,52 @@
     event-type))
 
 (defn connect-shard!
-  [shard-id shard-count url token communication-ch output-events]
-  (let [event-ch (a/chan 100)]
+  "Creates a process which will handle a shard"
+  [shard-id shard-count url token output-events]
+  (let [event-ch (a/chan 100)
+        communication-ch (a/chan 100)]
     (a/go-loop [shard {:id shard-id
                        :event-ch event-ch
                        :websocket (connect-websocket! buffer-size url event-ch)
                        :token token
                        :count shard-count}]
-      (let [{:keys [event-ch websocket heartbeat-ch]
-             :or {heartbeat-ch (a/chan)}} shard]
-        (a/alt!
-          event-ch ([event]
-                    (let [{:keys [shard effects]} (handle-websocket-event shard event)
-                          shard (reduce (partial handle-shard-fx heartbeat-ch output-events url token)
-                                        shard effects)]
-                      (recur shard)))
-          heartbeat-ch (if (:ack shard)
-                         (do (log/trace (str "Sending heartbeat payload on shard " shard-id))
-                             (ws/send-msg websocket
-                                          (json/write-str {:op 1
-                                                           :d (:seq shard)}))
-                             (recur (dissoc shard :ack)))
-                         (let [event-ch (a/chan 100)]
-                           (log/info (str "Reconnecting due to zombie heartbeat on shard " shard-id))
-                           (a/close! heartbeat-ch)
-                           (recur (assoc (dissoc shard :heartbeat-ch)
-                                         :websocket (connect-websocket! buffer-size
-                                                                        url
-                                                                        event-ch)
-                                         :event-ch event-ch))))
-          communication-ch ([value]
-                            (log/debug (str "Recieved communication value " value " on shard " shard-id))
-                            (if-not (= value :disconnect)
-                              (if (= shard-id 0)
+      (when shard
+        (let [{:keys [event-ch websocket heartbeat-ch]
+               :or {heartbeat-ch (a/chan)}} shard]
+          (a/alt!
+            event-ch ([event]
+                      (let [{:keys [shard effects]} (handle-websocket-event shard event)
+                            shard (reduce (partial handle-shard-fx heartbeat-ch output-events url token)
+                                          shard effects)]
+                        (recur shard)))
+            heartbeat-ch (if (:ack shard)
+                           (do (log/trace (str "Sending heartbeat payload on shard " shard-id))
+                               (ws/send-msg websocket
+                                            (json/write-str {:op 1
+                                                             :d (:seq shard)}))
+                               (recur (dissoc shard :ack)))
+                           (let [event-ch (a/chan 100)]
+                             (log/info (str "Reconnecting due to zombie heartbeat on shard " shard-id))
+                             (a/close! heartbeat-ch)
+                             (recur (assoc (dissoc shard :heartbeat-ch)
+                                           :websocket (connect-websocket! buffer-size
+                                                                          url
+                                                                          event-ch)
+                                           :event-ch event-ch))))
+            communication-ch ([value]
+                              (log/debug (str "Recieved communication value " value " on shard " shard-id))
+                              (if-not (= value :disconnect)
                                 (do
                                   ;; TODO(Joshua): Send a message over the websocket
                                   (log/trace "Sending a message over the websocket")
                                   (recur shard))
-                                (do
-                                  (log/trace "This is not shard id 0, not sending over the websocket")
-                                  (recur shard)))
-                              (do (when heartbeat-ch
-                                    (a/close! heartbeat-ch))
-                                  (ws/close websocket)
-                                  (log/info (str "Disconnecting shard " shard-id " and closing connection"))))))))))
+                                (do (when heartbeat-ch
+                                      (a/close! heartbeat-ch))
+                                    (ws/close websocket)
+                                    (log/info (str "Disconnecting shard "
+                                                   shard-id
+                                                   " and closing connection")))))))))
+    communication-ch))
 
 (defn get-websocket-gateway!
   "Gets the shard count and websocket endpoint from Discord's API."
@@ -244,21 +246,24 @@
 ;; TODO(Joshua): Change this to be creating a set of shards and then stepping
 ;; each of them in sequence
 (defn connect-bot!
-  [communication-ch output-events token]
-  (let [{:keys [shard-count session-start-limit url] :as gateway} (get-websocket-gateway! gateway-url token)
-        communication-mult (a/mult communication-ch)]
+  [output-events token]
+  (let [{:keys [shard-count session-start-limit url] :as gateway} (get-websocket-gateway! gateway-url token)]
     (log/info (str "Connecting bot to gateway " gateway))
     (when (> (:remaining session-start-limit) shard-count)
-      (doseq [id (range shard-count)]
-        (a/go
-          (a/<! (a/timeout (* 5000 id)))
-          ;; TODO(Joshua): Make sure that this doesn't keep connecting shards if
-          ;; we get an event which requires disconnecting all the shards (like a
-          ;; re-shard event)
-          (log/info (str "Starting shard " id))
-          (let [ch (a/chan 100)]
-            (a/tap communication-mult ch)
-            (connect-shard! id shard-count url token ch output-events)))))))
+      (a/go
+        (let [chs (vec
+                   (for [id (range shard-count)]
+                     (a/go
+                       (a/<! (a/timeout (* 5000 id)))
+                       ;; TODO(Joshua): Make sure that this doesn't keep connecting shards if
+                       ;; we get an event which requires disconnecting all the shards (like a
+                       ;; re-shard event)
+                       (log/info (str "Starting shard " id))
+                       (connect-shard! id shard-count url token output-events))))
+              chs-vec (volatile! (transient []))]
+          (doseq [ch chs]
+            (vswap! chs-vec conj! (a/<! ch)))
+          (persistent! @chs-vec))))))
 
 (defmethod handle-shard-fx :start-heartbeat
   [heartbeat-ch output-events url token shard [_ heartbeat-interval]]

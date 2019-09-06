@@ -14,8 +14,8 @@
     SslContextFactory)))
 
 (def buffer-size
-  "The suggested size of a buffer, namely 2MiB"
-  2097152)
+  "The suggested size of a buffer, namely 4MiB"
+  4194304)
 
 (defmulti handle-websocket-event
   "Updates a shard based on shard events. Takes a shard and a shard event vector
@@ -24,17 +24,15 @@
   (fn [shard [event-type & args]]
     event-type))
 
-(defn resumable-stop-code?
-  ;; TODO(Joshua): Real implementation
-  "Returns if a resume is possible after the given stop code"
-  [stop-code]
-  true)
+(def new-session-stop-code?
+  "Set of stop codes after which a resume isn't possible"
+  #{4003 4004 4007 4009})
 
 (defn should-resume?
   "Returns if a shard should try to resume"
   [shard]
   (when (:stop-code shard)
-    (and (resumable-stop-code? (:stop-code shard))
+    (and (not (new-session-stop-code? (:stop-code shard)))
          (:seq shard)
          (:session-id shard))))
 
@@ -46,12 +44,30 @@
                [:resume]
                [:identify])]})
 
+(def ^:dynamic *stop-on-fatal-code*
+  "Boolean which tells discljord to disconnect the entire bot when running into
+  fatal stop codes"
+  false)
+
+(def fatal-code?
+  "Set of stop codes which after recieving, discljord will disconnect all shards"
+  #{4001 4002 4003 4004 4005 4008 4010})
+
+(def re-shard-stop-code
+  "Stop code which Discord will send when the bot needs to be re-sharded"
+  4011)
+
 (defmethod handle-websocket-event :disconnect
   [shard [_ stop-code msg]]
   {:shard (assoc shard
                  :stop-code stop-code
                  :disconnect-msg msg)
-   :effects [[:reconnect]]})
+   :effects [(if-not (= re-shard-stop-code stop-code)
+               (if-not (and *stop-on-fatal-code*
+                            (fatal-code? stop-code))
+                 [:reconnect]
+                 [:disconnect])
+               [:re-shard])]})
 
 (defmethod handle-websocket-event :error
   [shard [_ err]]

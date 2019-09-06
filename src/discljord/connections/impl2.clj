@@ -305,6 +305,7 @@
                                     :seq (:seq shard)}}))
   shard)
 
+;; TODO(Joshua): Make this actually send an event to the controlling process and kill off this shard
 (defmethod handle-shard-fx :reconnect
   [heartbeat-ch output-events url token shard event]
   (let [event-ch (a/chan 100)]

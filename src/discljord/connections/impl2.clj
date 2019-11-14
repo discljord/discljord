@@ -213,22 +213,30 @@
                                       :websocket (connect-websocket! buffer-size url event-ch)
                                       :event-ch event-ch)
                         :effects []}))
-      communication-ch ([value]
+      communication-ch ([[event-type & event-data]]
                         (log/debug (str "Recieved communication value " value " on shard " (:id shard)))
-                        (if-not (= value :disconnect)
+                        (case event-type
+                          :connect (let [event-ch (a/chan 100)]
+                                     (log/info (str "Connecting shard " (:id shard)))
+                                     (a/close! heartbeat-ch)
+                                     {:shard (assoc (dissoc shard :heartbeat-ch)
+                                                    :websocket (connect-websocket! buffer-size url event-ch)
+                                                    :event-ch event-ch)
+                                      :effects []})
+                          :disconnect (do
+                                        (when heartbeat-ch
+                                          (a/close! heartbeat-ch))
+                                        (a/close! communication-ch)
+                                        (ws/close websocket)
+                                        (log/info (str "Disconnecting shard "
+                                                       (:id shard)
+                                                       " and closing connection"))
+                                        {:shard nil
+                                         :effects [[:disconnect]]})
                           (do
                             ;; TODO(Joshua): Send a message over the websocket
                             (log/trace "Sending a message over the websocket")
                             {:shard shard
-                             :effects []})
-                          (do
-                            (when heartbeat-ch
-                              (a/close! heartbeat-ch))
-                            (ws/close websocket)
-                            (log/info (str "Disconnecting shard "
-                                           (:id shard)
-                                           " and closing connection"))
-                            {:shard nil
                              :effects []}))))))
       event-ch ([event]
                 (let [{:keys [shard effects]} (handle-websocket-event shard event)

@@ -99,7 +99,7 @@
 
 (defmethod handle-discord-event :default
   [event-type event]
-  [[:send-discord-event event]])
+  [[:send-discord-event event-type event]])
 
 (defmethod handle-payload :event-dispatch
   [shard {:keys [d t s] :as msg}]
@@ -341,7 +341,7 @@
   shard)
 
 (defmethod handle-shard-fx :send-discord-event
-  [heartbeat-ch output-events url token shard [_ event]]
+  [heartbeat-ch url token shard [_ event-type event]]
   (log/trace (str "Shard " (:id shard) " recieved discord event: " event))
   (a/put! output-events event)
   shard)

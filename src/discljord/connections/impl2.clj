@@ -213,7 +213,7 @@
                                                        (:id shard)
                                                        " and closing connection"))
                                         {:shard nil
-                                         :effects [[:disconnect]]})
+                                         :effects []})
                           (do
                             ;; TODO(Joshua): Send a message over the websocket
                             (log/trace "Sending a message over the websocket")

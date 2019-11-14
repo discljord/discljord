@@ -253,31 +253,6 @@
                                  effects)]
                   shard-map))
 
-(defn connect-shard!
-  "Creates a process which will handle a shard.
-
-  Takes the id of the shard, the number of shards which are being started, a url
-  to connect the websocket to, the token of the bot, and a channel on which to
-  output events.
-
-  Returns a channel on which to communicate with the shard."
-  [shard-id shard-count url token]
-  (let [event-ch (a/chan 100)
-        communication-ch (a/chan 100)]
-    (a/go-loop [shard {:id shard-id
-                       :event-ch event-ch
-                       :websocket (connect-websocket! buffer-size url event-ch)
-                       :token token
-                       :count shard-count
-                       :communication-ch communication-ch}]
-      (when shard
-        (let [{:keys [shard effects]}
-              (a/<! (step-shard! shard url token))]
-          (doseq [effect effects]
-            (prn effect))
-          (recur shard))))
-    communication-ch))
-
 (defn get-websocket-gateway!
   "Gets the shard count and websocket endpoint from Discord's API.
 

@@ -304,14 +304,14 @@
     effect-type))
 
 (comment
-  ;; NOTE(Joshua): So it seems like potentially the best structure for connect
-  ;; bot is to have it have a loop in which it does alts to respond to events
-  ;; off of whichever shard yields one first.
+  ;; So it seems like potentially the best structure for connect bot is to have
+  ;; it have a loop in which it does alts to respond to events off of whichever
+  ;; shard yields one first.
 
-  ;; NOTE(Joshua): The create-shard! function should create a shard, and then
-  ;; when the time is up send a message on the communcation-ch to actually make
-  ;; the connection. The step-shard! will make sure that if the shard hasn't
-  ;; connected yet it will connect when that message is sent.
+  ;; The create-shard! function should create a shard, and then when the time is
+  ;; up send a message on the communcation-ch to actually make the connection.
+  ;; The step-shard! will make sure that if the shard hasn't connected yet it
+  ;; will connect when that message is sent.
 
   ;; Create a number of shards, each with a different amount of time before it
   ;; starts
@@ -325,23 +325,36 @@
       ;; Wait for one of the shards to finish its step
       (let [[value port] (a/alts!! shards)]
         (if (= port communication-ch)
-          (do
+          (let [[command & command-data]]
             ;; Handle the event which has been sent from the user which will
             ;; consist of either something to send to discord, or a disconnect
-            (recur shards))
-          (let [{:keys [shard effects]} value]
+            (if-not (= command :disconnect)
+              (recur shards)
+              :disconnect))
+          (let [{:keys [shard effects re-shard]} value]
             ;; Perform side effects
             (doseq [effect effects]
               (handle-bot-fx output-ch communication-chs shard effect))
             ;; Start again with the next step on that shard
-            (recur (assoc shards (:id shard) (step-shard! shard url token))))))))
+            (if-not re-shard
+              (recur (assoc shards (:id shard) (step-shard! shard url token)))
+              ;; Here is where we handle re-sharding
+              (do
+                ;; For each shard, take its shard-effect and if the resulting
+                ;; shard exists, then run it again
+                (doseq [shard (butlast shards)]
+                  (let [{:keys [shard]} (a/<!! shard)]
+                    (when shard
+                      (step-shard! shard url token))))
+                ;; re-shard the whole thing
+                :re-shard)))))))
 
-  ;; NOTE(Joshua): What I'm currently working through is how I can get a
-  ;; re-shard to cause each shard to disconnect and then trigger the entire
-  ;; thing to do a reconnect. The main problem I see with it is that I have to
-  ;; return that effect up the callstack instead of handling it as a part of the
-  ;; loop. The other issue is that at the moment I can't think of a good way to
-  ;; loop through each one and have each trigger a disconnect.
+  ;; What I'm currently working through is how I can get a re-shard to cause
+  ;; each shard to disconnect and then trigger the entire thing to do a
+  ;; reconnect. The main problem I see with it is that I have to return that
+  ;; effect up the callstack instead of handling it as a part of the loop. The
+  ;; other issue is that at the moment I can't think of a good way to loop
+  ;; through each one and have each trigger a disconnect.
 
   ;; State when a re-shard or disconnect event is sent:
 
@@ -358,6 +371,13 @@
   ;; immediately comes back up, then five seconds later shard 1 goes down and
   ;; immediately comes back up, so I just want to directly go straight for
   ;; disconnect everything and reconnect everything in sequence.
+
+  ;; NOTE(Joshua): I've figured the above out for now, however I need to make
+  ;; the calling context for the above code. I'm thinking it should be a loop
+  ;; which will recur if the return result from this function is :re-shard but
+  ;; which will exit if it returns :disconnect. The whole thing will also likely
+  ;; need to be put into a go-block or something in order to allow parking
+  ;; instead of blocking, but that should be easy enough.
 
   )
 
@@ -459,7 +479,8 @@
   [heartbeat-ch url token shard event]
   (ws/close (:websocket shard))
   {:shard nil
-   :effects [[:re-shard]]})
+   :effects []
+   :re-shard true})
 
 (defmethod handle-shard-fx :error
   [heartbeat-ch url token shard [_ err]]

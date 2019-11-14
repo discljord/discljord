@@ -321,16 +321,44 @@
     ;; For each shard, tell it to start after a given amount of time
     (doseq [{:keys [id communication-ch]} shards]
       (after-timeout #(a/put! communication-ch [:connect]) (* id 5000)))
-    (a/go-loop [shards shards]
+    (loop [shards (conj shards communication-ch)]
       ;; Wait for one of the shards to finish its step
-      (let [[{:keys [shard effects]} _] (a/alts! shards)]
-        (a/go
-          ;; Do any effects here so that they won't keep any of the shards waiting
-          (reduce (partial handle-bot-fx communication-chs) shard effects)
-          )
-        ;; Start again with the next step on that shard
-        (recur (assoc shards (:id shard)
-                      (step-shard! shard url token))))))
+      (let [[value port] (a/alts!! shards)]
+        (if (= port communication-ch)
+          (do
+            ;; Handle the event which has been sent from the user which will
+            ;; consist of either something to send to discord, or a disconnect
+            (recur shards))
+          (let [{:keys [shard effects]} value]
+            ;; Perform side effects
+            (doseq [effect effects]
+              (handle-bot-fx output-ch communication-chs shard effect))
+            ;; Start again with the next step on that shard
+            (recur (assoc shards (:id shard) (step-shard! shard url token))))))))
+
+  ;; NOTE(Joshua): What I'm currently working through is how I can get a
+  ;; re-shard to cause each shard to disconnect and then trigger the entire
+  ;; thing to do a reconnect. The main problem I see with it is that I have to
+  ;; return that effect up the callstack instead of handling it as a part of the
+  ;; loop. The other issue is that at the moment I can't think of a good way to
+  ;; loop through each one and have each trigger a disconnect.
+
+  ;; State when a re-shard or disconnect event is sent:
+
+  ;; Shard0 [[:send-discord-event ...] [:disconnect]]
+  ;; Shard1 [[:disconnect]]
+  ;; Shard2 [[:disconnect]]
+
+  ;; Because of where the state of this is, I can have at most one event waiting
+  ;; on each channel, and since the channel is closed after the disconnect it
+  ;; put on it I should be able to just do two polls off of each one, and then
+  ;; I'll be in a clean state and can start from scratch again. Since the way
+  ;; re-shards work is they change which shard is going to get events from which
+  ;; guilds, I can't just cycle them in a clever way where shard 0 goes down and
+  ;; immediately comes back up, then five seconds later shard 1 goes down and
+  ;; immediately comes back up, so I just want to directly go straight for
+  ;; disconnect everything and reconnect everything in sequence.
+
   )
 
 ;; TODO(Joshua): Change this to be creating a set of shards and then stepping

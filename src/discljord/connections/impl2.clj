@@ -83,7 +83,7 @@
    11 :heartbeat-ack})
 
 (defmulti handle-payload
-  "Take a shard and a message payload and return a vector of a new shard and zero
+  "Take a shard and a message payload and return a map of a new shard and zero
   or more events to be processed by the bot."
   (fn [shard msg]
     (payloads (:op msg))))

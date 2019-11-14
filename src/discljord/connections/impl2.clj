@@ -295,7 +295,8 @@
 
 (defmulti handle-bot-fx
   "Handles a bot-level side effect triggered by a shard. This may be a re-sharding
-  event, a discord event sent to the user, a disconnect event, etc.
+  event, a discord event sent to the user, a disconnect event, etc. This method
+  should never block, and should not do intense computation.
 
   Takes a place to output events to the library user, the channels with which to
   communicate with the shards, the shard this effect came from, and the effect."

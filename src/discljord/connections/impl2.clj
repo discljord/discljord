@@ -294,7 +294,7 @@
   [output-events token]
   (let [{:keys [shard-count session-start-limit url] :as gateway} (get-websocket-gateway! gateway-url token)]
     (log/info (str "Connecting bot to gateway " gateway))
-    (when (> (:remaining session-start-limit) shard-count)
+    (when (and gateway (> (:remaining session-start-limit) shard-count))
       (a/go
         (let [chs (vec
                    (for [id (range shard-count)]

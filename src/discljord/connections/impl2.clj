@@ -194,25 +194,6 @@
    url token]
   (a/go
     (a/alt!
-      heartbeat-ch (if (:ack shard)
-                     (do (log/trace (str "Sending heartbeat payload on shard " (:id shard)))
-                         (ws/send-msg websocket
-                                      (json/write-str {:op 1
-                                                       :d (:seq shard)}))
-                         {:shard (dissoc shard :ack)
-                          :effects []})
-                     (let [event-ch (a/chan 100)]
-                       (try
-                         (when websocket
-                           (ws/close websocket))
-                         (catch Exception e
-                           (log/debug "Websocket failed to close during reconnect" e)))
-                       (log/info (str "Reconnecting due to zombie heartbeat on shard " (:id shard)))
-                       (a/close! heartbeat-ch)
-                       {:shard (assoc (dissoc shard :heartbeat-ch)
-                                      :websocket (connect-websocket! buffer-size url event-ch)
-                                      :event-ch event-ch)
-                        :effects []}))
       communication-ch ([[event-type & event-data]]
                         (log/debug (str "Recieved communication value " value " on shard " (:id shard)))
                         (case event-type
@@ -237,7 +218,26 @@
                             ;; TODO(Joshua): Send a message over the websocket
                             (log/trace "Sending a message over the websocket")
                             {:shard shard
-                             :effects []}))))))
+                             :effects []})))
+      heartbeat-ch (if (:ack shard)
+                     (do (log/trace (str "Sending heartbeat payload on shard " (:id shard)))
+                         (ws/send-msg websocket
+                                      (json/write-str {:op 1
+                                                       :d (:seq shard)}))
+                         {:shard (dissoc shard :ack)
+                          :effects []})
+                     (let [event-ch (a/chan 100)]
+                       (try
+                         (when websocket
+                           (ws/close websocket))
+                         (catch Exception e
+                           (log/debug "Websocket failed to close during reconnect" e)))
+                       (log/info (str "Reconnecting due to zombie heartbeat on shard " (:id shard)))
+                       (a/close! heartbeat-ch)
+                       {:shard (assoc (dissoc shard :heartbeat-ch)
+                                      :websocket (connect-websocket! buffer-size url event-ch)
+                                      :event-ch event-ch)
+                        :effects []}))
       event-ch ([event]
                 (let [{:keys [shard effects]} (handle-websocket-event shard event)
                       shard-map (reduce
@@ -252,6 +252,7 @@
                                   :effects []}
                                  effects)]
                   shard-map))
+      :priority true)))
 
 (defn get-websocket-gateway!
   "Gets the shard count and websocket endpoint from Discord's API.

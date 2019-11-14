@@ -317,6 +317,15 @@
   (a/go (a/<! (a/timeout timeout))
         (f)))
 
+(defmulti handle-bot-fx
+  "Handles a bot-level side effect triggered by a shard. This may be a re-sharding
+  event, a discord event sent to the user, a disconnect event, etc.
+
+  Takes a place to output events to the library user, the channels with which to
+  communicate with the shards, the shard this effect came from, and the effect."
+  (fn [output-ch communication-chs shard [effect-type & effect-data]]
+    effect-type))
+
 (comment
   ;; NOTE(Joshua): So it seems like potentially the best structure for connect
   ;; bot is to have it have a loop in which it does alts to respond to events

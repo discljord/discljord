@@ -297,6 +297,13 @@
    :token token
    :communication-ch (a/chan 100)})
 
+(defn after-timeout
+  "Calls the function of no arguments after the given timeout. Returns a channel
+  which will have the return value of the function put on it."
+  [f timeout]
+  (a/go (a/<! (a/timeout timeout))
+        (f)))
+
 (comment
   ;; NOTE(Joshua): So it seems like potentially the best structure for connect
   ;; bot is to have it have a loop in which it does alts to respond to events

@@ -288,6 +288,15 @@
     (when (:url result)
       result)))
 
+(defn make-shard
+  "Creates a new shard with the given id, shard count, and token."
+  [shard-id shard-count token]
+  {:id shard-id
+   :count shard-count
+   :event-ch (a/chan 100)
+   :token token
+   :communication-ch (a/chan 100)})
+
 (comment
   ;; NOTE(Joshua): So it seems like potentially the best structure for connect
   ;; bot is to have it have a loop in which it does alts to respond to events

@@ -288,9 +288,37 @@
     (when (:url result)
       result)))
 
+(comment
+  ;; NOTE(Joshua): So it seems like potentially the best structure for connect
+  ;; bot is to have it have a loop in which it does alts to respond to events
+  ;; off of whichever shard yields one first.
+
+  ;; NOTE(Joshua): The create-shard! function should create a shard, and then
+  ;; when the time is up send a message on the communcation-ch to actually make
+  ;; the connection. The step-shard! will make sure that if the shard hasn't
+  ;; connected yet it will connect when that message is sent.
+
+  ;; Create a number of shards, each with a different amount of time before it
+  ;; starts
+  (let [shards (mapv create-shard! (map (partial * 5000) (range shard-count)))
+        ;; Fetch the communication channels from each
+        communication-chs (map :communication-ch shards)]
+    (a/go-loop [shards shards]
+      ;; Wait for one of the shards to finish its step
+      (let [[{:keys [shard effects]} _] (a/alts! shards)]
+        (a/go
+          ;; Do any effects here so that they won't keep any of the shards waiting
+          (reduce (partial handle-bot-fx communication-chs) shard effects)
+          )
+        ;; Start again with the next step on that shard
+        (recur (assoc shards (:id shard)
+                      (step-shard! shard url token))))))
+  )
+
 ;; TODO(Joshua): Change this to be creating a set of shards and then stepping
 ;; each of them in sequence
 (defn connect-bot!
+  ""
   [output-events token]
   (let [{:keys [shard-count session-start-limit url] :as gateway} (get-websocket-gateway! gateway-url token)]
     (log/info (str "Connecting bot to gateway " gateway))

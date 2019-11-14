@@ -202,6 +202,11 @@
                          {:shard (dissoc shard :ack)
                           :effects []})
                      (let [event-ch (a/chan 100)]
+                       (try
+                         (when websocket
+                           (ws/close websocket))
+                         (catch Exception e
+                           (log/debug "Websocket failed to close during reconnect" e)))
                        (log/info (str "Reconnecting due to zombie heartbeat on shard " (:id shard)))
                        (a/close! heartbeat-ch)
                        {:shard (assoc (dissoc shard :heartbeat-ch)

@@ -316,9 +316,12 @@
 
   ;; Create a number of shards, each with a different amount of time before it
   ;; starts
-  (let [shards (mapv create-shard! (map (partial * 5000) (range shard-count)))
+  (let [shards (mapv #(make-shard % shard-count token) (range shard-count))
         ;; Fetch the communication channels from each
         communication-chs (map :communication-ch shards)]
+    ;; For each shard, tell it to start after a given amount of time
+    (doseq [{:keys [id communication-ch]} shards]
+      (after-timeout #(a/put! communication-ch [:connect]) (* id 5000)))
     (a/go-loop [shards shards]
       ;; Wait for one of the shards to finish its step
       (let [[{:keys [shard effects]} _] (a/alts! shards)]

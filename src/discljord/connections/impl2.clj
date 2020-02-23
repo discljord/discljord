@@ -189,11 +189,21 @@
   Returns a channel which will have the next state of the shard and any bot-wide
   effects put onto it after completing the step in the form of a map with the
   keys :shard and :effects."
-  [{:keys [event-ch websocket heartbeat-ch communication-ch] :or {heartbeat-ch (a/chan)} :as shard}
+  [{:keys [event-ch websocket heartbeat-ch communication-ch stop-ch] :or {heartbeat-ch (a/chan)} :as shard}
    url token]
   (a/go
     (a/alt!
-      communication-ch ([[event-type & event-data]]
+      stop-ch (do
+                (when heartbeat-ch
+                  (a/close! heartbeat-ch))
+                (a/close! communication-ch)
+                (ws/close websocket)
+                (log/info (str "Disconnecting shard "
+                               (:id shard)
+                               " and closing connection"))
+                {:shard nil
+                 :effects []})
+      communication-ch ([[event-type & event-data :as value]]
                         (log/debug (str "Recieved communication value " value " on shard " (:id shard)))
                         (case event-type
                           :connect (let [event-ch (a/chan 100)]
@@ -203,16 +213,6 @@
                                                     :websocket (connect-websocket! buffer-size url event-ch)
                                                     :event-ch event-ch)
                                       :effects []})
-                          :disconnect (do
-                                        (when heartbeat-ch
-                                          (a/close! heartbeat-ch))
-                                        (a/close! communication-ch)
-                                        (ws/close websocket)
-                                        (log/info (str "Disconnecting shard "
-                                                       (:id shard)
-                                                       " and closing connection"))
-                                        {:shard nil
-                                         :effects []})
                           (do
                             ;; TODO(Joshua): Send a message over the websocket
                             (log/trace "Sending a message over the websocket")
@@ -283,7 +283,8 @@
    :count shard-count
    :event-ch (a/chan 100)
    :token token
-   :communication-ch (a/chan 100)})
+   :communication-ch (a/chan 100)
+   :stop-ch (a/chan 1)})
 
 (defn after-timeout
   "Calls the function of no arguments after the given timeout. Returns a channel
@@ -299,7 +300,7 @@
 
   Takes a place to output events to the library user, the channels with which to
   communicate with the shards, the shard this effect came from, and the effect."
-  (fn [output-ch communication-chs shard [effect-type & effect-data]]
+  (fn [output-ch stop-chs communication-chs shard [effect-type & effect-data]]
     effect-type))
 
 (comment
@@ -316,7 +317,8 @@
   ;; starts
   (let [shards (mapv #(make-shard % shard-count token) (range shard-count))
         ;; Fetch the communication channels from each
-        communication-chs (map :communication-ch shards)]
+        communication-chs (map :communication-ch shards)
+        stop-chs (map :stop-ch shards)]
     ;; For each shard, tell it to start after a given amount of time
     (doseq [{:keys [id communication-ch]} shards]
       (after-timeout #(a/put! communication-ch [:connect]) (* id 5000)))
@@ -333,7 +335,7 @@
           (let [{:keys [shard effects re-shard]} value]
             ;; Perform side effects
             (doseq [effect effects]
-              (handle-bot-fx output-ch communication-chs shard effect))
+              (handle-bot-fx output-ch stop-chs communication-chs shard effect))
             ;; Start again with the next step on that shard
             (if-not re-shard
               (recur (assoc shards (:id shard) (step-shard! shard url token)))
@@ -357,7 +359,7 @@
 
   ;; State when a re-shard or disconnect event is sent:
 
-  ;; Shard0 [[:send-discord-event ...] [:disconnect]]
+  ;; Shard0 [[:discord-event ...] [:disconnect]]
   ;; Shard1 [[:disconnect]]
   ;; Shard2 [[:disconnect]]
 
@@ -377,8 +379,6 @@
   ;; which will exit if it returns :disconnect. The whole thing will also likely
   ;; need to be put into a go-block or something in order to allow parking
   ;; instead of blocking, but that should be easy enough.
-
-  )
 
 ;; TODO(Joshua): Change this to be creating a set of shards and then stepping
 ;; each of them in sequence
@@ -402,6 +402,8 @@
           (doseq [ch chs]
             (vswap! chs-vec conj! (a/<! ch)))
           (persistent! @chs-vec))))))
+
+  )
 
 (defmethod handle-shard-fx :start-heartbeat
   [heartbeat-ch url token shard [_ heartbeat-interval]]

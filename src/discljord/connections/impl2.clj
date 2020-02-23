@@ -53,9 +53,9 @@
   "Set of stop codes which after recieving, discljord will disconnect all shards"
   #{4001 4002 4003 4004 4005 4008 4010})
 
-(def re-shard-stop-code
-  "Stop code which Discord will send when the bot needs to be re-sharded"
-  4011)
+(def re-shard-stop-code?
+  "Stop codes which Discord will send when the bot needs to be re-sharded."
+  #{4011})
 
 (defmethod handle-websocket-event :disconnect
   [shard [_ stop-code msg]]
@@ -63,10 +63,10 @@
                  :stop-code stop-code
                  :disconnect-msg msg)
    :effects [(cond
-               (= re-shard-stop-code stop-code)  [:re-shard]
+               (re-shard-stop-code? stop-code) [:re-shard]
                (and *stop-on-fatal-code*
-                    (fatal-code? stop-code))     [:disconnect]
-               :otherwise                        [:reconnect])]})
+                    (fatal-code? stop-code))   [:disconnect]
+               :otherwise                      [:reconnect])]})
 
 (defmethod handle-websocket-event :error
   [shard [_ err]]

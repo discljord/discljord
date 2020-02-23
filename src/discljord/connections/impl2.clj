@@ -286,7 +286,7 @@
    :communication-ch (a/chan 100)
    :stop-ch (a/chan 1)})
 
-(defn after-timeout
+(defn after-timeout!
   "Calls the function of no arguments after the given timeout. Returns a channel
   which will have the return value of the function put on it."
   [f timeout]
@@ -321,7 +321,7 @@
         stop-chs (map :stop-ch shards)]
     ;; For each shard, tell it to start after a given amount of time
     (doseq [{:keys [id communication-ch]} shards]
-      (after-timeout #(a/put! communication-ch [:connect]) (* id 5000)))
+      (after-timeout! #(a/put! communication-ch [:connect]) (* id 5000)))
     (loop [shards (conj shards communication-ch)]
       ;; Wait for one of the shards to finish its step
       (let [[value port] (a/alts!! shards)]

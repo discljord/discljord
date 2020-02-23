@@ -1,4 +1,5 @@
 (ns discljord.connections.impl2
+  "Implementation of websocket connections to Discord."
   (:require
    [clojure.core.async :as a]
    [clojure.data.json :as json]
@@ -14,22 +15,22 @@
     SslContextFactory)))
 
 (def buffer-size
-  "The suggested size of a buffer, namely 4MiB"
+  "The suggested size of a buffer; default: 4MiB."
   4194304)
 
 (defmulti handle-websocket-event
-  "Updates a shard based on shard events. Takes a shard and a shard event vector
-  and returns a map of the new state of the shard and zero or more events to
-  process."
+  "Updates a `shard` based on shard events.
+  Takes a `shard` and a shard event vector and returns a map of the new state of
+  the shard and zero or more events to process."
   (fn [shard [event-type & args]]
     event-type))
 
 (def new-session-stop-code?
-  "Set of stop codes after which a resume isn't possible"
+  "Set of stop codes after which a resume isn't possible."
   #{4003 4004 4007 4009})
 
 (defn should-resume?
-  "Returns if a shard should try to resume"
+  "Returns if a shard should try to resume."
   [shard]
   (when (:stop-code shard)
     (and (not (new-session-stop-code? (:stop-code shard)))
@@ -38,19 +39,17 @@
 
 (defmethod handle-websocket-event :connect
   [shard [_]]
-  ;; This one also needs to have handling for creating and sending the identify packet
   {:shard shard
    :effects [(if (should-resume? shard)
                [:resume]
                [:identify])]})
 
 (def ^:dynamic *stop-on-fatal-code*
-  "Boolean which tells discljord to disconnect the entire bot when running into
-  fatal stop codes"
+  "Bind to to true to disconnect the entire bot after a fatal stop code."
   false)
 
 (def fatal-code?
-  "Set of stop codes which after recieving, discljord will disconnect all shards"
+  "Set of stop codes which after recieving, discljord will disconnect all shards."
   #{4001 4002 4003 4004 4005 4008 4010})
 
 (def re-shard-stop-code?
@@ -73,7 +72,8 @@
   {:shard shard
    :effects [[:error err]]})
 
-(def ^:private payloads
+(def ^:private payload-id->payload-key
+  "Map from payload type ids to the payload keyword."
   {0 :event-dispatch
    1 :heartbeat
    7 :reconnect
@@ -82,17 +82,18 @@
    11 :heartbeat-ack})
 
 (defmulti handle-payload
-  "Take a shard and a message payload and return a map of a new shard and zero
-  or more events to be processed by the bot."
+  "Update a `shard` based on a message.
+  Takes a `shard` and `msg` and returns a map with a :shard and an :effects
+  vector."
   (fn [shard msg]
-    (payloads (:op msg))))
+    (payload-id->payload-key (:op msg))))
 
 (defmethod handle-websocket-event :message
   [shard [_ msg]]
   (handle-payload shard (clean-json-input (json/read-str msg))))
 
 (defmulti handle-discord-event
-  "Takes a discord event and returns a vector of effects to process"
+  "Takes a discord event and returns a vector of effects to process."
   (fn [event-type event]
     event-type))
 
@@ -134,17 +135,16 @@
    :effects []})
 
 (defn connect-websocket!
-  "Connect a websocket with the given buffer size to the url and put all events
-  onto the event-ch.
-
+  "Connect a websocket to the `url` that puts all events onto the `event-ch`.
   Events are represented as vectors with a keyword for the event type and then
   event data as the rest of the vector based on the type of event.
 
-  Connection events are of type :connect and have no additional data.
-  Disconnection events are of type :disconnect and have a stop code and string
-  message.
-  Error events are of type :error and have an exception.
-  Message events are of type :message and have the string message."
+  | Type          | Data |
+  |---------------+------|
+  | `:connect`    | None.
+  | `:disconnect` | Stop code, string message.
+  | `:error`      | Error value.
+  | `:message`    | String message."
   [buffer-size url event-ch]
   (let [client (WebSocketClient. (doto (SslContextFactory.)
                                    (.setEndpointIdentificationAlgorithm "HTTPS")))]
@@ -172,91 +172,85 @@
                     (a/put! event-ch [:message msg])))))
 
 (defmulti handle-shard-fx
-  ""
-  (fn [heartbeat-ch url token shard [event-type & args]]
-    event-type))
+  "Processes an `event` on a given `shard` for side effects.
+  Returns a map with the new :shard and bot-level :effects to process."
+  (fn [heartbeat-ch url token shard event]
+    (first event)))
 
 (defn step-shard!
-  "Takes a shard and steps it through a single event, either a heartbeat, a
-  websocket event, or a communication event. Any shard-specific side-effects
-  which need to happen will be performed as a part of this method, including
-  sending heartbeats, reconnecting the websocket, sending messages over the
-  socket, etc.
-
-  Takes a shard, the url to connect the websocket to, the token for the bot, and
-  a channel for communicating with the shard.
-
-  Returns a channel which will have the next state of the shard and any bot-wide
-  effects put onto it after completing the step in the form of a map with the
-  keys :shard and :effects."
-  [{:keys [event-ch websocket heartbeat-ch communication-ch stop-ch] :or {heartbeat-ch (a/chan)} :as shard}
-   url token]
-  (a/go
-    (a/alt!
-      stop-ch (do
-                (when heartbeat-ch
-                  (a/close! heartbeat-ch))
-                (a/close! communication-ch)
-                (ws/close websocket)
-                (log/info (str "Disconnecting shard "
-                               (:id shard)
-                               " and closing connection"))
-                {:shard nil
-                 :effects []})
-      communication-ch ([[event-type & event-data :as value]]
-                        (log/debug (str "Recieved communication value " value " on shard " (:id shard)))
-                        (case event-type
-                          :connect (let [event-ch (a/chan 100)]
-                                     (log/info (str "Connecting shard " (:id shard)))
-                                     (a/close! heartbeat-ch)
-                                     {:shard (assoc (dissoc shard :heartbeat-ch)
-                                                    :websocket (connect-websocket! buffer-size url event-ch)
-                                                    :event-ch event-ch)
-                                      :effects []})
-                          (do
-                            ;; TODO(Joshua): Send a message over the websocket
-                            (log/trace "Sending a message over the websocket")
-                            {:shard shard
-                             :effects []})))
-      heartbeat-ch (if (:ack shard)
-                     (do (log/trace (str "Sending heartbeat payload on shard " (:id shard)))
-                         (ws/send-msg websocket
-                                      (json/write-str {:op 1
-                                                       :d (:seq shard)}))
-                         {:shard (dissoc shard :ack)
-                          :effects []})
-                     (let [event-ch (a/chan 100)]
-                       (try
-                         (when websocket
-                           (ws/close websocket))
-                         (catch Exception e
-                           (log/debug "Websocket failed to close during reconnect" e)))
-                       (log/info (str "Reconnecting due to zombie heartbeat on shard " (:id shard)))
-                       (a/close! heartbeat-ch)
-                       {:shard (assoc (dissoc shard :heartbeat-ch)
-                                      :websocket (connect-websocket! buffer-size url event-ch)
-                                      :event-ch event-ch)
-                        :effects []}))
-      event-ch ([event]
-                (let [{:keys [shard effects]} (handle-websocket-event shard event)
-                      shard-map (reduce
-                                 (fn [{:keys [shard effects]} new-effect]
-                                   (let [old-effects effects
-                                         {:keys [shard effects]}
-                                         (handle-shard-fx heartbeat-ch url token shard new-effect)
-                                         new-effects (vec (concat old-effects effects))]
-                                     {:shard shard
-                                      :effects new-effects}))
-                                 {:shard shard
-                                  :effects []}
-                                 effects)]
-                  shard-map))
-      :priority true)))
+  "Starts a process to step a `shard`, handling side-effects.
+  Returns a channel which will have a map with the new `:shard` and a vector of
+  `:effects` for the entire bot to respond to placed on it after the next item
+  the socket may respond to occurs."
+  [shard url token]
+  (let [{:keys [event-ch websocket heartbeat-ch communication-ch stop-ch] :or {heartbeat-ch (a/chan)}} shard]
+    (a/go
+      (a/alt!
+        stop-ch (do
+                  (when heartbeat-ch
+                    (a/close! heartbeat-ch))
+                  (a/close! communication-ch)
+                  (ws/close websocket)
+                  (log/info (str "Disconnecting shard "
+                                 (:id shard)
+                                 " and closing connection"))
+                  {:shard nil
+                   :effects []})
+        communication-ch ([[event-type & event-data :as value]]
+                          (log/debug (str "Recieved communication value " value " on shard " (:id shard)))
+                          ;; TODO(Joshua): consider extracting this to a multimethod
+                          (case event-type
+                            :connect (let [event-ch (a/chan 100)]
+                                       (log/info (str "Connecting shard " (:id shard)))
+                                       (a/close! heartbeat-ch)
+                                       {:shard (assoc (dissoc shard :heartbeat-ch)
+                                                      :websocket (connect-websocket! buffer-size url event-ch)
+                                                      :event-ch event-ch)
+                                        :effects []})
+                            (do
+                              ;; TODO(Joshua): Send a message over the websocket
+                              (log/trace "Sending a message over the websocket")
+                              {:shard shard
+                               :effects []})))
+        heartbeat-ch (if (:ack shard)
+                       (do (log/trace (str "Sending heartbeat payload on shard " (:id shard)))
+                           (ws/send-msg websocket
+                                        (json/write-str {:op 1
+                                                         :d (:seq shard)}))
+                           {:shard (dissoc shard :ack)
+                            :effects []})
+                       (let [event-ch (a/chan 100)]
+                         (try
+                           (when websocket
+                             (ws/close websocket))
+                           (catch Exception e
+                             (log/debug "Websocket failed to close during reconnect" e)))
+                         (log/info (str "Reconnecting due to zombie heartbeat on shard " (:id shard)))
+                         (a/close! heartbeat-ch)
+                         {:shard (assoc (dissoc shard :heartbeat-ch)
+                                        :websocket (connect-websocket! buffer-size url event-ch)
+                                        :event-ch event-ch)
+                          :effects []}))
+        event-ch ([event]
+                  (let [{:keys [shard effects]} (handle-websocket-event shard event)
+                        shard-map (reduce
+                                   (fn [{:keys [shard effects]} new-effect]
+                                     (let [old-effects effects
+                                           {:keys [shard effects]}
+                                           (handle-shard-fx heartbeat-ch url token shard new-effect)
+                                           new-effects (vec (concat old-effects effects))]
+                                       {:shard shard
+                                        :effects new-effects}))
+                                   {:shard shard
+                                    :effects []}
+                                   effects)]
+                    shard-map))
+        :priority true))))
 
 (defn get-websocket-gateway!
   "Gets the shard count and websocket endpoint from Discord's API.
 
-  Takes the url of the gateway and the token of the bot.
+  Takes the `url` of the gateway and the `token` of the bot.
 
   Returns a map with the keys :url, :shard-count, and :session-start limit, or
   nil in the case of an error."
@@ -277,9 +271,9 @@
       result)))
 
 (defn make-shard
-  "Creates a new shard with the given id, shard count, and token."
-  [shard-id shard-count token]
-  {:id shard-id
+  "Creates a new shard with the given `id`, `shard-count`, and `token`."
+  [id shard-count token]
+  {:id id
    :count shard-count
    :event-ch (a/chan 100)
    :token token
@@ -287,17 +281,15 @@
    :stop-ch (a/chan 1)})
 
 (defn after-timeout!
-  "Calls the function of no arguments after the given timeout. Returns a channel
-  which will have the return value of the function put on it."
+  "Calls a function of no arguments after the given `timeout`.
+  Returns a channel which will have the return value of the function put on it."
   [f timeout]
   (a/go (a/<! (a/timeout timeout))
         (f)))
 
 (defmulti handle-bot-fx
-  "Handles a bot-level side effect triggered by a shard. This may be a re-sharding
-  event, a discord event sent to the user, a disconnect event, etc. This method
-  should never block, and should not do intense computation.
-
+  "Handles a bot-level side effect triggered by a shard.
+  This method should never block, and should not do intense computation.
   Takes a place to output events to the library user, the channels with which to
   communicate with the shards, the shard this effect came from, and the effect."
   (fn [output-ch stop-chs communication-chs shard [effect-type & effect-data]]

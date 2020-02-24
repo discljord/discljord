@@ -3,8 +3,8 @@
   (:require
    [clojure.core.async :as a]
    [clojure.data.json :as json]
-   [discljord.http :refer (gateway-url)]
-   [discljord.util :refer (json-keyword clean-json-input)]
+   [discljord.http :refer [gateway-url]]
+   [discljord.util :refer [json-keyword clean-json-input]]
    [gniazdo.core :as ws]
    [org.httpkit.client :as http]
    [taoensso.timbre :as log])

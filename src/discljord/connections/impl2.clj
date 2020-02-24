@@ -407,14 +407,14 @@
   Takes an `event` vector, a vector of `shards`, and a vector of channels which
   resolve to each shard's next state, and returns a vector of the vector of
   shards and the vector of channels."
-  (fn [event shards shard-chs]
+  (fn [shards shard-chs event]
     (first event)))
 
 (defn- index-of
   "Fetches the index of the first occurent of `elt` in `coll`.
   Returns nil if it's not found."
   [elt coll]
-  (first (first (filter #(= (second %) elt) (map-indexed vector coll)))))
+  (first (first (filter (comp #{elt} second) (map-indexed vector coll)))))
 
 (defn connect-shards!
   "Connects a set of shards with the given `shard-ids`."
@@ -425,10 +425,10 @@
       (when (some identity shard-chs)
         (reset! user/shards shards)
         (log/trace "Waiting for a shard to complete a step")
-        (let [[v p] (a/alts! (conj (filter identity shard-chs)
+        (let [[v p] (a/alts! (conj (remove nil? shard-chs)
                                    communication-ch))]
           (if (= communication-ch p)
-            (let [[shards shard-chs] (handle-communication! v shards shard-chs)]
+            (let [[shards shard-chs] (handle-communication! shards shard-chs v)]
               (recur shards shard-chs))
             (let [idx (index-of p shard-chs)
                   effects (:effects v)
@@ -488,11 +488,11 @@
     [nil nil]))
 
 (defmethod handle-communication! :disconnect
-  [_ shards shard-chs]
+  [shards shard-chs _]
   (run! #(a/put! (:stop-ch %) :disconnect) shards)
   [shards shard-chs])
 
 (defmethod handle-communication! :send-debug-event
-  [[_ shard-id event] shards shard-chs]
+  [shards shard-chs [_ shard-id event]]
   (a/put! (:event-ch (get shards shard-id)) event)
   [shards shard-chs])

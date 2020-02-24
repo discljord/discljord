@@ -7,7 +7,7 @@
    [discljord.specs :as ds]
    [taoensso.timbre :as log]))
 
-(def ^:dynamic *enable-logging*
+(def ^:dynamic ^:deprecated *enable-logging*
   "Dynamic var to allow you to disable logging entirely.
   Set in a binding form around the calls to start-connection! and
   connect-bot!"
@@ -15,7 +15,7 @@
 
 (s/def ::logging-level #{:trace :debug :info :warn :error :fatal :report})
 
-(defn set-logging-level!
+(defn ^:deprecated set-logging-level!
   "Sets the logging level for discljord through tambre.
   Levels are :trace, :debug, :info, :warn, :error, :fatal, and :report"
   [logging-level]

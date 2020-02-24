@@ -10,7 +10,7 @@
    [discljord.connections.specs :as cs]
    [discljord.http :refer [gateway-url]]
    [discljord.specs :as ds]
-   [discljord.util :refer [bot-token *enable-logging*]]
+   [discljord.util :refer [bot-token]]
    [taoensso.timbre :as log]))
 
 (defn connect-bot!

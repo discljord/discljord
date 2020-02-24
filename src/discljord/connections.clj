@@ -25,7 +25,9 @@
 
   Keep in mind that Discord sets a limit to how many shards can connect in a
   given period. This means that communication to Discord may be bounded based
-  on which shard you use to talk to the server immediately after starting the bot."
+  on which shard you use to talk to the server immediately after starting the bot.
+
+  The `buffer-size` parameter is deprecated, and will be ignored."
   [token out-ch & {:keys [buffer-size]}]
   (let [token (bot-token token)
         {:keys [url shard-count session-start-limit]}

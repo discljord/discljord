@@ -224,8 +224,7 @@
                                                       :event-ch event-ch)
                                         :effects []})
                             (do
-                              ;; TODO(Joshua): Send a message over the websocket
-                              (log/trace "Sending a message over the websocket")
+                              (log/warn "Unknown communication event recieved on a shard" event-data)
                               {:shard shard
                                :effects []})))
         heartbeat-ch (if (:ack shard)
@@ -353,7 +352,6 @@
     {:shard shard
      :effects []}))
 
-;; TODO(Joshua): Make this actually send an event to the controlling process and kill off this shard
 (defmethod handle-shard-fx! :reconnect
   [heartbeat-ch url token shard event]
   (let [event-ch (a/chan 100)]

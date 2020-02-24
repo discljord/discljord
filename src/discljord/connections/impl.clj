@@ -35,7 +35,8 @@
   (when (:stop-code shard)
     (and (not (new-session-stop-code? (:stop-code shard)))
          (:seq shard)
-         (:session-id shard))))
+         (:session-id shard)
+         (not (:unresumable shard)))))
 
 (defmethod handle-websocket-event :connect
   [shard [_]]
@@ -58,16 +59,20 @@
 
 (defmethod handle-websocket-event :disconnect
   [shard [_ stop-code msg]]
-  (if shard
-    {:shard (assoc shard
+  (if (and shard
+           (not (:requested-disconnect shard)))
+    {:shard (assoc (dissoc shard
+                           :websocket)
                    :stop-code stop-code
                    :disconnect-msg msg)
      :effects [(cond
                  (re-shard-stop-code? stop-code) [:re-shard]
                  (and *stop-on-fatal-code*
-                      (fatal-code? stop-code))   [:disconnect]
+                      (fatal-code? stop-code))   [:disconnect-all]
                  :otherwise                      [:reconnect])]}
-    {:shard nil
+    {:shard (when (:requested-disconnect shard)
+              (dissoc shard
+                      :websocket))
      :effects []}))
 
 (defmethod handle-websocket-event :error
@@ -112,7 +117,13 @@
 
 (defmethod handle-discord-event :ready
   [shard event-type event]
-  {:shard (assoc shard :session-id (:session-id event))
+  {:shard (assoc (dissoc shard
+                         :retries
+                         :stop-code
+                         :disconnect-msg
+                         :invalid-session
+                         :unresumable)
+                 :session-id (:session-id event))
    :effects [[:send-discord-event event-type event]]})
 
 (defmethod handle-payload :event-dispatch
@@ -134,7 +145,8 @@
   {:shard (assoc (dissoc shard
                          :session-id
                          :seq)
-                 :invalid-session true)
+                 :invalid-session true
+                 :unresumable (not d))
    :effects [[:reconnect]]})
 
 (defmethod handle-payload :hello
@@ -205,11 +217,19 @@
 
 (defmethod handle-shard-communication! :connect
   [shard heartbeat-ch url event-ch _]
-  (let [event-ch (a/chan 100)]
-    (log/info "Connecting shard" (:id shard))
-    (a/close! heartbeat-ch)
-    {:shard (assoc (dissoc shard :heartbeat-ch)
-                   :websocket (connect-websocket! buffer-size url event-ch)
+  (log/info "Connecting shard" (:id shard))
+  (a/close! heartbeat-ch)
+  (let [event-ch (a/chan 100)
+        websocket (try (connect-websocket! buffer-size url event-ch)
+                       (catch Exception err
+                         (log/warn "Failed to connect a websocket" err)
+                         nil))]
+    (when-not websocket
+      (a/put! event-ch [:disconnect nil "Failed to connect"]))
+    {:shard (assoc (dissoc shard
+                           :heartbeat-ch
+                           :requested-disconnect)
+                   :websocket websocket
                    :event-ch event-ch)
      :effects []}))
 
@@ -302,17 +322,14 @@
                                                          :d (:seq shard)}))
                            {:shard (dissoc shard :ack)
                             :effects []})
-                       (let [event-ch (a/chan 100)]
-                         (try
-                           (when websocket
-                             (ws/close websocket))
-                           (catch Exception e
-                             (log/debug "Websocket failed to close during reconnect" e)))
+                       (do
+                         (when websocket
+                           (ws/close websocket))
                          (log/info "Reconnecting due to zombie heartbeat on shard" (:id shard))
                          (a/close! heartbeat-ch)
+                         (a/put! communication-ch [:connect])
                          {:shard (assoc (dissoc shard :heartbeat-ch)
-                                        :websocket (connect-websocket! buffer-size url event-ch)
-                                        :event-ch event-ch)
+                                        :requested-disconnect true)
                           :effects []}))
         event-ch ([event]
                   (let [{:keys [shard effects]} (handle-websocket-event shard event)
@@ -392,54 +409,70 @@
   {:shard shard
    :effects []})
 
+(def identify-limiter (agent nil))
+(defn run-on-agent-with-limit
+  "Runs the given function on the agent, then other actions wait `millis`."
+  [a f millis]
+  (send-off a (fn [_]
+                (f)
+                (a/<!! (a/timeout millis))
+                nil)))
+
 (defmethod handle-shard-fx! :identify
   [heartbeat-ch url token shard event]
-  (log/debug "Sending identify payload for shard" (:id shard))
-  (ws/send-msg (:websocket shard)
-               (json/write-str {:op 2
-                                :d {:token token
-                                    :properties {"$os" "linux"
-                                                 "$browser" "discljord"
-                                                 "$device" "discljord"}
-                                    :compress false
-                                    :large_threshold 50
-                                    :shard [(:id shard) (:count shard)]}}))
+  (run-on-agent-with-limit
+   identify-limiter
+   (fn []
+     (log/debug "Sending identify payload for shard" (:id shard))
+     (ws/send-msg (:websocket shard)
+                  (json/write-str {:op 2
+                                   :d {"token" token
+                                       "properties" {"$os" "linux"
+                                                     "$browser" "discljord"
+                                                     "$device" "discljord"}
+                                       "compress" false
+                                       "large_threshold" 50
+                                       "shard" [(:id shard) (:count shard)]}})))
+   5100)
   {:shard shard
    :effects []})
 
 (defmethod handle-shard-fx! :resume
   [heartbeat-ch url token shard event]
-  (log/debug "Sending resume payload for shard" (:id shard))
-  (let [event-ch (a/chan 100)
-        shard (assoc shard :websocket (connect-websocket! buffer-size url event-ch))]
-    (ws/send-msg (:websocket shard)
-                 (json/write-str {:op 6
-                                  :d {:token token
-                                      :session_id (:session-id shard)
-                                      :seq (:seq shard)}}))
-    {:shard shard
-     :effects []}))
+  (log/debug "Sending resume payload for shard" (:id shard)
+             "with session" (:session-id shard) "and seq" (:seq shard))
+  (ws/send-msg (:websocket shard)
+               (json/write-str {:op 6
+                                :d {"token" token
+                                    "session_id" (:session-id shard)
+                                    "seq" (:seq shard)}}))
+  {:shard shard
+   :effects []})
 
 (defmethod handle-shard-fx! :reconnect
   [heartbeat-ch url token shard event]
-  (let [event-ch (a/chan 100)]
-    (when (:invalid-session shard)
-      (log/warn "Got invalid session payload, disconnecting shard" (:id shard)))
-    (when (:stop-code shard)
-      (log/debug "Shard" (:id shard)
-                 "has disconnected with stop-code"
-                 (:stop-code shard) "and message" (:disconnect-msg shard)))
-    (when (:heartbeat-ch shard)
-      (a/close! (:heartbeat-ch shard)))
-    (log/debug "Reconnecting shard" (:id shard))
-    {:shard (assoc (dissoc shard
-                           :invalid-session
-                           :stop-code
-                           :disconnect-msg
-                           :heartbeat-ch)
-                   :websocket (connect-websocket! buffer-size url event-ch)
-                   :event-ch event-ch)
-     :effects []}))
+  (when (:websocket shard)
+    (ws/close (:websocket shard)))
+  (when (:invalid-session shard)
+    (log/warn "Got invalid session payload, reconnecting shard" (:id shard)))
+  (when (:heartbeat-ch shard)
+    (a/close! (:heartbeat-ch shard)))
+  (let [retries (inc (or (:retries shard) 0))
+        retry-wait (min (* 5100 (* retries retries)) (* 15 60 1000))]
+    (log/debug "Will try to connect in" (int (/ retry-wait 1000)) "seconds")
+    (after-timeout! (fn []
+                      (log/debug "Sending reconnect signal to shard" (:id shard))
+                      (a/put! (:communication-ch shard) [:connect]))
+                    retry-wait)
+    (let [shard (if (:invalid-session shard)
+                  (dissoc shard :session-id)
+                  shard)]
+      {:shard (assoc (dissoc shard
+                             :heartbeat-ch
+                             :websocket)
+                     :retries retries
+                     :requested-disconnect true)
+       :effects []})))
 
 (defmethod handle-shard-fx! :re-shard
   [heartbeat-ch url token shard event]
@@ -458,7 +491,7 @@
   {:shard shard
    :effects [[:discord-event event-type event]]})
 
-(defmethod handle-shard-fx! :disconnect
+(defmethod handle-shard-fx! :disconnect-all
   [heartbeat-ch url token shard _]
   {:shard shard
    :effects [[:disconnect]]})
@@ -494,28 +527,31 @@
   (let [shards (mapv #(make-shard % shard-count) shard-ids)]
     (a/go-loop [shards shards
                 shard-chs (mapv #(step-shard! % url token) shards)]
-      (when (some identity shard-chs)
-        (log/trace "Waiting for a shard to complete a step")
-        (let [[v p] (a/alts! (conj (remove nil? shard-chs)
-                                   communication-ch))]
-          (if (= communication-ch p)
-            (let [[shards shard-chs] (handle-communication! shards shard-chs v)]
-              (recur shards shard-chs))
-            (let [idx (index-of p shard-chs)
-                  effects (:effects v)
-                  shards (assoc shards idx (:shard v))
-                  shard-chs (assoc shard-chs idx (when (:shard v)
-                                                   (step-shard! (:shard v) url token)))
-                  [shards shard-chs] (reduce (fn [[shards shard-chs] effect]
-                                               (handle-bot-fx! output-ch
-                                                               url token
-                                                               shards shard-chs
-                                                               idx effect))
-                                             [shards shard-chs]
-                                             effects)]
-              (recur shards shard-chs))))))
+      (if (some identity shard-chs)
+        (do (log/trace "Waiting for a shard to complete a step")
+            (let [[v p] (a/alts! (conj (remove nil? shard-chs)
+                                       communication-ch))]
+              (if (= communication-ch p)
+                (let [[shards shard-chs] (handle-communication! shards shard-chs v)]
+                  (recur shards shard-chs))
+                (let [idx (index-of p shard-chs)
+                      effects (:effects v)
+                      shards (assoc shards idx (:shard v))
+                      shard-chs (assoc shard-chs idx (when (:shard v)
+                                                       (step-shard! (:shard v) url token)))
+                      [shards shard-chs] (reduce (fn [[shards shard-chs] effect]
+                                                   (handle-bot-fx! output-ch
+                                                                   url token
+                                                                   shards shard-chs
+                                                                   idx effect))
+                                                 [shards shard-chs]
+                                                 effects)]
+                  (recur shards shard-chs)))))
+        (log/trace "Exiting the shard loop")))
+    #_(doseq [[idx shard] (map-indexed vector shards)]
+        (after-timeout! #(a/put! (:communication-ch shard) [:connect]) (* idx 5100)))
     (doseq [[idx shard] (map-indexed vector shards)]
-      (after-timeout! #(a/put! (:communication-ch shard) [:connect]) (* idx 5100)))
+      (a/put! (:communication-ch shard) [:connect]))
     (after-timeout! #(a/put! output-ch [:connected-all-shards]) (+ (* (dec (count shard-ids)) 5100)
                                                                    100))
     nil))

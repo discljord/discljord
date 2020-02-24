@@ -294,7 +294,6 @@
                    :effects []})
         communication-ch ([[event-type & event-data :as value]]
                           (log/debug "Recieved communication value" value "on shard" (:id shard))
-                          ;; TODO(Joshua): consider extracting this to a multimethod
                           (handle-shard-communication! shard heartbeat-ch url event-ch value))
         heartbeat-ch (if (:ack shard)
                        (do (log/trace "Sending heartbeat payload on shard" (:id shard))

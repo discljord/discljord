@@ -1,4 +1,4 @@
-(ns discljord.connections
+(ns discljord.connections2
   "Namespace for creating a connection to Discord, and recieving messages.
   Contains functionality required to create and maintain a sharded and auto-reconnecting
   connection object which will recieve messages from Discord, and pass them on to client
@@ -6,11 +6,11 @@
   (:require
    [clojure.core.async :as a]
    [clojure.spec.alpha :as s]
-   [discljord.connections.impl :as impl]
+   [discljord.connections.impl2 :as impl]
    [discljord.connections.specs :as cs]
    [discljord.http :refer [gateway-url]]
    [discljord.specs :as ds]
-   [discljord.util :refer [bot-token]]
+   [discljord.util :refer [bot-token *enable-logging*]]
    [taoensso.timbre :as log]))
 
 (defn connect-bot!
@@ -25,24 +25,9 @@
 
   Keep in mind that Discord sets a limit to how many shards can connect in a
   given period. This means that communication to Discord may be bounded based
-  on which shard you use to talk to the server immediately after starting the bot.
-
-  The `buffer-size` parameter is deprecated, and will be ignored."
-  [token out-ch & {:keys [buffer-size]}]
-  (let [token (bot-token token)
-        {:keys [url shard-count session-start-limit]}
-        (impl/get-websocket-gateway gateway-url token)]
-    (if (and url shard-count session-start-limit)
-      (do (when (< (:remaining session-start-limit) shard-count)
-            (throw (ex-info "Not enough remaining identify packets for number of shards."
-                            {:token token
-                             :shard-count shard-count
-                             :remaining-starts (:remaining session-start-limit)
-                             :reset-after (:reset-after session-start-limit)})))
-          (let [communication-chan (a/chan 100)]
-            (impl/connect-shards! out-ch communication-chan url token shard-count (range shard-count))
-            communication-chan))
-      (log/debug "Unable to recieve gateway information."))))
+  on which shard you use to talk to the server immediately after starting the bot."
+  [token out-ch & {:keys [buffer-size retry-fn]}]
+  )
 (s/fdef connect-bot!
   :args (s/cat :token ::ds/token :out-ch ::ds/channel
                :keyword-args (s/keys* :opt-un [::cs/buffer-size]))
@@ -51,8 +36,7 @@
 (defn disconnect-bot!
   "Takes the channel returned by connect-bot! and stops the connection."
   [connection-ch]
-  (a/put! connection-ch [:disconnect])
-  nil)
+  )
 (s/fdef disconnect-bot!
   :args (s/cat :channel ::ds/channel)
   :ret nil?)
@@ -65,8 +49,8 @@
   Keyword Arguments:
   query: a string that the username of the searched user starts with, or empty string for all users, defaults to empty string
   limit: the maximum number of members to give based on the query"
-  [connection-ch guild-id & args]
-  (a/put! connection-ch (apply vector :guild-request-members :guild-id guild-id args)))
+  [connection-ch guild-id & {:keys [query limit] :as args}]
+  )
 (s/fdef guild-request-members!
   :args (s/cat :channel ::ds/channel
                :guild-id ::ds/snowflake
@@ -109,8 +93,8 @@
   activity: an activity map, from create-activity, which is used for the bot, defaults to nil
   status: a keyword representing the current status of the bot, can be :online, :dnd, :idle, :invisible, or :offline, defaults to :online
   afk: a boolean to say if the bot is afk, defaults to false"
-  [connection-ch & args]
-  (a/put! connection-ch (apply vector :status-update args)))
+  [connection-ch & {:keys [idle-since activity status afk] :as args}]
+  )
 (s/fdef status-update!
   :args (s/cat :channel ::ds/channel
                :keyword-args (s/keys* :opt-un [::cs/idle-since
@@ -126,8 +110,8 @@
   channel-id: the new channel id snowflake that your bot is in, disconnect if nil, defaults to nil
   mute: boolean which says if the bot is muted
   deaf: boolean which says if the bot is deafened"
-  [connection-ch guild-id & args]
-  (a/put! connection-ch (apply vector :voice-state-update :guild-id guild-id args)))
+  [connection-ch guild-id & {:keys [channel-id mute deaf] :as args}]
+  )
 (s/fdef voice-state-update!
   :args (s/cat :channel ::ds/channel
                :guild-id ::ds/snowflake

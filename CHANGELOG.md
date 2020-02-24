@@ -3,6 +3,16 @@ All notable changes to this project will be documented in this file. This change
 Discljord follows semantic versioning.
 
 ## [Unreleased]
+### Fixed
+ - Bots are unable to disconnect properly
+ - Bots fail to reconnect after spending time with internet unavailable
+
+## Deprecated
+ - `discljord.util/*enable-logging*`, prefer directly interacting with timbre
+ - `discljord.util/set-logging-level!`, prefer directly interacting with timbre
+
+## Upgraded
+ - gniazdo version
 
 ## [0.2.5]
 ### Added

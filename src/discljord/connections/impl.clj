@@ -548,8 +548,6 @@
                                                  effects)]
                   (recur shards shard-chs)))))
         (log/trace "Exiting the shard loop")))
-    #_(doseq [[idx shard] (map-indexed vector shards)]
-        (after-timeout! #(a/put! (:communication-ch shard) [:connect]) (* idx 5100)))
     (doseq [[idx shard] (map-indexed vector shards)]
       (a/put! (:communication-ch shard) [:connect]))
     (after-timeout! #(a/put! output-ch [:connected-all-shards]) (+ (* (dec (count shard-ids)) 5100)

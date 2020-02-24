@@ -3,12 +3,10 @@
    [clojure.core.async :as a]
    [clojure.data.json :as json]
    [clojure.test :as t]
-   [discljord.connections :refer :all :as c]
-   [discljord.connections.impl :refer :all :as c.impl]
+   [discljord.connections :as c]
    [discljord.connections.specs :as cs]
-   [discljord.http :refer :all]
    [discljord.specs :as ds]
-   [discljord.util :refer :all]
+   [discljord.util :refer [clean-json-input json-keyword]]
    [gniazdo.core :as ws]
    [org.httpkit.fake :as fake]
    [org.httpkit.server :as s :refer [with-channel
@@ -16,41 +14,6 @@
                                      send!
                                      close]]
    [taoensso.timbre :as log]))
-
-(t/deftest urls
-  (t/testing "Api URLs are created properly"
-    (t/is (= "example?v=6&encoding=json"
-             (append-api-suffix "example"))
-          "Version and encoding information are appended to endpoint")
-    (t/is (= (str "https://discordapp.com/api"
-                  (append-api-suffix "/endpoint"))
-             (api-url "/endpoint"))
-          "URLs are to the correct Discord website")))
-
-(t/deftest gateways
-  (fake/with-fake-http ["https://discordapp.com/api/gateway/bot?v=6&encoding=json"
-                        (fn [orig-fn opts callback]
-                          (if (= (get (:headers opts) "Authorization")
-                                 "TEST_TOKEN")
-                            {:status 200 :body (json/write-str
-                                                {"url" "wss://fake.gateway.api/" "shards" 1
-                                                 "session_start_limit" {"total" 1000
-                                                                        "remaining" 1000
-                                                                        "reset_after" 1000}})}
-                            {:status 401
-                             :body (json/write-str {"code" 0 "message" "401: Unauthorized"})}))]
-    (t/testing "gateways require authorization"
-      (t/is (= {::ds/url "wss://fake.gateway.api/"
-                ::cs/shard-count 1
-                ::cs/session-start-limit {:total 1000
-                                          :remaining 1000
-                                          :reset-after 1000}}
-               (get-websocket-gateway! (api-url "/gateway/bot") "TEST_TOKEN"))
-            "Correct authorization and URL is valid")
-      (t/is (not (get-websocket-gateway! (api-url "/gateway/bot") "INVALID_TOKEN"))
-            "Invalid tokens will return nil")
-      (t/is (not (get-websocket-gateway! (api-url "/invalid/endpoint") "TEST_TOKEN"))
-            "Invalid endpoints will return nil"))))
 
 (t/deftest json-conversion
   (t/testing "keywords are produced from strings"
@@ -117,7 +80,7 @@
       (fake/with-fake-http ["https://discordapp.com/api/gateway/bot?v=6&encoding=json"
                             (fn [orig-fn opts callback]
                               (if (= (get (:headers opts) "Authorization")
-                                     "VALID_TOKEN")
+                                     "Bot VALID_TOKEN")
                                 {:status 200 :body (json/write-str
                                                     {"url" "ws://localhost:9009" "shards" 1
                                                      "session_start_limit" {"total" 1000
@@ -125,9 +88,9 @@
                                                                             "reset_after" 1000}})}
                                 {:status 401
                                  :body (json/write-str {"code" 0 "message" "401: Unauthorized"})}))]
-        (let [[conn shard-state] (connect-shard! uri t 0 1 (a/chan 10) (a/chan 10))]
-          (Thread/sleep 200)
-          (swap! shard-state assoc :disconnect true)
+        (let [comm-chan (c/connect-bot! t (a/chan 10))]
+          (Thread/sleep 1000)
+          (a/put! comm-chan [:disconnect])
           (t/is (< 0 @success) "Connection can be established")
           (t/is (< 0 @heartbeats) "Heartbeats are sent"))))))
 
@@ -139,7 +102,5 @@
 
 (defn test-ns-hook
   []
-  (urls)
-  (gateways)
   (json-conversion)
   (server-fixture websockets))

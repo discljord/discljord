@@ -392,6 +392,11 @@
   {:shard shard
    :effects [[:discord-event event-type event]]})
 
+(defmethod handle-shard-fx! :disconnect
+  [heartbeat-ch url token shard _]
+  {:shard shard
+   :effects [[:disconnect]]})
+
 (defmulti handle-bot-fx!
   "Handles a bot-level side effect triggered by a shard.
   This method should never block, and should not do intense computation. Takes a
@@ -487,6 +492,16 @@
                                                                        100))
         [shards shard-chs]))
     [nil nil]))
+
+(defmethod handle-bot-fx! :disconnect
+  [output-ch url token shards shard-chs shard-idx _]
+  (log/warn "Full disconnect triggered from shard" shard-idx)
+  (a/put! output-ch [:disconnect])
+  (run! #(a/put! (:stop-ch %) :disconnect) shards)
+  (run! #(a/<!! (step-shard! % url token))
+        (remove nil?
+                (map (comp :shard a/<!!) shard-chs)))
+  [nil nil])
 
 (defmethod handle-communication! :disconnect
   [shards shard-chs _]

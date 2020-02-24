@@ -58,14 +58,17 @@
 
 (defmethod handle-websocket-event :disconnect
   [shard [_ stop-code msg]]
-  {:shard (assoc shard
-                 :stop-code stop-code
-                 :disconnect-msg msg)
-   :effects [(cond
-               (re-shard-stop-code? stop-code) [:re-shard]
-               (and *stop-on-fatal-code*
-                    (fatal-code? stop-code))   [:disconnect]
-               :otherwise                      [:reconnect])]})
+  (if shard
+    {:shard (assoc shard
+                   :stop-code stop-code
+                   :disconnect-msg msg)
+     :effects [(cond
+                 (re-shard-stop-code? stop-code) [:re-shard]
+                 (and *stop-on-fatal-code*
+                      (fatal-code? stop-code))   [:disconnect]
+                 :otherwise                      [:reconnect])]}
+    {:shard nil
+     :effects []}))
 
 (defmethod handle-websocket-event :error
   [shard [_ err]]

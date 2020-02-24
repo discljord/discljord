@@ -3,6 +3,8 @@ All notable changes to this project will be documented in this file. This change
 Discljord follows semantic versioning.
 
 ## [Unreleased]
+
+## [0.2.6]
 ### Fixed
  - Bots are unable to disconnect properly
  - Bots fail to reconnect after spending time with internet unavailable
@@ -147,7 +149,8 @@ Discljord follows semantic versioning.
  - README follows new API
  - Project name from `discljord-functional` to `discljord` 
 
-[Unreleased]: https://github.com/IGJoshua/discljord/compare/0.2.5..develop
+[Unreleased]: https://github.com/IGJoshua/discljord/compare/0.2.6..develop
+[0.2.6]: https://github.com/IGJoshua/discljord/compare/0.2.5..0.2.6
 [0.2.5]: https://github.com/IGJoshua/discljord/compare/0.2.4..0.2.5
 [0.2.4]: https://github.com/IGJoshua/discljord/compare/0.2.3..0.2.4
 [0.2.3]: https://github.com/IGJoshua/discljord/compare/0.2.2..0.2.3

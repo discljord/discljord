@@ -1,23 +1,275 @@
 (ns discljord.connections.impl
-  "Implementation namespace for `discljord.connections`."
+  "Implementation of websocket connections to Discord."
   (:require
    [clojure.core.async :as a]
    [clojure.data.json :as json]
-   [clojure.spec.alpha :as s]
-   [clojure.string :as str]
-   [discljord.connections.specs :as cs]
-   [discljord.http :refer [api-url]]
-   [discljord.specs :as ds]
-   [discljord.util :refer [json-keyword clean-json-input *enable-logging*]]
+   [discljord.http :refer [gateway-url]]
+   [discljord.util :refer [json-keyword clean-json-input]]
    [gniazdo.core :as ws]
    [org.httpkit.client :as http]
    [taoensso.timbre :as log])
   (:import
-   (org.eclipse.jetty websocket.client.WebSocketClient
-                      util.ssl.SslContextFactory)))
+   (org.eclipse.jetty.websocket.client
+    WebSocketClient)
+   (org.eclipse.jetty.util.ssl
+    SslContextFactory)))
 
-(defn get-websocket-gateway!
-  "Gets the shard count and websocket endpoint from Discord's API."
+(def buffer-size
+  "The suggested size of a buffer; default: 4MiB."
+  4194304)
+
+(defmulti handle-websocket-event
+  "Updates a `shard` based on shard events.
+  Takes a `shard` and a shard event vector and returns a map of the new state of
+  the shard and zero or more events to process."
+  (fn [shard [event-type & args]]
+    event-type))
+
+(def new-session-stop-code?
+  "Set of stop codes after which a resume isn't possible."
+  #{4003 4004 4007 4009})
+
+(defn should-resume?
+  "Returns if a shard should try to resume."
+  [shard]
+  (when (:stop-code shard)
+    (and (not (new-session-stop-code? (:stop-code shard)))
+         (:seq shard)
+         (:session-id shard))))
+
+(defmethod handle-websocket-event :connect
+  [shard [_]]
+  {:shard shard
+   :effects [(if (should-resume? shard)
+               [:resume]
+               [:identify])]})
+
+(def ^:dynamic *stop-on-fatal-code*
+  "Bind to to true to disconnect the entire bot after a fatal stop code."
+  false)
+
+(def fatal-code?
+  "Set of stop codes which after recieving, discljord will disconnect all shards."
+  #{4001 4002 4003 4004 4005 4008 4010})
+
+(def re-shard-stop-code?
+  "Stop codes which Discord will send when the bot needs to be re-sharded."
+  #{4011})
+
+(defmethod handle-websocket-event :disconnect
+  [shard [_ stop-code msg]]
+  (if shard
+    {:shard (assoc shard
+                   :stop-code stop-code
+                   :disconnect-msg msg)
+     :effects [(cond
+                 (re-shard-stop-code? stop-code) [:re-shard]
+                 (and *stop-on-fatal-code*
+                      (fatal-code? stop-code))   [:disconnect]
+                 :otherwise                      [:reconnect])]}
+    {:shard nil
+     :effects []}))
+
+(defmethod handle-websocket-event :error
+  [shard [_ err]]
+  {:shard shard
+   :effects [[:error err]]})
+
+(defmethod handle-websocket-event :send-debug-effect
+  [shard [_ & effects]]
+  {:shard shard
+   :effects (vec effects)})
+
+(def ^:private payload-id->payload-key
+  "Map from payload type ids to the payload keyword."
+  {0 :event-dispatch
+   1 :heartbeat
+   7 :reconnect
+   9 :invalid-session
+   10 :hello
+   11 :heartbeat-ack})
+
+(defmulti handle-payload
+  "Update a `shard` based on a message.
+  Takes a `shard` and `msg` and returns a map with a :shard and an :effects
+  vector."
+  (fn [shard msg]
+    (payload-id->payload-key (:op msg))))
+
+(defmethod handle-websocket-event :message
+  [shard [_ msg]]
+  (handle-payload shard (clean-json-input (json/read-str msg))))
+
+(defmulti handle-discord-event
+  "Handles discord events for a specific shard, specifying effects."
+  (fn [shard event-type event]
+    event-type))
+
+(defmethod handle-discord-event :default
+  [shard event-type event]
+  {:shard shard
+   :effects [[:send-discord-event event-type event]]})
+
+(defmethod handle-discord-event :ready
+  [shard event-type event]
+  {:shard (assoc shard :session-id (:session-id event))
+   :effects [[:send-discord-event event-type event]]})
+
+(defmethod handle-payload :event-dispatch
+  [shard {:keys [d t s] :as msg}]
+  (handle-discord-event (assoc shard :seq s) (json-keyword t) d))
+
+(defmethod handle-payload :heartbeat
+  [shard msg]
+  {:shard shard
+   :effects [[:send-heartbeat]]})
+
+(defmethod handle-payload :reconnect
+  [shard {d :d}]
+  {:shard shard
+   :effects [[:reconnect]]})
+
+(defmethod handle-payload :invalid-session
+  [shard {d :d}]
+  {:shard (assoc (dissoc shard
+                         :session-id
+                         :seq)
+                 :invalid-session true)
+   :effects [[:reconnect]]})
+
+(defmethod handle-payload :hello
+  [shard {{:keys [heartbeat-interval]} :d}]
+  {:shard shard
+   :effects [[:start-heartbeat heartbeat-interval]]})
+
+(defmethod handle-payload :heartbeat-ack
+  [shard msg]
+  {:shard (assoc shard :ack true)
+   :effects []})
+
+(defn connect-websocket!
+  "Connect a websocket to the `url` that puts all events onto the `event-ch`.
+  Events are represented as vectors with a keyword for the event type and then
+  event data as the rest of the vector based on the type of event.
+
+  | Type          | Data |
+  |---------------+------|
+  | `:connect`    | None.
+  | `:disconnect` | Stop code, string message.
+  | `:error`      | Error value.
+  | `:message`    | String message."
+  [buffer-size url event-ch]
+  (log/debug "Starting websocket of size" buffer-size "at url" url)
+  (let [client (WebSocketClient. (doto (SslContextFactory.)
+                                   (.setEndpointIdentificationAlgorithm "HTTPS")))]
+    (doto (.getPolicy client)
+      (.setMaxTextMessageSize buffer-size)
+      (.setMaxBinaryMessageSize buffer-size))
+    (doto client
+      (.setMaxTextMessageBufferSize buffer-size)
+      (.setMaxBinaryMessageBufferSize buffer-size)
+      (.start))
+    (ws/connect
+        url
+      :client client
+      :on-connect (fn [_]
+                    (log/trace "Websocket connected")
+                    (a/put! event-ch [:connect]))
+      :on-close (fn [stop-code msg]
+                  (log/debug "Websocket closed with code:" stop-code "and message:" msg)
+                  (a/put! event-ch [:disconnect stop-code msg]))
+      :on-error (fn [err]
+                  (log/warn "Websocket errored" err)
+                  (a/put! event-ch [:error err]))
+      :on-receive (fn [msg]
+                    (log/trace "Websocket recieved message:" msg)
+                    (a/put! event-ch [:message msg])))))
+
+(defmulti handle-shard-fx!
+  "Processes an `event` on a given `shard` for side effects.
+  Returns a map with the new :shard and bot-level :effects to process."
+  (fn [heartbeat-ch url token shard event]
+    (first event)))
+
+(defn step-shard!
+  "Starts a process to step a `shard`, handling side-effects.
+  Returns a channel which will have a map with the new `:shard` and a vector of
+  `:effects` for the entire bot to respond to placed on it after the next item
+  the socket may respond to occurs."
+  [shard url token]
+  (log/trace "Stepping shard" (:id shard) shard)
+  (let [{:keys [event-ch websocket heartbeat-ch communication-ch stop-ch] :or {heartbeat-ch (a/chan)}} shard]
+    (a/go
+      (a/alt!
+        stop-ch (do
+                  (when heartbeat-ch
+                    (a/close! heartbeat-ch))
+                  (a/close! communication-ch)
+                  (when websocket
+                    (ws/close websocket))
+                  (log/info "Disconnecting shard"
+                            (:id shard)
+                            "and closing connection")
+                  {:shard nil
+                   :effects []})
+        communication-ch ([[event-type & event-data :as value]]
+                          (log/debug "Recieved communication value" value "on shard" (:id shard))
+                          ;; TODO(Joshua): consider extracting this to a multimethod
+                          (case event-type
+                            :connect (let [event-ch (a/chan 100)]
+                                       (log/info "Connecting shard" (:id shard))
+                                       (a/close! heartbeat-ch)
+                                       {:shard (assoc (dissoc shard :heartbeat-ch)
+                                                      :websocket (connect-websocket! buffer-size url event-ch)
+                                                      :event-ch event-ch)
+                                        :effects []})
+                            (do
+                              ;; TODO(Joshua): Send a message over the websocket
+                              (log/trace "Sending a message over the websocket")
+                              {:shard shard
+                               :effects []})))
+        heartbeat-ch (if (:ack shard)
+                       (do (log/trace "Sending heartbeat payload on shard" (:id shard))
+                           (ws/send-msg websocket
+                                        (json/write-str {:op 1
+                                                         :d (:seq shard)}))
+                           {:shard (dissoc shard :ack)
+                            :effects []})
+                       (let [event-ch (a/chan 100)]
+                         (try
+                           (when websocket
+                             (ws/close websocket))
+                           (catch Exception e
+                             (log/debug "Websocket failed to close during reconnect" e)))
+                         (log/info "Reconnecting due to zombie heartbeat on shard" (:id shard))
+                         (a/close! heartbeat-ch)
+                         {:shard (assoc (dissoc shard :heartbeat-ch)
+                                        :websocket (connect-websocket! buffer-size url event-ch)
+                                        :event-ch event-ch)
+                          :effects []}))
+        event-ch ([event]
+                  (let [{:keys [shard effects]} (handle-websocket-event shard event)
+                        shard-map (reduce
+                                   (fn [{:keys [shard effects]} new-effect]
+                                     (let [old-effects effects
+                                           {:keys [shard effects]}
+                                           (handle-shard-fx! heartbeat-ch url token shard new-effect)
+                                           new-effects (vec (concat old-effects effects))]
+                                       {:shard shard
+                                        :effects new-effects}))
+                                   {:shard shard
+                                    :effects []}
+                                   effects)]
+                    shard-map))
+        :priority true))))
+
+(defn get-websocket-gateway
+  "Gets the shard count and websocket endpoint from Discord's API.
+
+  Takes the `url` of the gateway and the `token` of the bot.
+
+  Returns a map with the keys :url, :shard-count, and :session-start limit, or
+  nil in the case of an error."
   [url token]
   (if-let [result
            (try
@@ -25,532 +277,297 @@
                                                    {:headers
                                                     {"Authorization" token}}))]
                (when-let [json-body (clean-json-input (json/read-str response))]
-                 {::ds/url (:url json-body)
-                  ::cs/shard-count (:shards json-body)
-                  ::cs/session-start-limit (:session-start-limit json-body)}))
+                 {:url (:url json-body)
+                  :shard-count (:shards json-body)
+                  :session-start-limit (:session-start-limit json-body)}))
              (catch Exception e
-               (when *enable-logging*
-                 (log/error e "Failed to get websocket gateway"))
+               (log/error e "Failed to get websocket gateway")
                nil))]
-    (when (::ds/url result)
+    (when (:url result)
       result)))
-(s/fdef get-websocket-gateway!
-  :args (s/cat :url ::ds/url :token ::ds/token)
-  :ret (s/nilable ::cs/gateway))
 
-(defn reconnect-websocket!
-  "Takes a websocket connection atom and additional connection information,
-  and reconnects a websocket, with options for resume or not."
-  [url token conn ch shard out-ch & {:keys [init-shard-state
-                                            buffer-size]}]
-  (when *enable-logging*
-    (log/debug (str "Connecting shard " shard)))
-  (let [ack (atom false)
-        connected (atom false)
-        shard-state (atom (assoc (or init-shard-state
-                                     {:session-id nil
-                                      :seq nil
-                                      :buffer-size (or buffer-size
-                                                       100000)
-                                      :max-connection-retries 10})
-                                 :disconnect false))
-        client (WebSocketClient. (doto (SslContextFactory.)
-                                   (.setEndpointIdentificationAlgorithm "HTTPS")))
-        buffer-size (:buffer-size @shard-state)]
-    (.setMaxTextMessageSize (.getPolicy client) buffer-size)
-    (.setMaxBinaryMessageSize (.getPolicy client) buffer-size)
-    (.setMaxTextMessageBufferSize client buffer-size)
-    (.setMaxBinaryMessageBufferSize client buffer-size)
-    (.start client)
-    (reset!
-     conn
-     (loop [retries 0]
-       (let [connection
-             (try (ws/connect url
-                    :client client
-                    :on-connect
-                    (fn [_]
-                      ;; Put a connection event on the channel
-                      (reset! connected true)
-                      (a/put! out-ch [:shard-connect])
-                      (a/put! ch (if init-shard-state
-                                   [:reconnect conn token
-                                    (:session-id @shard-state)
-                                    (:seq @shard-state)]
-                                   [:connect conn token shard])))
-                    :on-receive
-                    (fn [msg]
-                      ;; Put a recieve event on the channel
-                      (let [msg (clean-json-input (json/read-str msg))
-                            op (:op msg)
-                            data (:d msg)]
-                        (a/put! ch (if (= op 0)
-                                     (let [new-seq (:s msg)
-                                           msg-type (json-keyword (:t msg))]
-                                       (swap! shard-state assoc :seq new-seq)
-                                       [:event msg-type data shard-state out-ch])
-                                     [:command op data
-                                      #(do
-                                         (ws/close @conn)
-                                         (fn []
-                                           (apply reconnect-websocket! url token conn
-                                                  ch shard out-ch
-                                                  :buffer-size buffer-size
-                                                  %&)))
-                                      #(do
-                                         (ws/close @conn)
-                                         (fn []
-                                           (apply reconnect-websocket! url token conn
-                                                  ch shard out-ch
-                                                  :init-shard-state @shard-state
-                                                  :buffer-size buffer-size
-                                                  %&)))
-                                      #(ws/send-msg @conn
-                                                    (json/write-str
-                                                     {"op" 1
-                                                      "d" (:seq @shard-state)}))
-                                      ack connected shard-state]))))
-                    :on-close
-                    (fn [stop-code msg]
-                      ;; Put a disconnect event on the channel
-                      (reset! connected false)
-                      (a/put! ch [:disconnect shard-state stop-code msg
-                                  #(apply reconnect-websocket! url token conn
-                                          ch shard out-ch
-                                          :buffer-size buffer-size
-                                          %&)
-                                  #(apply reconnect-websocket! url token conn
-                                          ch shard out-ch
-                                          :init-shard-state @shard-state
-                                          :buffer-size buffer-size
-                                          %&)]))
-                    :on-error
-                    (fn [err]
-                      (when *enable-logging*
-                        (log/error err "Error caught on websocket"))))
-                  (catch Exception e
-                    (when *enable-logging*
-                      (log/error e "Exception while trying to connect websocket to Discord"))
-                    nil))]
-         (if connection
-           (do (when *enable-logging*
-                 (log/trace "Successfully connected to Discord"))
-               connection)
-           (if (> (:max-connection-retries @shard-state) retries)
-             (do (when *enable-logging*
-                   (log/debug "Failed to connect to Discord, retrying in 10 seconds"))
-                 (a/<!! (a/timeout 10000))
-                 (recur (inc retries)))
-             (when *enable-logging*
-               (log/info (str "Could not connect to discord after "
-                             retries
-                             " retries, aborting"))))))))
-    shard-state))
-(s/fdef reconnect-websocket!
-  :args (s/cat :url ::ds/url
-               :token ::ds/token
-               :connection (ds/atom-of? ::ds/connection)
-               :event-channel ::ds/channel
-               :shard (s/tuple ::cs/shard-id ::cs/shard-count)
-               :out-channel ::ds/channel
-               :keyword-args (s/keys* :opt-un [::cs/init-shard-state
-                                               ::cs/buffer-size]))
-  :ret (ds/atom-of? ::cs/shard-state))
+(defn make-shard
+  "Creates a new shard with the given `id` and `shard-count`."
+  [id shard-count]
+  {:id id
+   :count shard-count
+   :event-ch (a/chan 100)
+   :communication-ch (a/chan 100)
+   :stop-ch (a/chan 1)})
 
-(defmulti handle-websocket-event!
-  "Handles events sent from discord over the websocket.
+(defn after-timeout!
+  "Calls a function of no arguments after the given `timeout`.
+  Returns a channel which will have the return value of the function put on it."
+  [f timeout]
+  (a/go (a/<! (a/timeout timeout))
+        (f)))
 
-  Takes the channel to send events out of the process, a
-  keyword event type, and any number of event data arguments."
-  (fn [out-ch comm-ch event-type & event-data]
-    event-type))
-
-(defmethod handle-websocket-event! :connect
-  [out-ch comm-ch _ & [conn token shard :as thing]]
-  (ws/send-msg @conn
-               (json/write-str {"op" 2
-                                "d" {"token" token
-                                     "properties" {"$os" "linux"
-                                                   "$browser" "discljord"
-                                                   "$device" "discljord"}
-                                     "compress" false
-                                     "large_threshold" 50
-                                     "shard" shard}})))
-
-(defmethod handle-websocket-event! :reconnect
-  [out-ch comm-ch _ & [conn token session-id seq]]
-  (ws/send-msg @conn
-               (json/write-str {"op" 6
-                                "d" {"token" token
-                                     "session_id" session-id
-                                     "seq" seq}})))
-
-(defmulti handle-disconnect!
-  "Handles the disconnection process for different stop codes.
-
-  Takes an integer stop code, the message, a function to reconnect
-  the shard, and a function to reconnect the shard with resume."
-  (fn [socket-state comm-ch stop-code msg reconnect resume]
-    stop-code))
-
-(defmethod handle-disconnect! :default
-  [socket-state comm-ch stop-code msg reconnect resume]
-  (when *enable-logging*
-    (log/debug (str "Stop code "
-                   stop-code
-                   " encountered with message:\n\t"
-                   msg)))
-  ;; NOTE(Joshua): Not sure if this should do a reconnect or a resume
-  (when-not (:disconnect @socket-state)
-    (when *enable-logging*
-      (log/debug "Reconnecting"))
-    (reconnect)))
-
-(defmethod handle-disconnect! 4000
-  [socket-state comm-ch stop-code msg reconnect resume]
-  (when *enable-logging*
-    (log/debug "Unknown error, reconnect and resume"))
-  (resume))
-
-(defmethod handle-disconnect! 4001
-  [socket-state comm-ch stop-code msg reconnect resume]
-  (when *enable-logging*
-    (log/fatal "Invalid op code sent to Discord servers")))
-
-(defmethod handle-disconnect! 4002
-  [socket-state comm-ch stop-code msg reconnect resume]
-  (when *enable-logging*
-    (log/fatal "Invalid payload sent to Discord servers")))
-
-(defmethod handle-disconnect! 4003
-  [socket-state comm-ch stop-code msg reconnect resume]
-  (when *enable-logging*
-    (log/fatal "Sent data to Discord without authenticating")))
-
-(defmethod handle-disconnect! 4004
-  [socket-state comm-ch stop-code msg reconnect resume]
-  (when *enable-logging*
-    (log/error "Invalid token sent to Discord servers"))
-  (throw (Exception. "Invalid token sent to Discord servers")))
-
-(defmethod handle-disconnect! 4005
-  [socket-state comm-ch stop-code msg reconnect resume]
-  (when *enable-logging*
-    (log/fatal "Sent identify packet to Discord twice from same shard")))
-
-(defmethod handle-disconnect! 4007
-  [socket-state comm-ch stop-code msg reconnect resume]
-  (when *enable-logging*
-    (log/debug "Sent invalid seq to Discord on resume, reconnect"))
-  (reconnect))
-
-(defmethod handle-disconnect! 4008
-  [socket-state comm-ch stop-code msg reconnect resume]
-  (when *enable-logging*
-    (log/fatal "Rate limited by Discord")))
-
-(defmethod handle-disconnect! 4009
-  [socket-state comm-ch stop-code msg reconnect resume]
-  (when *enable-logging*
-    (log/debug "Session timed out, reconnecting"))
-  (reconnect))
-
-(defmethod handle-disconnect! 4010
-  [socket-state comm-ch stop-code msg reconnect resume]
-  (when *enable-logging*
-    (log/fatal "Invalid shard set to discord servers")))
-
-(defmethod handle-disconnect! 4011
-  [socket-state comm-ch stop-code msg reconnect resume]
-  ;; NOTE(Joshua): This should never happen, unless discord sends
-  ;;               this as the bot joins more servers. If so, then
-  ;;               make this cause a full disconnect and reconnect
-  ;;               of the whole bot, not just this shard.
-  (a/put! comm-ch [:re-shard (::cs/buffer-size @socket-state)])
-  (when *enable-logging*
-    (log/info "Bot requires sharding")))
-
-(defmethod handle-disconnect! 1009
-  [socket-state comm-ch stop-code msg reconnect resume]
-  (when *enable-logging*
-    (log/info "Websocket size wasn't big enough! Resuming with a bigger buffer."))
-  (resume :buffer-size (+ (:buffer-size @socket-state)
-                          100000)))
-
-(defmethod handle-websocket-event! :disconnect
-  [out-ch comm-ch _ & [socket-state stop-code msg reconnect resume]]
-  (when *enable-logging*
-    (log/debug "Shard disconnected from Discord"))
-  (a/put! out-ch [:shard-disconnect])
-  (handle-disconnect! socket-state comm-ch stop-code msg reconnect resume))
-
-(defmulti handle-payload!
-  "Handles a command payload sent from Discord.
-
-  Takes an integer op code, the data sent from Discord, a function to reconnect
-  the shard to Discord, a function to reconnect to Discord with a resume,
-  a function to send a heartbeat to Discord, an atom containing the ack state
-  from the last heartbeat, an atom containing whether the current shard is connected,
-  and an atom containing the shard state, including the seq and session-id."
-  ;; FIXME(Joshua): The ack and connected atoms should be moved to keys in the shard-state atom
-  (fn [op data reconnect resume heartbeat ack connected shard-state]
-    op))
-
-(defmethod handle-payload! 1
-  [op data reconnect resume heartbeat ack connected shard-state]
-  (when *enable-logging*
-    (log/trace "Heartbeat requested by Discord"))
-  (when @connected
-    (swap! shard-state assoc :seq data)
-    (heartbeat)))
-
-(defmethod handle-payload! 7
-  [op data reconnect resume heartbeat ack connected shard-state]
-  (when *enable-logging*
-    (log/debug "Reconnect payload sent from Discord"))
-  (reconnect))
-
-(defmethod handle-payload! 9
-  [op data reconnect resume heartbeat ack connected shard-state]
-  (when *enable-logging*
-    (log/debug "Invalid session sent from Discord, reconnecting"))
-  (if data
-    (resume)
-    (reconnect)))
-
-(defmethod handle-payload! 10
-  [op data reconnect resume heartbeat ack connected shard-state]
-  (let [interval (get data :heartbeat-interval)]
+(defmethod handle-shard-fx! :start-heartbeat
+  [heartbeat-ch url token shard [_ heartbeat-interval]]
+  (let [heartbeat-ch (a/chan (a/sliding-buffer 1))]
+    (log/debug "Starting a heartbeat with interval" heartbeat-interval "on shard" (:id shard))
+    (a/put! heartbeat-ch :heartbeat)
     (a/go-loop []
-      ;; Send heartbeat
-      (reset! ack false)
-      (try (heartbeat)
-           (catch Exception e
-             (when *enable-logging*
-               (log/error e "Unable to send heartbeat"))))
-      ;; Wait the interval
-      (a/<! (a/timeout interval))
-      ;; If there's no ack, disconnect and reconnect with resume
-      (if-not @ack
-        (try (resume)
-             (catch Exception e
-               (when *enable-logging*
-                 (log/error e "Unable to resume"))))
-        ;; Make this check to see if we've disconnected
-        (when @connected
-          (recur))))))
+      (a/<! (a/timeout heartbeat-interval))
+      (when (a/>! heartbeat-ch :heartbeat)
+        (log/trace "Requesting heartbeat on shard" (:id shard))
+        (recur)))
+    {:shard (assoc shard
+                   :heartbeat-ch heartbeat-ch
+                   :ack true)
+     :effects []}))
 
-(defmethod handle-payload! 11
-  [op data reconnect resume heartbeat ack connected shard-state]
-  (reset! ack true))
+(defmethod handle-shard-fx! :send-heartbeat
+  [heartbeat-ch url token shard event]
+  (when heartbeat-ch
+    (log/trace "Responding to requested heartbeat signal")
+    (a/put! heartbeat-ch :heartbeat))
+  {:shard shard
+   :effects []})
 
-(defmethod handle-payload! :default
-  [op data reconnect resume heartbeat ack connected shard-state]
-  (when *enable-logging*
-    (log/error "Recieved an unhandled payload from Discord. op code" op "with data" data)))
+(defmethod handle-shard-fx! :identify
+  [heartbeat-ch url token shard event]
+  (log/debug "Sending identify payload for shard" (:id shard))
+  (ws/send-msg (:websocket shard)
+               (json/write-str {:op 2
+                                :d {:token token
+                                    :properties {"$os" "linux"
+                                                 "$browser" "discljord"
+                                                 "$device" "discljord"}
+                                    :compress false
+                                    :large_threshold 50
+                                    :shard [(:id shard) (:count shard)]}}))
+  {:shard shard
+   :effects []})
 
-(defmethod handle-websocket-event! :command
-  [out-ch comm-ch _ & [op data reconnect resume heartbeat ack connected shard-state]]
-  (handle-payload! op data reconnect resume heartbeat ack connected shard-state))
-
-(defmulti handle-event
-  "Handles event payloads sent from Discord in the context of the connection,
-  before it gets to the regular event handlers.
-
-  Takes a keyword event type, event data from Discord, an atom containing the shard's
-  state, and the channel for sending events out of the process."
-  (fn [event-type data shard-state out-ch]
-    event-type))
-
-(defmethod handle-event :ready
-  [event-type data shard-state out-ch]
-  (let [session-id (:session-id data)]
-    (swap! shard-state assoc :session-id session-id)))
-
-(defmethod handle-event :default
-  [event-type data shard-state out-ch]
-  nil)
-
-(defmethod handle-websocket-event! :event
-  [out-ch comm-ch _ & [event-type data shard-state out-ch]]
-  (handle-event event-type data shard-state out-ch)
-  (a/put! out-ch [event-type data]))
-
-(defn start-event-loop!
-  "Starts a go loop which takes events from the channel and dispatches them
-  via multimethod."
-  [conn ch out-ch comm-ch]
-  (a/go-loop []
-    (try (apply handle-websocket-event! out-ch comm-ch (a/<! ch))
-         (catch Exception e
-           (when *enable-logging*
-             (log/error e "Exception caught from handle-websocket-event!"))))
-    (when @conn
-      (recur)))
-  nil)
-(s/fdef start-event-loop!
-  :args (s/cat :connection (ds/atom-of? ::cs/connection)
-               :event-channel ::ds/channel
-               :out-channel ::ds/channel
-               :comm-ch ::ds/channel)
-  :ret nil?)
-
-(defn connect-shard!
-  "Takes a gateway URL and a bot token, creates a websocket connected to
-  Discord's servers, and returns a function of no arguments which disconnects it"
-  [url token shard-id shard-count out-ch comm-ch & {:keys [buffer-size]}]
+(defmethod handle-shard-fx! :resume
+  [heartbeat-ch url token shard event]
+  (log/debug "Sending resume payload for shard" (:id shard))
   (let [event-ch (a/chan 100)
-        conn (atom nil)
-        shard-state (reconnect-websocket! url token conn event-ch [shard-id shard-count] out-ch
-                                          :buffer-size buffer-size)]
-    (start-event-loop! conn event-ch out-ch comm-ch)
-    [conn shard-state]))
-(s/fdef connect-shard!
-  :args (s/cat :url ::ds/url
-               :token ::ds/token
-               :shard-id int?
-               :shard-count pos-int?
-               :out-channel ::ds/channel
-               :comm-ch ::ds/channel
-               :keyword-args (s/keys* :opt-un [::cs/buffer-size]))
-  :ret (s/tuple (ds/atom-of? ::cs/connection)
-                (ds/atom-of? ::cs/shard-state)))
+        shard (assoc shard :websocket (connect-websocket! buffer-size url event-ch))]
+    (ws/send-msg (:websocket shard)
+                 (json/write-str {:op 6
+                                  :d {:token token
+                                      :session_id (:session-id shard)
+                                      :seq (:seq shard)}}))
+    {:shard shard
+     :effects []}))
+
+;; TODO(Joshua): Make this actually send an event to the controlling process and kill off this shard
+(defmethod handle-shard-fx! :reconnect
+  [heartbeat-ch url token shard event]
+  (let [event-ch (a/chan 100)]
+    (when (:invalid-session shard)
+      (log/warn "Got invalid session payload, disconnecting shard" (:id shard)))
+    (when (:stop-code shard)
+      (log/debug "Shard" (:id shard)
+                 "has disconnected with stop-code"
+                 (:stop-code shard) "and message" (:disconnect-msg shard)))
+    (when (:heartbeat-ch shard)
+      (a/close! (:heartbeat-ch shard)))
+    (log/debug "Reconnecting shard" (:id shard))
+    {:shard (assoc (dissoc shard
+                           :invalid-session
+                           :stop-code
+                           :disconnect-msg
+                           :heartbeat-ch)
+                   :websocket (connect-websocket! buffer-size url event-ch)
+                   :event-ch event-ch)
+     :effects []}))
+
+(defmethod handle-shard-fx! :re-shard
+  [heartbeat-ch url token shard event]
+  {:shard shard
+   :effects [[:re-shard]]})
+
+(defmethod handle-shard-fx! :error
+  [heartbeat-ch url token shard [_ err]]
+  (log/error err "Error encountered on shard" (:id shard))
+  {:shard shard
+   :effects []})
+
+(defmethod handle-shard-fx! :send-discord-event
+  [heartbeat-ch url token shard [_ event-type event]]
+  (log/trace "Shard" (:id shard) "recieved discord event:" event)
+  {:shard shard
+   :effects [[:discord-event event-type event]]})
+
+(defmulti handle-bot-fx!
+  "Handles a bot-level side effect triggered by a shard.
+  This method should never block, and should not do intense computation. Takes a
+  place to output events to the library user, the url to connect sockets, the
+  bot's token, the vector of shards, a vector of channels which resolve to the
+  shard's next state, the index of the shard the effect is from, and the effect.
+  Returns a vector of the vector of shards and the vector of shard channels."
+  (fn [output-ch url token shards shard-chs shard-idx effect]
+    (first effect)))
+
+(defmulti handle-communication!
+  "Handles communicating to the `shards`.
+  Takes an `event` vector, a vector of `shards`, and a vector of channels which
+  resolve to each shard's next state, and returns a vector of the vector of
+  shards and the vector of channels."
+  (fn [shards shard-chs event]
+    (first event)))
+
+(defn- index-of
+  "Fetches the index of the first occurent of `elt` in `coll`.
+  Returns nil if it's not found."
+  [elt coll]
+  (first (first (filter (comp #{elt} second) (map-indexed vector coll)))))
 
 (defn connect-shards!
-  "Calls connect-shard! once per shard in shard-count, and returns a sequence
-  of promises of the return results."
-  [url token shard-count out-ch comm-ch & {:keys [buffer-size]}]
-  ;; FIXME: This is going to break when there's a high enough shard count
-  ;;        that the JVM can't handle having more threads doing this.
-  (doall
-   (for [shard-id (range shard-count)]
-     (let [prom (promise)]
-       (a/thread
-         (Thread/sleep (* 5000 shard-id))
-         (deliver prom (connect-shard! url token shard-id shard-count out-ch comm-ch
-                                       :buffer-size buffer-size)))
-       prom))))
-(s/fdef connect-shards!
-  :args (s/cat :url ::ds/url
-               :token ::ds/token
-               :shard-count pos-int?
-               :out-ch ::ds/channel
-               :keyword-args (s/keys* :opt-un [::cs/buffer-size]))
-  :ret (s/coll-of ::ds/promise))
+  "Connects a set of shards with the given `shard-ids`.
+  Returns nil."
+  [output-ch communication-ch url token shard-count shard-ids]
+  (let [shards (mapv #(make-shard % shard-count) shard-ids)]
+    (a/go-loop [shards shards
+                shard-chs (mapv #(step-shard! % url token) shards)]
+      (when (some identity shard-chs)
+        (log/trace "Waiting for a shard to complete a step")
+        (let [[v p] (a/alts! (conj (remove nil? shard-chs)
+                                   communication-ch))]
+          (if (= communication-ch p)
+            (let [[shards shard-chs] (handle-communication! shards shard-chs v)]
+              (recur shards shard-chs))
+            (let [idx (index-of p shard-chs)
+                  effects (:effects v)
+                  shards (assoc shards idx (:shard v))
+                  shard-chs (assoc shard-chs idx (when (:shard v)
+                                                   (step-shard! (:shard v) url token)))
+                  [shards shard-chs] (reduce (fn [[shards shard-chs] effect]
+                                               (handle-bot-fx! output-ch
+                                                               url token
+                                                               shards shard-chs
+                                                               idx effect))
+                                             [shards shard-chs]
+                                             effects)]
+              (recur shards shard-chs))))))
+    (doseq [[idx shard] (map-indexed vector shards)]
+      (after-timeout! #(a/put! (:communication-ch shard) [:connect]) (* idx 5100)))
+    (after-timeout! #(a/put! output-ch [:connected-all-shards]) (+ (* (dec (count shard-ids)) 5100)
+                                                                   100))
+    nil))
 
-(defmulti handle-command!
-  "Handles commands from the outside world.
+(defmethod handle-bot-fx! :discord-event
+  [output-ch url token shards shard-chs shard-idx [_ event-type event]]
+  (a/put! output-ch [event-type event])
+  [shards shard-chs])
 
-  Takes an atom of a vector of promises containing atoms of shard connections,
-  the channel used to send events out of the process, a keyword command type,
-  and any number of command data arguments."
-  (fn [shards token out-ch comm-ch command-type & command-data]
-    command-type))
+(def ^:dynamic *handle-re-shard*
+  "Determines if the bot will re-shard on its own, or require user coordination.
+  If bound to true and a re-shard occurs, the bot will make a request to discord
+  for the new number of shards to connect with and then connect them. If bound
+  to false, then a :re-shard event will be sent to the user library and all
+  shards will be disconnected."
+  true)
 
-(defmethod handle-command! :default
-  [shards token out-ch comm-ch command-type & command-data]
-  nil)
+(defmethod handle-bot-fx! :re-shard
+  [output-ch url token shards shard-chs shard-idx [_ event-type event]]
+  (log/info "Stopping all current shards to prepare for re-shard.")
+  (a/put! output-ch [:re-shard])
+  (run! #(a/put! (:stop-ch %) :disconnect) shards)
+  (run! #(a/<!! (step-shard! % url token))
+        (remove nil?
+                (map (comp :shard a/<!!) shard-chs)))
+  (if *handle-re-shard*
+    (let [{:keys [url shard-count session-start-limit]} (get-websocket-gateway gateway-url token)]
+      (when (> shard-count (:remaining session-start-limit))
+        (log/fatal "Asked to re-shard client, but too few session starts remain.")
+        (throw (ex-info "Unable to re-shard client, too few session starts remaining."
+                        {:token token
+                         :shards-requested shard-count
+                         :remaining-starts (:remaining session-start-limit)
+                         :reset-after (:reset-after session-start-limit)})))
+      (let [shards (mapv #(make-shard % shard-count) (range shard-count))
+            shard-chs (mapv #(step-shard! % url token) shards)]
+        (doseq [[idx shard] (map-indexed vector shards)]
+          (after-timeout! #(a/put! (:communication-ch shard) [:connect]) (* idx 5100)))
+        (after-timeout! #(a/put! output-ch [:connected-all-shards]) (+ (* (dec shard-count) 5100)
+                                                                       100))
+        [shards shard-chs]))
+    [nil nil]))
 
-(defmethod handle-command! :disconnect
-  [shards token out-ch comm-ch command-type & command-data]
-  (a/put! out-ch [:disconnect])
-  (doseq [fut @shards]
-    (a/thread
-      (let [[conn shard-state] @fut]
-        (swap! shard-state assoc :disconnect true)
-        (swap! conn #(do (when %
-                           (ws/close %))
-                         nil))))))
+(defmethod handle-communication! :disconnect
+  [shards shard-chs _]
+  (run! #(a/put! (:stop-ch %) :disconnect) shards)
+  [shards shard-chs])
 
-(defmethod handle-command! :re-shard
-  [shards token out-ch comm-ch command-type & [buffer-size]]
-  (doseq [fut @shards]
-    (let [[conn shard-state] @fut]
-      (swap! shard-state assoc :disconnect true)
-      (swap! conn #(do (when %
-                         (ws/close %))
-                       nil))))
-  (let [{:keys [discljord.specs/url discljord.connections.specs/shard-count
-                discljord.connections.specs/session-start-limit]}
-        (get-websocket-gateway! (api-url "/gateway/bot") token)]
-    (when (< (:remaining session-start-limit) shard-count)
-      (a/put! comm-ch [:disconnect])
-      (throw (RuntimeException. "Attempted to re-shard a bot with no more session starts.")))
-    (reset! shards (connect-shards! url token shard-count out-ch
-                                    comm-ch
-                                    :buffer-size buffer-size))))
-
-(defn start-communication-loop!
-  "Takes a vector of promises representing the atoms of websocket connections of the shards."
-  [shards token ch out-ch comm-ch]
-  (a/go-loop []
-    (let [command (a/<! ch)]
-      ;; Handle the communication command
-      (try (apply handle-command! shards token out-ch comm-ch command)
-           (catch Exception e
-             (when *enable-logging*
-               (log/error e "Exception in handle-command!"))))
-      ;; Handle the rate limit
-      (a/<! (a/timeout 500))
-      (when-not (= command [:disconnect])
-        (recur))))
-  nil)
-(s/fdef start-communication-loop!
-  :args (s/cat :shards (ds/atom-of? (s/coll-of ::ds/promise))
-               :token ::ds/token
-               :event-channel ::ds/channel
-               :out-channel ::ds/channel)
-  :ret nil?)
+(defmethod handle-communication! :send-debug-event
+  [shards shard-chs [_ shard-id event]]
+  (a/put! (:event-ch (get shards shard-id)) event)
+  [shards shard-chs])
 
 (defn get-shard-from-guild
   [guild-id guild-count]
   (mod (bit-shift-right (Long. guild-id) 22) guild-count))
-(s/fdef get-shard-from-guild
-  :args (s/cat :guild-id ::ds/snowflake
-               :guild-cound pos-int?)
-  :ret int?)
 
-(defmethod handle-command! :guild-request-members
-  [shards token out-ch comm-ch command-type & {:keys [guild-id query limit]
-                                               :or {query ""
-                                                    limit 0}}]
-  (assert guild-id "did not provide a guild id to guild-request-members")
-  (let [shard-id (get-shard-from-guild guild-id (count @shards))
-        [conn shard-state] @(nth @shards shard-id)
-        msg (json/write-str {:op 8
-                             :d {"guild_id" guild-id
-                                 "query" query
-                                 "limit" limit}})]
-    (when (> (count msg) 4096)
-      (throw (RuntimeException. "Attempting to send too large a message in guild-request-members")))
-    (ws/send-msg @conn msg)))
+(defmethod handle-communication! :guild-request-members
+  [shards shard-chs [_ {:keys [guild-id query limit] :or {query "" limit 0}}]]
+  (when guild-id
+    (let [shard-id (get-shard-from-guild guild-id (:count (first (remove nil? shards))))
+          msg (json/write-str {:op 8
+                               :d {"guild_id" guild-id
+                                   "query" query
+                                   "limit" limit}})
+          shard (first (filter (comp #{shard-id} :id) shards))]
+      (if shard
+        (if-not (> (count msg) 4096)
+          (do
+            (log/trace "Sending message to retrieve guild members from guild"
+                       guild-id "over shard" (:id shard)
+                       "with query" query)
+            (ws/send-msg (:websocket shard)
+                        msg))
+          (log/error "Message for guild-request-members was too large on shard" (:id shard)
+                     "Check to make sure that your query is of a reasonable size."))
+        (when (seq (remove nil? shards))
+          (log/error "Attempted to request guild members for a guild with no"
+                     "matching shard in this process.")))))
+  [shards shard-chs])
 
-(defmethod handle-command! :status-update
-  [shards token out-ch comm-ch command-type & {:keys [idle-since activity status afk]
-                                               :or {afk false
-                                                    status "online"}}]
-  (let [[conn shard-state] @(nth @shards 0)
+(defmethod handle-communication! :status-update
+  [shards shard-chs [_ & {:keys [idle-since activity status afk]
+                          :or {afk false
+                               status "online"}}]]
+  (let [shard (first (remove nil? shards))
         msg (json/write-str {:op 3
                              :d {"since" idle-since
                                  "game" activity
                                  "status" status
                                  "afk" afk}})]
-    (when (> (count msg) 4096)
-      (throw (RuntimeException. "Attempting to send too large a message in status-update")))
-    (ws/send-msg @conn msg)))
+    (when shard
+      (if-not (> (count msg) 4096)
+        (do
+          (log/trace "Sending status update over shard" (:id shard))
+          (ws/send-msg (:websocket shard)
+                       msg))
+        (log/error "Message for status-update was too large."
+                   "Use create-activity to create a valid activity"
+                   "and select a reasonably-sized status message."))))
+  [shards shard-chs])
 
-(defmethod handle-command! :voice-state-update
-  [shards token out-ch comm-ch command-type & {:keys [guild-id channel-id mute deaf]
-                                               :or {mute false
-                                                    deaf false}}]
-  (assert guild-id "did not provide a guild id to voice-state-update")
-  (let [shard-id (get-shard-from-guild guild-id (count @shards))
-        [conn shard-state] @(nth @shards shard-id)
-        msg (json/write-str {:op 4
-                             :d {"guild_id" guild-id
-                                 "channel_id" channel-id
-                                 "self_mute" mute
-                                 "self_deaf" deaf}})]
-    (when (> (count msg) 4096)
-      (throw (RuntimeException. "Attempting to send too large a message in voice-state-update")))
-    (ws/send-msg @conn msg)))
+(defmethod handle-communication! :voice-state-update
+  [shards shard-chs [_ & {:keys [guild-id channel-id mute deaf]
+                          :or {mute false
+                               deaf false}}]]
+  (when guild-id
+    (let [shard-id (get-shard-from-guild guild-id (:count (first (remove nil? shards))))
+          msg (json/write-str {:op 4
+                               :d {"guild_id" guild-id
+                                   "channel_id" channel-id
+                                   "self_mute" mute
+                                   "self_deaf" deaf}})
+          shard (first (filter (comp #{shard-id} :id) shards))]
+      (if shard
+        (if-not (> (count msg) 4096)
+          (do
+            (log/trace "Sending voice-state-update over shard" (:id shard))
+            (ws/send-msg (:websocket shard)
+                         msg))
+          (log/error "Message for voice-state-update was too large."
+                     "This should not occur if you are using valid types for the keys."))
+        (when (seq (remove nil? shards))
+          (log/error "Attempted to send voice-state-update for a guild with no"
+                     "matching shard in this process.")))))
+  [shards shard-chs])

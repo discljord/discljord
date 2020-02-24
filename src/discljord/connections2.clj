@@ -110,7 +110,8 @@
   channel-id: the new channel id snowflake that your bot is in, disconnect if nil, defaults to nil
   mute: boolean which says if the bot is muted
   deaf: boolean which says if the bot is deafened"
-  [connection-ch guild-id & {:keys [channel-id mute deaf] :as args}])
+  [connection-ch guild-id & {:keys [channel-id mute deaf] :as args}]
+  )
 (s/fdef voice-state-update!
   :args (s/cat :channel ::ds/channel
                :guild-id ::ds/snowflake

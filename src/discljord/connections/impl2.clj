@@ -496,3 +496,77 @@
   [shards shard-chs [_ shard-id event]]
   (a/put! (:event-ch (get shards shard-id)) event)
   [shards shard-chs])
+
+(defn get-shard-from-guild
+  [guild-id guild-count]
+  (mod (bit-shift-right (Long. guild-id) 22) guild-count))
+
+(defmethod handle-communication! :guild-request-members
+  [shards shard-chs [_ {:keys [guild-id query limit] :or {query "" limit 0}}]]
+  (when guild-id
+    (let [shard-id (get-shard-from-guild guild-id (:count (first (remove nil? shards))))
+          msg (json/write-str {:op 8
+                               :d {"guild_id" guild-id
+                                   "query" query
+                                   "limit" limit}})
+          shard (first (filter (comp #{shard-id} :id) shards))]
+      (if shard
+        (if-not (> (count msg) 4096)
+          (do
+            (log/trace "Sending message to retrieve guild members from guild"
+                       guild-id "over shard" (:id shard)
+                       "with query" query)
+            (ws/send-msg (:websocket shard)
+                        msg))
+          (log/error "Message for guild-request-members was too large on shard" (:id shard)
+                     "Check to make sure that your query is of a reasonable size."))
+        (when (seq (remove nil? shards))
+          (log/error "Attempted to request guild members for a guild with no"
+                     "matching shard in this process.")))))
+  [shards shard-chs])
+
+(defmethod handle-communication! :status-update
+  [shards shard-chs [_ & {:keys [idle-since activity status afk]
+                          :or {afk false
+                               status "online"}}]]
+  (let [shard (first (remove nil? shards))
+        msg (json/write-str {:op 3
+                             :d {"since" idle-since
+                                 "game" activity
+                                 "status" status
+                                 "afk" afk}})]
+    (when shard
+      (if-not (> (count msg) 4096)
+        (do
+          (log/trace "Sending status update over shard" (:id shard))
+          (ws/send-msg (:websocket shard)
+                       msg))
+        (log/error "Message for status-update was too large."
+                   "Use create-activity to create a valid activity"
+                   "and select a reasonably-sized status message."))))
+  [shards shard-chs])
+
+(defmethod handle-communication! :voice-state-update
+  [shards shard-chs [_ & {:keys [guild-id channel-id mute deaf]
+                          :or {mute false
+                               deaf false}}]]
+  (when guild-id
+    (let [shard-id (get-shard-from-guild guild-id (:count (first (remove nil? shards))))
+          msg (json/write-str {:op 4
+                               :d {"guild_id" guild-id
+                                   "channel_id" channel-id
+                                   "self_mute" mute
+                                   "self_deaf" deaf}})
+          shard (first (filter (comp #{shard-id} :id) shards))]
+      (if shard
+        (if-not (> (count msg) 4096)
+          (do
+            (log/trace "Sending voice-state-update over shard" (:id shard))
+            (ws/send-msg (:websocket shard)
+                         msg))
+          (log/error "Message for voice-state-update was too large."
+                     "This should not occur if you are using valid types for the keys."))
+        (when (seq (remove nil? shards))
+          (log/error "Attempted to send voice-state-update for a guild with no"
+                     "matching shard in this process.")))))
+  [shards shard-chs])

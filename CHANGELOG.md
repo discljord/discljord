@@ -4,6 +4,10 @@ Discljord follows semantic versioning.
 
 ## [Unreleased]
 
+## [0.2.7]
+### Fixed
+ - `:disconnect` event no longer sent when bot shuts down
+
 ## [0.2.6]
 ### Fixed
  - Bots are unable to disconnect properly
@@ -149,7 +153,8 @@ Discljord follows semantic versioning.
  - README follows new API
  - Project name from `discljord-functional` to `discljord` 
 
-[Unreleased]: https://github.com/IGJoshua/discljord/compare/0.2.6..develop
+[Unreleased]: https://github.com/IGJoshua/discljord/compare/0.2.7..develop
+[0.2.7]: https://github.com/IGJoshua/discljord/compare/0.2.6..0.2.7
 [0.2.6]: https://github.com/IGJoshua/discljord/compare/0.2.5..0.2.6
 [0.2.5]: https://github.com/IGJoshua/discljord/compare/0.2.4..0.2.5
 [0.2.4]: https://github.com/IGJoshua/discljord/compare/0.2.3..0.2.4

@@ -3,6 +3,8 @@ All notable changes to this project will be documented in this file. This change
 Discljord follows semantic versioning.
 
 ## [Unreleased]
+### Fixed
+ - Documentation for create-message! saying file sharing was not implemented
 
 ## [0.2.7]
 ### Fixed

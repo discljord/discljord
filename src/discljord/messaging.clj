@@ -105,9 +105,7 @@
   [])
 
 (defendpoint create-message! ::ds/channel-id
-  "Sends a message on the channel. Returns a promise containing the message object.
-
-Currently does not support uploading files."
+  "Sends a message on the channel. Returns a promise containing the message object."
   #_"Takes a core.async channel returned by start-connection!, a Discord
   channel id as a string, and the message you want to send to Discord.
 

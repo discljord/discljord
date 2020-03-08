@@ -51,7 +51,9 @@
 
 (def fatal-code?
   "Set of stop codes which after recieving, discljord will disconnect all shards."
-  #{4001 4002 4003 4004 4005 4008 4010})
+  ;; NOTE(Joshua): the 4013 code is for invalid intents. In future that should
+  ;;               be called out specifically since it's a user error.
+  #{4001 4002 4003 4004 4005 4008 4010 4013})
 
 (def re-shard-stop-code?
   "Stop codes which Discord will send when the bot needs to be re-sharded."
@@ -372,9 +374,10 @@
 
 (defn make-shard
   "Creates a new shard with the given `id` and `shard-count`."
-  [id shard-count]
+  [intents id shard-count]
   {:id id
    :count shard-count
+   :intents intents
    :event-ch (a/chan 100)
    :communication-ch (a/chan 100)
    :stop-ch (a/chan 1)})
@@ -418,21 +421,49 @@
                 (a/<!! (a/timeout millis))
                 nil)))
 
+(def ^:private intent->intent-int
+  {:guilds (bit-shift-left 1 0)
+   :guild-members (bit-shift-left 1 1)
+   :guild-bans (bit-shift-left 1 2)
+   :guild-emojis (bit-shift-left 1 3)
+   :guild-integrations (bit-shift-left 1 4)
+   :guild-webhooks (bit-shift-left 1 5)
+   :guild-invites (bit-shift-left 1 6)
+   :guild-voice-states (bit-shift-left 1 7)
+   :guild-presences (bit-shift-left 1 8)
+   :guild-messages (bit-shift-left 1 9)
+   :guild-message-reactions (bit-shift-left 1 10)
+   :guild-message-typing (bit-shift-left 1 11)
+   :direct-messages (bit-shift-left 1 12)
+   :direct-message-reactions (bit-shift-left 1 13)
+   :direct-message-typing (bit-shift-left 1 14)})
+(defn- intents->intent-int
+  "Takes a set of intents and creates an intents-int to represent that set."
+  [intents]
+  (reduce #(bit-or %1 (intent->intent-int %2))
+          0
+          intents))
+
 (defmethod handle-shard-fx! :identify
   [heartbeat-ch url token shard event]
   (run-on-agent-with-limit
    identify-limiter
    (fn []
      (log/debug "Sending identify payload for shard" (:id shard))
-     (ws/send-msg (:websocket shard)
-                  (json/write-str {:op 2
-                                   :d {"token" token
-                                       "properties" {"$os" "linux"
-                                                     "$browser" "discljord"
-                                                     "$device" "discljord"}
-                                       "compress" false
-                                       "large_threshold" 50
-                                       "shard" [(:id shard) (:count shard)]}})))
+     (let [payload {"token" token
+                    "properties" {"$os" "linux"
+                                  "$browser" "discljord"
+                                  "$device" "discljord"}
+                    "compress" false
+                    "large_threshold" 50
+                    "shard" [(:id shard) (:count shard)]}
+           payload (if-let [intents (:intents shard)]
+                     (assoc payload "intents" (intents->intent-int intents))
+                     payload)]
+       (log/trace "Identify payload:" payload)
+       (ws/send-msg (:websocket shard)
+                    (json/write-str {:op 2
+                                     :d payload}))))
    5100)
   {:shard shard
    :effects []})
@@ -523,8 +554,8 @@
 (defn connect-shards!
   "Connects a set of shards with the given `shard-ids`.
   Returns nil."
-  [output-ch communication-ch url token shard-count shard-ids]
-  (let [shards (mapv #(make-shard % shard-count) shard-ids)]
+  [output-ch communication-ch url token intents shard-count shard-ids]
+  (let [shards (mapv #(make-shard intents % shard-count) shard-ids)]
     (a/go-loop [shards shards
                 shard-chs (mapv #(step-shard! % url token) shards)]
       (if (some identity shard-chs)
@@ -585,7 +616,8 @@
                          :shards-requested shard-count
                          :remaining-starts (:remaining session-start-limit)
                          :reset-after (:reset-after session-start-limit)})))
-      (let [shards (mapv #(make-shard % shard-count) (range shard-count))
+      (let [shards (mapv #(make-shard (:intents (nth shards shard-idx)) % shard-count)
+                         (range shard-count))
             shard-chs (mapv #(step-shard! % url token) shards)]
         (doseq [[idx shard] (map-indexed vector shards)]
           (after-timeout! #(a/put! (:communication-ch shard) [:connect]) (* idx 5100)))

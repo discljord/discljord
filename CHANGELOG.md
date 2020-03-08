@@ -4,9 +4,14 @@ Discljord follows semantic versioning.
 
 ## [Unreleased]
 ### Added
- - Support for allowed-mentions in create-message payload
+ - Support for allowed-mentions in `discljord.messaging/execute-webhook!` payload
+ - Support for allowed-mentions in `discljord.messaging/create-message!` payload
+
+### Changed
+ - `discljord.messaging/execute-webhook!` had its parameters moved to optional ones
 
 ### Fixed
+ - `discljord.messaging/execute-webhook!` was unable to send files
  - Documentation for create-message! saying file sharing was not implemented
 
 ## [0.2.7]

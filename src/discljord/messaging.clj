@@ -549,9 +549,9 @@
   [])
 
 (defendpoint execute-webhook! ::ds/webhook-id
-  "Executes the given webhook. Returns a promise which always contains nil."
-  [webhook-token content file embeds]
-  [wait username avatar-url tts])
+  "Executes the given webhook. Returns a promise which contains either a boolean of if the message succeeded, or a map of the response body."
+  [webhook-token]
+  [content file embeds wait username avatar-url tts allowed-mentions])
 
 #_(defendpoint execute-slack-compatible-webhook! ::ds/webhook-id
   ""

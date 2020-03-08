@@ -650,15 +650,27 @@
   {}
   (= status 204))
 
-(defdispatch :execute-webhook
-  [webhook-id webhook-token content file embeds] [] opts :post _ _
-  (str "/webhooks/" webhook-id "/" webhook-token)
-  {:query-params {:wait (:wait opts)}
-   :body (json/write-str (conform-to-json (assoc (dissoc opts :wait)
-                                                 :content content
-                                                 :file file
-                                                 :embeds embeds)))}
-  nil)
+(defmethod dispatch-http :execute-webhook
+  [process endpoint [prom webhook-token & {:keys [^java.io.File file user-agent wait] :as opts
+                                           :or {wait false}}]]
+  (let [webhook-id (-> endpoint
+                       ::ms/major-variable
+                       ::ms/major-variable-value)
+        payload (conform-to-json (dissoc opts :user-agent :file))
+        payload-json (json/write-str payload)
+        multipart [{:name "payload_json" :content payload-json}]
+        multipart (if file
+                    (conj multipart {:name "file" :content file :filename (.getName file)})
+                    multipart)
+        response @(http/post (api-url (str "/webhooks/" webhook-id "/" webhook-token))
+                             {:query-params {:wait wait}
+                              :headers (assoc (auth-headers (::ds/token @process) user-agent)
+                                              "Content-Type" "multipart/form-data")
+                              :multipart multipart})]
+    (deliver prom (if (= (:status response) 200)
+                    (json-body (:body response))
+                    (= (:status response) 204)))
+    response))
 
 (defn rate-limited?
   "Takes a process and an endpoint and checks to see if the

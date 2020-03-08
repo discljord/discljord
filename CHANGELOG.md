@@ -4,6 +4,7 @@ Discljord follows semantic versioning.
 
 ## [Unreleased]
 ### Added
+ - Support for audit log reasons on all requests made with `discljord.messaging`
  - Support for gateway intents
  - Support for allowed-mentions in `discljord.messaging/execute-webhook!` payload
  - Support for allowed-mentions in `discljord.messaging/create-message!` payload

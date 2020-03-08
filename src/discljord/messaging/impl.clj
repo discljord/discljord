@@ -47,16 +47,21 @@
    method status-sym body-sym url-str
    method-params promise-val]
   `(defmethod dispatch-http ~endpoint-name
-     [process# endpoint# [prom# ~@params & {user-agent# :user-agent :keys [~@opts] :as opts#}]]
+     [process# endpoint# [prom# ~@params & {user-agent# :user-agent audit-reason# :audit-reason
+                                            :keys [~@opts] :as opts#}]]
      (let [~opts-sym (dissoc opts# :user-agent)
            ~major-var (-> endpoint#
                           ::ms/major-variable
                           ::ms/major-variable-value)
+           headers# (auth-headers (::ds/token @process#) user-agent#)
+           headers# (if audit-reason#
+                      (assoc headers# "X-Audit-Log-Reason" (http/url-encode audit-reason#))
+                      headers#)
            response# @(~(symbol "org.httpkit.client" (name method))
                        (api-url ~url-str)
                        (merge-with merge
                                    ~method-params
-                                   {:headers (auth-headers (::ds/token @process#) user-agent#)}))
+                                   {:headers headers#}))
            ~status-sym (:status response#)
            ~body-sym (:body response#)]
        (deliver prom# ~promise-val)

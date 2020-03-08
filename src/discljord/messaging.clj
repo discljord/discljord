@@ -33,7 +33,7 @@
                     (symbol (name major-var-type)))
         sym-name (name endpoint-name)
         action (keyword (subs sym-name 0 (dec (count sym-name))))
-        opts (conj opts 'user-agent)
+        opts (conj opts 'user-agent 'audit-reason)
         spec-args (into []
                         (mapcat (fn [param]
                                   [(keyword (name param)) (keyword "discljord.messaging.specs" (name param))]))
@@ -46,6 +46,7 @@
          ~doc-str
          [~'conn ~@(when major-var-type [major-var]) ~@params ~'& {:keys ~opts :as ~'opts}]
          (let [user-agent# (:user-agent ~'opts)
+               audit-reason# (:audit-reason ~'opts)
                p# (promise)
                action# {::ms/action ~action}]
            (a/put! ~'conn (into [(if ~major-var-type
@@ -55,7 +56,8 @@
                                    action#)
                                  p#
                                  ~@params
-                                 :user-agent user-agent#]
+                                 :user-agent user-agent#
+                                 :audit-reason audit-reason#]
                                 cat
                                 (dissoc ~'opts :user-agent)))
            p#))

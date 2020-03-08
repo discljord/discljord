@@ -184,3 +184,11 @@
 (s/def ::webhook-token string?)
 
 (s/def ::embeds (s/coll-of ::embed))
+
+(def allowed-mention-types #{:roles :users :everyone})
+(s/def :allowed-mentions/parse (s/coll-of allowed-mention-types :kind vector?))
+(s/def :allowed-mentions/users (s/coll-of ::user-id :kind vector?))
+(s/def :allowed-mentions/roles (s/coll-of ::role-id :kind vector?))
+(s/def ::allowed-mentions (s/or :parse (s/keys :req-un [:allowed-mentions/parse])
+                                :manual (s/keys :opt-un [:allowed-mentions/users
+                                                         :allowed-mentions/roles])))

@@ -24,3 +24,11 @@
 
 (s/def ::mute boolean?)
 (s/def ::deaf boolean?)
+
+(s/def ::gateway-intent #{:guilds :guild-members :guild-bans :guild-emojis
+                          :guild-integrations :guild-webhooks :guild-invites
+                          :guild-voice-states :guild-presences :guild-messages
+                          :guild-message-reactions :guild-message-typing
+                          :direct-messages :direct-message-reactions
+                          :direct-message-typing})
+(s/def ::intents (s/coll-of ::gateway-intent :kind set?))

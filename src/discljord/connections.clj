@@ -13,6 +13,13 @@
    [discljord.util :refer [bot-token]]
    [taoensso.timbre :as log]))
 
+(def gateway-intents #{:guilds :guild-members :guild-bans :guild-emojis
+                       :guild-integrations :guild-webhooks :guild-invites
+                       :guild-voice-states :guild-presences :guild-messages
+                       :guild-message-reactions :guild-message-typing
+                       :direct-messages :direct-message-reactions
+                       :direct-message-typing})
+
 (defn connect-bot!
   "Creates a connection process which will handle the services granted by
   Discord which interact over websocket.
@@ -27,8 +34,11 @@
   given period. This means that communication to Discord may be bounded based
   on which shard you use to talk to the server immediately after starting the bot.
 
-  The `buffer-size` parameter is deprecated, and will be ignored."
-  [token out-ch & {:keys [buffer-size]}]
+  The `buffer-size` parameter is deprecated, and will be ignored.
+
+  `intents` is a set containing keywords representing which events will be sent
+  to the bot by Discord. Valid values for the set are in [[gateway-intents]]."
+  [token out-ch & {:keys [buffer-size intents]}]
   (let [token (bot-token token)
         {:keys [url shard-count session-start-limit]}
         (impl/get-websocket-gateway gateway-url token)]
@@ -40,12 +50,12 @@
                              :remaining-starts (:remaining session-start-limit)
                              :reset-after (:reset-after session-start-limit)})))
           (let [communication-chan (a/chan 100)]
-            (impl/connect-shards! out-ch communication-chan url token shard-count (range shard-count))
+            (impl/connect-shards! out-ch communication-chan url token intents shard-count (range shard-count))
             communication-chan))
       (log/debug "Unable to recieve gateway information."))))
 (s/fdef connect-bot!
   :args (s/cat :token ::ds/token :out-ch ::ds/channel
-               :keyword-args (s/keys* :opt-un [::cs/buffer-size]))
+               :keyword-args (s/keys* :opt-un [::cs/buffer-size ::cs/intents]))
   :ret ::ds/channel)
 
 (defn disconnect-bot!

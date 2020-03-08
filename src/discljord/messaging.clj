@@ -33,7 +33,7 @@
                     (symbol (name major-var-type)))
         sym-name (name endpoint-name)
         action (keyword (subs sym-name 0 (dec (count sym-name))))
-        opts (conj opts 'user-agent)
+        opts (conj opts 'user-agent 'audit-reason)
         spec-args (into []
                         (mapcat (fn [param]
                                   [(keyword (name param)) (keyword "discljord.messaging.specs" (name param))]))
@@ -46,6 +46,7 @@
          ~doc-str
          [~'conn ~@(when major-var-type [major-var]) ~@params ~'& {:keys ~opts :as ~'opts}]
          (let [user-agent# (:user-agent ~'opts)
+               audit-reason# (:audit-reason ~'opts)
                p# (promise)
                action# {::ms/action ~action}]
            (a/put! ~'conn (into [(if ~major-var-type
@@ -55,7 +56,8 @@
                                    action#)
                                  p#
                                  ~@params
-                                 :user-agent user-agent#]
+                                 :user-agent user-agent#
+                                 :audit-reason audit-reason#]
                                 cat
                                 (dissoc ~'opts :user-agent)))
            p#))
@@ -105,9 +107,7 @@
   [])
 
 (defendpoint create-message! ::ds/channel-id
-  "Sends a message on the channel. Returns a promise containing the message object.
-
-Currently does not support uploading files."
+  "Sends a message on the channel. Returns a promise containing the message object."
   #_"Takes a core.async channel returned by start-connection!, a Discord
   channel id as a string, and the message you want to send to Discord.
 
@@ -116,7 +116,7 @@ Currently does not support uploading files."
   :tts is a boolean, defaulting to false, which tells Discord to read
        your message out loud."
   []
-  [content tts nonce embed file])
+  [content tts nonce embed file allowed-mentions])
 
 (defn ^:deprecated send-message!
   [conn channel-id msg & {:keys [tts none embed file] :as opts}]
@@ -551,9 +551,9 @@ Currently does not support uploading files."
   [])
 
 (defendpoint execute-webhook! ::ds/webhook-id
-  "Executes the given webhook. Returns a promise which always contains nil."
-  [webhook-token content file embeds]
-  [wait username avatar-url tts])
+  "Executes the given webhook. Returns a promise which contains either a boolean of if the message succeeded, or a map of the response body."
+  [webhook-token]
+  [content file embeds wait username avatar-url tts allowed-mentions])
 
 #_(defendpoint execute-slack-compatible-webhook! ::ds/webhook-id
   ""

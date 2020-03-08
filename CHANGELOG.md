@@ -3,6 +3,9 @@ All notable changes to this project will be documented in this file. This change
 Discljord follows semantic versioning.
 
 ## [Unreleased]
+### Added
+ - Support for allowed-mentions in create-message payload
+
 ### Fixed
  - Documentation for create-message! saying file sharing was not implemented
 

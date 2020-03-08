@@ -114,7 +114,7 @@
   :tts is a boolean, defaulting to false, which tells Discord to read
        your message out loud."
   []
-  [content tts nonce embed file])
+  [content tts nonce embed file allowed-mentions])
 
 (defn ^:deprecated send-message!
   [conn channel-id msg & {:keys [tts none embed file] :as opts}]

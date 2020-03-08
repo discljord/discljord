@@ -112,11 +112,11 @@
   (json-body body))
 
 (defmethod dispatch-http :create-message
-  [process endpoint [prom & {:keys [^java.io.File file user-agent attachments] :as opts}]]
+  [process endpoint [prom & {:keys [^java.io.File file user-agent attachments allowed-mentions] :as opts}]]
   (let [channel-id (-> endpoint
                        ::ms/major-variable
                        ::ms/major-variable-value)
-        payload (dissoc opts :user-agent :file :attachments)
+        payload (conform-to-json (dissoc opts :user-agent :file :attachments))
         payload-json (json/write-str payload)
         multipart [{:name "payload_json" :content payload-json}]
         multipart (if file

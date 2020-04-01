@@ -567,8 +567,17 @@
             (let [[v p] (a/alts! (conj (remove nil? shard-chs)
                                        communication-ch))]
               (if (= communication-ch p)
-                (let [[shards shard-chs] (handle-communication! shards shard-chs v)]
-                  (recur shards shard-chs))
+                (let [[shards shard-chs & [effects]] (handle-communication! shards shard-chs v)]
+                  (if (seq effects)
+                    (let [[shards shard-chs] (reduce (fn [[shards shard-chs] effect]
+                                                       (handle-bot-fx! output-ch
+                                                                       url token
+                                                                       shards shard-chs
+                                                                       nil effect))
+                                                     [shards shard-chs]
+                                                     effects)]
+                      (recur shards shard-chs))
+                    (recur shards shard-chs)))
                 (let [idx (index-of p shard-chs)
                       effects (:effects v)
                       shards (assoc shards idx (:shard v))
@@ -632,7 +641,10 @@
 
 (defmethod handle-bot-fx! :disconnect
   [output-ch url token shards shard-chs shard-idx _]
-  (log/warn "Full disconnect triggered from shard" shard-idx)
+  (log/info
+   (if shard-idx
+     (str "Full disconnect triggered from shard" shard-idx)
+     "Full disconnect triggered from input"))
   (a/put! output-ch [:disconnect])
   (run! #(a/put! (:stop-ch %) :disconnect) shards)
   (run! #(a/<!! (step-shard! % url token))
@@ -643,7 +655,7 @@
 (defmethod handle-communication! :disconnect
   [shards shard-chs _]
   (run! #(a/put! (:stop-ch %) :disconnect) shards)
-  [shards shard-chs])
+  [shards shard-chs [[:disconnect]]])
 
 (defmethod handle-communication! :send-debug-event
   [shards shard-chs [_ shard-id event]]

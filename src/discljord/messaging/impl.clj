@@ -23,10 +23,10 @@
   "Takes a process and endpoint, and dispatches an http request.
   Must return the response object from the call to allow the runtime
   to update the rate limit."
-  (fn [process endpoint data]
+  (fn [token endpoint data]
     (::ms/action endpoint)))
 (s/fdef dispatch-http
-  :args (s/cat :process (ds/atom-of? ::ms/process)
+  :args (s/cat :token string?
                :endpoint ::ms/endpoint
                :data (s/coll-of any?)))
 
@@ -48,13 +48,13 @@
    method status-sym body-sym url-str
    method-params promise-val]
   `(defmethod dispatch-http ~endpoint-name
-     [process# endpoint# [prom# ~@params & {user-agent# :user-agent audit-reason# :audit-reason
+     [token# endpoint# [prom# ~@params & {user-agent# :user-agent audit-reason# :audit-reason
                                             :keys [~@opts] :as opts#}]]
      (let [~opts-sym (dissoc opts# :user-agent)
            ~major-var (-> endpoint#
                           ::ms/major-variable
                           ::ms/major-variable-value)
-           headers# (auth-headers (::ds/token process#) user-agent#)
+           headers# (auth-headers token# user-agent#)
            headers# (if audit-reason#
                       (assoc headers# "X-Audit-Log-Reason" (http/url-encode audit-reason#))
                       headers#)
@@ -121,7 +121,7 @@
   (json-body body))
 
 (defmethod dispatch-http :create-message
-  [process endpoint [prom & {:keys [^java.io.File file user-agent attachments allowed-mentions stream] :as opts}]]
+  [token endpoint [prom & {:keys [^java.io.File file user-agent attachments allowed-mentions stream] :as opts}]]
   (let [channel-id (-> endpoint
                        ::ms/major-variable
                        ::ms/major-variable-value)
@@ -141,7 +141,7 @@
                     (conj multipart (assoc stream :name "file"))
                     multipart)
         response @(http/post (api-url (str "/channels/" channel-id "/messages"))
-                             {:headers (assoc (auth-headers (::ds/token process) user-agent)
+                             {:headers (assoc (auth-headers token user-agent)
                                               "Content-Type" "multipart/form-data")
                               :multipart multipart})]
     (deliver prom (json-body (:body response)))
@@ -669,7 +669,7 @@
   (= status 204))
 
 (defmethod dispatch-http :execute-webhook
-  [process endpoint [prom webhook-token & {:keys [^java.io.File file user-agent wait] :as opts
+  [token endpoint [prom webhook-token & {:keys [^java.io.File file user-agent wait] :as opts
                                            :or {wait false}}]]
   (let [webhook-id (-> endpoint
                        ::ms/major-variable
@@ -682,7 +682,7 @@
                     multipart)
         response @(http/post (api-url (str "/webhooks/" webhook-id "/" webhook-token))
                              {:query-params {:wait wait}
-                              :headers (assoc (auth-headers (::ds/token process) user-agent)
+                              :headers (assoc (auth-headers token user-agent)
                                               "Content-Type" "multipart/form-data")
                               :multipart multipart})]
     (deliver prom (if (= (:status response) 200)
@@ -772,7 +772,7 @@
            (if (rate-limited? process endpoint)
              (do (a/>! (::ds/channel process) event)
                  process)
-             (if-let [response (a/<! (a/thread (try (dispatch-http process endpoint event-data)
+             (if-let [response (a/<! (a/thread (try (dispatch-http (::ds/token process) endpoint event-data)
                                                     (catch Exception e
                                                       (log/error e "Exception in dispatch-http")
                                                       nil))))]

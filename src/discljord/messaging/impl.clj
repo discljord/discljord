@@ -54,7 +54,7 @@
            ~major-var (-> endpoint#
                           ::ms/major-variable
                           ::ms/major-variable-value)
-           headers# (auth-headers (::ds/token @process#) user-agent#)
+           headers# (auth-headers (::ds/token process#) user-agent#)
            headers# (if audit-reason#
                       (assoc headers# "X-Audit-Log-Reason" (http/url-encode audit-reason#))
                       headers#)
@@ -141,7 +141,7 @@
                     (conj multipart (assoc stream :name "file"))
                     multipart)
         response @(http/post (api-url (str "/channels/" channel-id "/messages"))
-                             {:headers (assoc (auth-headers (::ds/token @process) user-agent)
+                             {:headers (assoc (auth-headers (::ds/token process) user-agent)
                                               "Content-Type" "multipart/form-data")
                               :multipart multipart})]
     (deliver prom (json-body (:body response)))
@@ -682,7 +682,7 @@
                     multipart)
         response @(http/post (api-url (str "/webhooks/" webhook-id "/" webhook-token))
                              {:query-params {:wait wait}
-                              :headers (assoc (auth-headers (::ds/token @process) user-agent)
+                              :headers (assoc (auth-headers (::ds/token process) user-agent)
                                               "Content-Type" "multipart/form-data")
                               :multipart multipart})]
     (deliver prom (if (= (:status response) 200)
@@ -762,39 +762,42 @@
   "Takes a token for a bot and returns a channel to communicate with the
   message sending process."
   [token]
-  (let [process (atom {::ms/rate-limits {::ms/endpoint-specific-rate-limits {}}
-                       ::ds/channel (a/chan 1000)
-                       ::ds/token token})]
-    (a/go-loop []
-      (let [[endpoint & event-data :as event] (a/<! (::ds/channel @process))]
+  (let [process {::ms/rate-limits {::ms/endpoint-specific-rate-limits {}}
+                 ::ds/channel (a/chan 1000)
+                 ::ds/token token}]
+    (a/go-loop [process process]
+      (let [[endpoint & event-data :as event] (a/<! (::ds/channel process))]
         (when-not (= endpoint :disconnect)
-          (if (rate-limited? @process endpoint)
-            (a/>! (::ds/channel @process) event)
-            (when-let [response (a/<! (a/thread (try (dispatch-http process endpoint event-data)
-                                                     (catch Exception e
-                                                       (when *enable-logging*
-                                                         (log/error e "Exception in dispatch-http"))
-                                                       nil))))]
-              (transform [ATOM
-                          ::ms/rate-limits
-                          (if (select-first [:headers :x-ratelimit-global] response)
-                            ::ms/global-rate-limit
-                            ::ms/endpoint-specific-rate-limits)
-                          (keypath endpoint)]
-                         #(update-rate-limit % response)
-                         process)
-              (when (= (:status response)
-                       429)
-                ;; This shouldn't happen for anything but emoji stuff, so this shouldn't happen
-                (when *enable-logging*
-                  (log/info "Bot triggered rate limit response."))
-                ;; Resend the event to dispatch, hopefully this time not brekaing the rate limit
-                (a/>! (::ds/channel @process) event))))
-          (recur))))
-    (::ds/channel @process)))
+          (recur
+           (if (rate-limited? process endpoint)
+             (do (a/>! (::ds/channel process) event)
+                 process)
+             (if-let [response (a/<! (a/thread (try (dispatch-http process endpoint event-data)
+                                                    (catch Exception e
+                                                      (log/error e "Exception in dispatch-http")
+                                                      nil))))]
+               (do (log/trace response)
+                   (when (= (:status response)
+                            429)
+                     ;; This shouldn't happen for anything but emoji stuff, so this shouldn't happen
+                     (when *enable-logging*
+                       (log/info "Bot triggered rate limit response."))
+                     ;; Resend the event to dispatch, hopefully this time not brekaing the rate limit
+                     (a/>! (::ds/channel process) event))
+                   (transform [::ms/rate-limits
+                               (if (select-first [:headers :x-ratelimit-global] response)
+                                 ::ms/global-rate-limit
+                                 ::ms/endpoint-specific-rate-limits)
+                               (keypath endpoint)]
+                              #(update-rate-limit % response)
+                              process))
+               process))))))
+    (::ds/channel process)))
 (s/fdef start!
   :args (s/cat :token ::ds/token)
   :ret ::ds/channel)
+
+
 
 (defn stop!
   "Takes the channel returned from start! and stops the messaging process."

@@ -183,21 +183,22 @@
       (.setMaxTextMessageBufferSize buffer-size)
       (.setMaxBinaryMessageBufferSize buffer-size)
       (.start))
-    (ws/connect
-        url
-      :client client
-      :on-connect (fn [_]
-                    (log/trace "Websocket connected")
-                    (a/put! event-ch [:connect]))
-      :on-close (fn [stop-code msg]
-                  (log/debug "Websocket closed with code:" stop-code "and message:" msg)
-                  (a/put! event-ch [:disconnect stop-code msg]))
-      :on-error (fn [err]
-                  (log/warn "Websocket errored" err)
-                  (a/put! event-ch [:error err]))
-      :on-receive (fn [msg]
-                    (log/trace "Websocket recieved message:" msg)
-                    (a/put! event-ch [:message msg])))))
+    {:ws (ws/connect
+          url
+          :client client
+          :on-connect (fn [_]
+                        (log/trace "Websocket connected")
+                        (a/put! event-ch [:connect]))
+          :on-close (fn [stop-code msg]
+                      (log/debug "Websocket closed with code:" stop-code "and message:" msg)
+                      (a/put! event-ch [:disconnect stop-code msg]))
+          :on-error (fn [err]
+                      (log/warn "Websocket errored" err)
+                      (a/put! event-ch [:error err]))
+          :on-receive (fn [msg]
+                        (log/trace "Websocket recieved message:" msg)
+                        (a/put! event-ch [:message msg])))
+     :client client}))
 
 (defmulti handle-shard-fx!
   "Processes an `event` on a given `shard` for side effects.
@@ -247,7 +248,7 @@
           (log/trace "Sending message to retrieve guild members from guild"
                      guild-id "over shard" (:id shard)
                      "with query" query)
-          (ws/send-msg (:websocket shard)
+          (ws/send-msg (:ws (:websocket shard))
                        msg))
         (log/error "Message for guild-request-members was too large on shard" (:id shard)
                    "Check to make sure that your query is of a reasonable size."))))
@@ -266,7 +267,7 @@
     (if-not (> (count msg) 4096)
       (do
         (log/trace "Sending status update over shard" (:id shard))
-        (ws/send-msg (:websocket shard)
+        (ws/send-msg (:ws (:websocket shard))
                      msg))
       (log/error "Message for status-update was too large."
                  "Use create-activity to create a valid activity"
@@ -286,7 +287,7 @@
     (if-not (> (count msg) 4096)
       (do
         (log/trace "Sending voice-state-update over shard" (:id shard))
-        (ws/send-msg (:websocket shard)
+        (ws/send-msg (:ws (:websocket shard))
                      msg))
       (log/error "Message for voice-state-update was too large."
                  "This should not occur if you are using valid types for the keys.")))
@@ -308,7 +309,8 @@
                     (a/close! heartbeat-ch))
                   (a/close! communication-ch)
                   (when websocket
-                    (ws/close websocket))
+                    (ws/close (:ws websocket))
+                    (.stop (:client websocket)))
                   (log/info "Disconnecting shard"
                             (:id shard)
                             "and closing connection")
@@ -319,14 +321,15 @@
                           (handle-shard-communication! shard heartbeat-ch url event-ch value))
         heartbeat-ch (if (:ack shard)
                        (do (log/trace "Sending heartbeat payload on shard" (:id shard))
-                           (ws/send-msg websocket
+                           (ws/send-msg (:ws websocket)
                                         (json/write-str {:op 1
                                                          :d (:seq shard)}))
                            {:shard (dissoc shard :ack)
                             :effects []})
                        (do
                          (when websocket
-                           (ws/close websocket))
+                           (ws/close (:ws websocket))
+                           (.stop (:client websocket)))
                          (log/info "Reconnecting due to zombie heartbeat on shard" (:id shard))
                          (a/close! heartbeat-ch)
                          (a/put! communication-ch [:connect])
@@ -461,7 +464,7 @@
                      (assoc payload "intents" (intents->intent-int intents))
                      payload)]
        (log/trace "Identify payload:" payload)
-       (ws/send-msg (:websocket shard)
+       (ws/send-msg (:ws (:websocket shard))
                     (json/write-str {:op 2
                                      :d payload}))))
    5100)
@@ -472,7 +475,7 @@
   [heartbeat-ch url token shard event]
   (log/debug "Sending resume payload for shard" (:id shard)
              "with session" (:session-id shard) "and seq" (:seq shard))
-  (ws/send-msg (:websocket shard)
+  (ws/send-msg (:ws (:websocket shard))
                (json/write-str {:op 6
                                 :d {"token" token
                                     "session_id" (:session-id shard)
@@ -483,7 +486,8 @@
 (defmethod handle-shard-fx! :reconnect
   [heartbeat-ch url token shard event]
   (when (:websocket shard)
-    (ws/close (:websocket shard)))
+    (ws/close (:ws (:websocket shard)))
+    (.stop (:client (:websocket shard))))
   (when (:invalid-session shard)
     (log/warn "Got invalid session payload, reconnecting shard" (:id shard)))
   (when (:heartbeat-ch shard)

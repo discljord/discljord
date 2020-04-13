@@ -3,6 +3,8 @@ All notable changes to this project will be documented in this file. This change
 Discljord follows semantic versioning.
 
 ## [Unreleased]
+
+## [0.2.8] - 2020-04-13
 ### Added
  - Support for audit log reasons on all requests made with `discljord.messaging`
  - Support for gateway intents
@@ -168,7 +170,8 @@ Discljord follows semantic versioning.
  - README follows new API
  - Project name from `discljord-functional` to `discljord` 
 
-[Unreleased]: https://github.com/IGJoshua/discljord/compare/0.2.7..develop
+[Unreleased]: https://github.com/IGJoshua/discljord/compare/0.2.8..develop
+[0.2.8]: https://github.com/IGJoshua/discljord/compare/0.2.7..0.2.8
 [0.2.7]: https://github.com/IGJoshua/discljord/compare/0.2.6..0.2.7
 [0.2.6]: https://github.com/IGJoshua/discljord/compare/0.2.5..0.2.6
 [0.2.5]: https://github.com/IGJoshua/discljord/compare/0.2.4..0.2.5

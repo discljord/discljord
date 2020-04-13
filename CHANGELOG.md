@@ -4,6 +4,23 @@ Discljord follows semantic versioning.
 
 ## [Unreleased]
 
+## [0.2.8] - 2020-04-13
+### Added
+ - Support for audit log reasons on all requests made with `discljord.messaging`
+ - Support for gateway intents
+ - Support for allowed-mentions in `discljord.messaging/execute-webhook!` payload
+ - Support for allowed-mentions in `discljord.messaging/create-message!` payload
+
+### Changed
+ - `discljord.messaging/execute-webhook!` had its parameters moved to optional ones
+
+### Fixed
+ - Invalid payload for bulk-message-delete requests
+ - User-requested disconnect does not send a `:disconnect` event
+ - Websocket clients of closed websockets were not stopped
+ - `discljord.messaging/execute-webhook!` was unable to send files
+ - Documentation for create-message! saying file sharing was not implemented
+
 ## [0.2.7]
 ### Fixed
  - `:disconnect` event no longer sent when bot shuts down
@@ -153,7 +170,8 @@ Discljord follows semantic versioning.
  - README follows new API
  - Project name from `discljord-functional` to `discljord` 
 
-[Unreleased]: https://github.com/IGJoshua/discljord/compare/0.2.7..develop
+[Unreleased]: https://github.com/IGJoshua/discljord/compare/0.2.8..develop
+[0.2.8]: https://github.com/IGJoshua/discljord/compare/0.2.7..0.2.8
 [0.2.7]: https://github.com/IGJoshua/discljord/compare/0.2.6..0.2.7
 [0.2.6]: https://github.com/IGJoshua/discljord/compare/0.2.5..0.2.6
 [0.2.5]: https://github.com/IGJoshua/discljord/compare/0.2.4..0.2.5

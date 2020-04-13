@@ -51,7 +51,9 @@
 
 (def fatal-code?
   "Set of stop codes which after recieving, discljord will disconnect all shards."
-  #{4001 4002 4003 4004 4005 4008 4010})
+  ;; NOTE(Joshua): the 4013 code is for invalid intents. In future that should
+  ;;               be called out specifically since it's a user error.
+  #{4001 4002 4003 4004 4005 4008 4010 4013})
 
 (def re-shard-stop-code?
   "Stop codes which Discord will send when the bot needs to be re-sharded."
@@ -181,21 +183,22 @@
       (.setMaxTextMessageBufferSize buffer-size)
       (.setMaxBinaryMessageBufferSize buffer-size)
       (.start))
-    (ws/connect
-        url
-      :client client
-      :on-connect (fn [_]
-                    (log/trace "Websocket connected")
-                    (a/put! event-ch [:connect]))
-      :on-close (fn [stop-code msg]
-                  (log/debug "Websocket closed with code:" stop-code "and message:" msg)
-                  (a/put! event-ch [:disconnect stop-code msg]))
-      :on-error (fn [err]
-                  (log/warn "Websocket errored" err)
-                  (a/put! event-ch [:error err]))
-      :on-receive (fn [msg]
-                    (log/trace "Websocket recieved message:" msg)
-                    (a/put! event-ch [:message msg])))))
+    {:ws (ws/connect
+          url
+          :client client
+          :on-connect (fn [_]
+                        (log/trace "Websocket connected")
+                        (a/put! event-ch [:connect]))
+          :on-close (fn [stop-code msg]
+                      (log/debug "Websocket closed with code:" stop-code "and message:" msg)
+                      (a/put! event-ch [:disconnect stop-code msg]))
+          :on-error (fn [err]
+                      (log/warn "Websocket errored" err)
+                      (a/put! event-ch [:error err]))
+          :on-receive (fn [msg]
+                        (log/trace "Websocket recieved message:" msg)
+                        (a/put! event-ch [:message msg])))
+     :client client}))
 
 (defmulti handle-shard-fx!
   "Processes an `event` on a given `shard` for side effects.
@@ -245,7 +248,7 @@
           (log/trace "Sending message to retrieve guild members from guild"
                      guild-id "over shard" (:id shard)
                      "with query" query)
-          (ws/send-msg (:websocket shard)
+          (ws/send-msg (:ws (:websocket shard))
                        msg))
         (log/error "Message for guild-request-members was too large on shard" (:id shard)
                    "Check to make sure that your query is of a reasonable size."))))
@@ -264,7 +267,7 @@
     (if-not (> (count msg) 4096)
       (do
         (log/trace "Sending status update over shard" (:id shard))
-        (ws/send-msg (:websocket shard)
+        (ws/send-msg (:ws (:websocket shard))
                      msg))
       (log/error "Message for status-update was too large."
                  "Use create-activity to create a valid activity"
@@ -284,7 +287,7 @@
     (if-not (> (count msg) 4096)
       (do
         (log/trace "Sending voice-state-update over shard" (:id shard))
-        (ws/send-msg (:websocket shard)
+        (ws/send-msg (:ws (:websocket shard))
                      msg))
       (log/error "Message for voice-state-update was too large."
                  "This should not occur if you are using valid types for the keys.")))
@@ -306,7 +309,8 @@
                     (a/close! heartbeat-ch))
                   (a/close! communication-ch)
                   (when websocket
-                    (ws/close websocket))
+                    (ws/close (:ws websocket))
+                    (.stop (:client websocket)))
                   (log/info "Disconnecting shard"
                             (:id shard)
                             "and closing connection")
@@ -317,14 +321,15 @@
                           (handle-shard-communication! shard heartbeat-ch url event-ch value))
         heartbeat-ch (if (:ack shard)
                        (do (log/trace "Sending heartbeat payload on shard" (:id shard))
-                           (ws/send-msg websocket
+                           (ws/send-msg (:ws websocket)
                                         (json/write-str {:op 1
                                                          :d (:seq shard)}))
                            {:shard (dissoc shard :ack)
                             :effects []})
                        (do
                          (when websocket
-                           (ws/close websocket))
+                           (ws/close (:ws websocket))
+                           (.stop (:client websocket)))
                          (log/info "Reconnecting due to zombie heartbeat on shard" (:id shard))
                          (a/close! heartbeat-ch)
                          (a/put! communication-ch [:connect])
@@ -372,9 +377,10 @@
 
 (defn make-shard
   "Creates a new shard with the given `id` and `shard-count`."
-  [id shard-count]
+  [intents id shard-count]
   {:id id
    :count shard-count
+   :intents intents
    :event-ch (a/chan 100)
    :communication-ch (a/chan 100)
    :stop-ch (a/chan 1)})
@@ -418,21 +424,49 @@
                 (a/<!! (a/timeout millis))
                 nil)))
 
+(def ^:private intent->intent-int
+  {:guilds (bit-shift-left 1 0)
+   :guild-members (bit-shift-left 1 1)
+   :guild-bans (bit-shift-left 1 2)
+   :guild-emojis (bit-shift-left 1 3)
+   :guild-integrations (bit-shift-left 1 4)
+   :guild-webhooks (bit-shift-left 1 5)
+   :guild-invites (bit-shift-left 1 6)
+   :guild-voice-states (bit-shift-left 1 7)
+   :guild-presences (bit-shift-left 1 8)
+   :guild-messages (bit-shift-left 1 9)
+   :guild-message-reactions (bit-shift-left 1 10)
+   :guild-message-typing (bit-shift-left 1 11)
+   :direct-messages (bit-shift-left 1 12)
+   :direct-message-reactions (bit-shift-left 1 13)
+   :direct-message-typing (bit-shift-left 1 14)})
+(defn- intents->intent-int
+  "Takes a set of intents and creates an intents-int to represent that set."
+  [intents]
+  (reduce #(bit-or %1 (intent->intent-int %2))
+          0
+          intents))
+
 (defmethod handle-shard-fx! :identify
   [heartbeat-ch url token shard event]
   (run-on-agent-with-limit
    identify-limiter
    (fn []
      (log/debug "Sending identify payload for shard" (:id shard))
-     (ws/send-msg (:websocket shard)
-                  (json/write-str {:op 2
-                                   :d {"token" token
-                                       "properties" {"$os" "linux"
-                                                     "$browser" "discljord"
-                                                     "$device" "discljord"}
-                                       "compress" false
-                                       "large_threshold" 50
-                                       "shard" [(:id shard) (:count shard)]}})))
+     (let [payload {"token" token
+                    "properties" {"$os" "linux"
+                                  "$browser" "discljord"
+                                  "$device" "discljord"}
+                    "compress" false
+                    "large_threshold" 50
+                    "shard" [(:id shard) (:count shard)]}
+           payload (if-let [intents (:intents shard)]
+                     (assoc payload "intents" (intents->intent-int intents))
+                     payload)]
+       (log/trace "Identify payload:" payload)
+       (ws/send-msg (:ws (:websocket shard))
+                    (json/write-str {:op 2
+                                     :d payload}))))
    5100)
   {:shard shard
    :effects []})
@@ -441,7 +475,7 @@
   [heartbeat-ch url token shard event]
   (log/debug "Sending resume payload for shard" (:id shard)
              "with session" (:session-id shard) "and seq" (:seq shard))
-  (ws/send-msg (:websocket shard)
+  (ws/send-msg (:ws (:websocket shard))
                (json/write-str {:op 6
                                 :d {"token" token
                                     "session_id" (:session-id shard)
@@ -452,7 +486,8 @@
 (defmethod handle-shard-fx! :reconnect
   [heartbeat-ch url token shard event]
   (when (:websocket shard)
-    (ws/close (:websocket shard)))
+    (ws/close (:ws (:websocket shard)))
+    (.stop (:client (:websocket shard))))
   (when (:invalid-session shard)
     (log/warn "Got invalid session payload, reconnecting shard" (:id shard)))
   (when (:heartbeat-ch shard)
@@ -523,8 +558,8 @@
 (defn connect-shards!
   "Connects a set of shards with the given `shard-ids`.
   Returns nil."
-  [output-ch communication-ch url token shard-count shard-ids]
-  (let [shards (mapv #(make-shard % shard-count) shard-ids)]
+  [output-ch communication-ch url token intents shard-count shard-ids]
+  (let [shards (mapv #(make-shard intents % shard-count) shard-ids)]
     (a/go-loop [shards shards
                 shard-chs (mapv #(step-shard! % url token) shards)]
       (if (some identity shard-chs)
@@ -532,8 +567,17 @@
             (let [[v p] (a/alts! (conj (remove nil? shard-chs)
                                        communication-ch))]
               (if (= communication-ch p)
-                (let [[shards shard-chs] (handle-communication! shards shard-chs v)]
-                  (recur shards shard-chs))
+                (let [[shards shard-chs & [effects]] (handle-communication! shards shard-chs v)]
+                  (if (seq effects)
+                    (let [[shards shard-chs] (reduce (fn [[shards shard-chs] effect]
+                                                       (handle-bot-fx! output-ch
+                                                                       url token
+                                                                       shards shard-chs
+                                                                       nil effect))
+                                                     [shards shard-chs]
+                                                     effects)]
+                      (recur shards shard-chs))
+                    (recur shards shard-chs)))
                 (let [idx (index-of p shard-chs)
                       effects (:effects v)
                       shards (assoc shards idx (:shard v))
@@ -585,7 +629,8 @@
                          :shards-requested shard-count
                          :remaining-starts (:remaining session-start-limit)
                          :reset-after (:reset-after session-start-limit)})))
-      (let [shards (mapv #(make-shard % shard-count) (range shard-count))
+      (let [shards (mapv #(make-shard (:intents (nth shards shard-idx)) % shard-count)
+                         (range shard-count))
             shard-chs (mapv #(step-shard! % url token) shards)]
         (doseq [[idx shard] (map-indexed vector shards)]
           (after-timeout! #(a/put! (:communication-ch shard) [:connect]) (* idx 5100)))
@@ -596,7 +641,10 @@
 
 (defmethod handle-bot-fx! :disconnect
   [output-ch url token shards shard-chs shard-idx _]
-  (log/warn "Full disconnect triggered from shard" shard-idx)
+  (log/info
+   (if shard-idx
+     (str "Full disconnect triggered from shard" shard-idx)
+     "Full disconnect triggered from input"))
   (a/put! output-ch [:disconnect])
   (run! #(a/put! (:stop-ch %) :disconnect) shards)
   (run! #(a/<!! (step-shard! % url token))
@@ -607,7 +655,7 @@
 (defmethod handle-communication! :disconnect
   [shards shard-chs _]
   (run! #(a/put! (:stop-ch %) :disconnect) shards)
-  [shards shard-chs])
+  [shards shard-chs [[:disconnect]]])
 
 (defmethod handle-communication! :send-debug-event
   [shards shard-chs [_ shard-id event]]

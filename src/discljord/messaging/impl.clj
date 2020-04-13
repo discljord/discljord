@@ -36,7 +36,7 @@
    (str "DiscordBot ("
         "https://github.com/IGJoshua/discljord"
         ", "
-        "0.2.7"
+        "0.2.8"
         ") "
         user-agent)
    "Content-Type" "application/json"})
@@ -47,16 +47,24 @@
    method status-sym body-sym url-str
    method-params promise-val]
   `(defmethod dispatch-http ~endpoint-name
-     [process# endpoint# [prom# ~@params & {user-agent# :user-agent :keys [~@opts] :as opts#}]]
+     [process# endpoint# [prom# ~@params & {user-agent# :user-agent audit-reason# :audit-reason
+                                            :keys [~@opts] :as opts#}]]
      (let [~opts-sym (dissoc opts# :user-agent)
            ~major-var (-> endpoint#
                           ::ms/major-variable
                           ::ms/major-variable-value)
+           headers# (auth-headers (::ds/token @process#) user-agent#)
+           headers# (if audit-reason#
+                      (assoc headers# "X-Audit-Log-Reason" (http/url-encode audit-reason#))
+                      headers#)
+           request-params# (merge-with merge
+                                       ~method-params
+                                       {:headers headers#})
+           ~'_ (log/trace "Making request to" ~major-var "with params" request-params#)
            response# @(~(symbol "org.httpkit.client" (name method))
                        (api-url ~url-str)
-                       (merge-with merge
-                                   ~method-params
-                                   {:headers (auth-headers (::ds/token @process#) user-agent#)}))
+                       request-params#)
+           ~'_ (log/trace "Response:" response#)
            ~status-sym (:status response#)
            ~body-sym (:body response#)]
        (deliver prom# ~promise-val)
@@ -112,11 +120,11 @@
   (json-body body))
 
 (defmethod dispatch-http :create-message
-  [process endpoint [prom & {:keys [^java.io.File file user-agent attachments] :as opts}]]
+  [process endpoint [prom & {:keys [^java.io.File file user-agent attachments allowed-mentions] :as opts}]]
   (let [channel-id (-> endpoint
                        ::ms/major-variable
                        ::ms/major-variable-value)
-        payload (dissoc opts :user-agent :file :attachments)
+        payload (conform-to-json (dissoc opts :user-agent :file :attachments))
         payload-json (json/write-str payload)
         multipart [{:name "payload_json" :content payload-json}]
         multipart (if file
@@ -180,7 +188,7 @@
 (defdispatch :bulk-delete-messages
   [channel-id messages] [] _ :post status _
   (str "/channels/" channel-id "/messages/bulk-delete")
-  {:body (json/write-str messages)}
+  {:body (json/write-str {:messages messages})}
   (= status 204))
 
 (defdispatch :edit-channel-permissions
@@ -650,15 +658,27 @@
   {}
   (= status 204))
 
-(defdispatch :execute-webhook
-  [webhook-id webhook-token content file embeds] [] opts :post _ _
-  (str "/webhooks/" webhook-id "/" webhook-token)
-  {:query-params {:wait (:wait opts)}
-   :body (json/write-str (conform-to-json (assoc (dissoc opts :wait)
-                                                 :content content
-                                                 :file file
-                                                 :embeds embeds)))}
-  nil)
+(defmethod dispatch-http :execute-webhook
+  [process endpoint [prom webhook-token & {:keys [^java.io.File file user-agent wait] :as opts
+                                           :or {wait false}}]]
+  (let [webhook-id (-> endpoint
+                       ::ms/major-variable
+                       ::ms/major-variable-value)
+        payload (conform-to-json (dissoc opts :user-agent :file))
+        payload-json (json/write-str payload)
+        multipart [{:name "payload_json" :content payload-json}]
+        multipart (if file
+                    (conj multipart {:name "file" :content file :filename (.getName file)})
+                    multipart)
+        response @(http/post (api-url (str "/webhooks/" webhook-id "/" webhook-token))
+                             {:query-params {:wait wait}
+                              :headers (assoc (auth-headers (::ds/token @process) user-agent)
+                                              "Content-Type" "multipart/form-data")
+                              :multipart multipart})]
+    (deliver prom (if (= (:status response) 200)
+                    (json-body (:body response))
+                    (= (:status response) 204)))
+    response))
 
 (defn rate-limited?
   "Takes a process and an endpoint and checks to see if the

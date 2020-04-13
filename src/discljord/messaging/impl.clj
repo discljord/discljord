@@ -57,11 +57,14 @@
            headers# (if audit-reason#
                       (assoc headers# "X-Audit-Log-Reason" (http/url-encode audit-reason#))
                       headers#)
+           request-params# (merge-with merge
+                                       ~method-params
+                                       {:headers headers#})
+           ~'_ (log/trace "Making request to" ~major-var "with params" request-params#)
            response# @(~(symbol "org.httpkit.client" (name method))
                        (api-url ~url-str)
-                       (merge-with merge
-                                   ~method-params
-                                   {:headers headers#}))
+                       request-params#)
+           ~'_ (log/trace "Response:" response#)
            ~status-sym (:status response#)
            ~body-sym (:body response#)]
        (deliver prom# ~promise-val)
@@ -185,7 +188,7 @@
 (defdispatch :bulk-delete-messages
   [channel-id messages] [] _ :post status _
   (str "/channels/" channel-id "/messages/bulk-delete")
-  {:body (json/write-str messages)}
+  {:body (json/write-str {:messages messages})}
   (= status 204))
 
 (defdispatch :edit-channel-permissions

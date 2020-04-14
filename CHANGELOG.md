@@ -3,6 +3,8 @@ All notable changes to this project will be documented in this file. This change
 Discljord follows semantic versioning.
 
 ## [Unreleased]
+### Added
+ - Support for removing all reactions of a given emoji from a message
 
 ## [0.2.8] - 2020-04-13
 ### Added

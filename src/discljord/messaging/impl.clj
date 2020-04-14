@@ -13,6 +13,7 @@
    [org.httpkit.client :as http]
    [taoensso.timbre :as log])
   (:import
+   (java.net URLEncoder)
    (java.util Date)))
 
 ;; NOTE: Rate limits for emoji don't follow the same conventions, and are handled per-guild
@@ -170,6 +171,12 @@
 (defdispatch :delete-all-reactions
   [channel-id message-id] [] _ :delete status _
   (str "/channels/" channel-id "/messages/" message-id "/reactions")
+  {}
+  (= status 204))
+
+(defdispatch :delete-all-reactions-for-emoji
+  [channel-id message-id emoji] [] _ :delete status _
+  (str "/channels/" channel-id "/messages/" message-id "/reactions/" (URLEncoder/encode emoji))
   {}
   (= status 204))
 

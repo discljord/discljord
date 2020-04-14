@@ -147,6 +147,11 @@
   [message-id]
   [])
 
+(defendpoint delete-all-reactions-for-emoji! ::ds/channel-id
+  "Deletes all reactions of a particular emoji on a message. Returns a promise containing a boolean of if it succeeded."
+  [message-id emoji]
+  [])
+
 (defendpoint edit-message! ::ds/channel-id
   "Edits the given message with the new content or embed. Returns a promise containing the new message."
   [message-id]

@@ -6,6 +6,8 @@ Discljord follows semantic versioning.
 ### Added
  - Support for removing all reactions of a given emoji from a message
 
+ - Support for stream-like data in `discljord.messaging/create-message!`
+
 ## [0.2.8] - 2020-04-13
 ### Added
  - Support for audit log reasons on all requests made with `discljord.messaging`

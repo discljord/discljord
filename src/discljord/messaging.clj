@@ -114,9 +114,13 @@
   Keyword Arguments:
   :user-agent changes the User-Agent header sent to Discord.
   :tts is a boolean, defaulting to false, which tells Discord to read
-       your message out loud."
+       your message out loud.
+  :file is a java.io.File object specifying a file for Discord to attach to the message.
+  :attachments is a collection of file-like objects to attach to the message.
+  :stream is a map that has a :content of a java.io.InputStream and a :filename of the filename to attach to the message.
+  :embed is a map specifying the embed format for the message (See Discord API)"
   []
-  [content tts nonce embed file allowed-mentions])
+  [content tts nonce embed file allowed-mentions attachments stream])
 
 (defn ^:deprecated send-message!
   [conn channel-id msg & {:keys [tts none embed file] :as opts}]

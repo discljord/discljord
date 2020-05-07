@@ -64,7 +64,8 @@
   (if (and shard
            (not (:requested-disconnect shard)))
     {:shard (assoc (dissoc shard
-                           :websocket)
+                           :websocket
+                           :ready)
                    :stop-code stop-code
                    :disconnect-msg msg)
      :effects [(cond
@@ -74,7 +75,8 @@
                  :otherwise                      [:reconnect])]}
     {:shard (when (:requested-disconnect shard)
               (dissoc shard
-                      :websocket))
+                      :websocket
+                      :ready))
      :effects []}))
 
 (defmethod handle-websocket-event :error
@@ -125,7 +127,8 @@
                          :disconnect-msg
                          :invalid-session
                          :unresumable)
-                 :session-id (:session-id event))
+                 :session-id (:session-id event)
+                 :ready true)
    :effects [[:send-discord-event event-type event]]})
 
 (defmethod handle-payload :event-dispatch
@@ -146,7 +149,8 @@
   [shard {d :d}]
   {:shard (assoc (dissoc shard
                          :session-id
-                         :seq)
+                         :seq
+                         :ready)
                  :invalid-session true
                  :unresumable (not d))
    :effects [[:reconnect]]})
@@ -260,9 +264,10 @@
    :effects []})
 
 (defmethod handle-shard-communication! :voice-state-update
-  [shard heartbeat-ch url event-ch [_ & {:keys [guild-id channel-id mute deaf]
-                                         :or {mute false
-                                              deaf false}}]]
+  [{:keys [heartbeat-ch event-ch] :as shard}
+   url [_ & {:keys [guild-id channel-id mute deaf]
+             :or {mute false
+                  deaf false}}]]
   (let [msg (json/write-str {:op 4
                              :d {"guild_id" guild-id
                                  "channel_id" channel-id
@@ -329,7 +334,7 @@
                          (handle-connection-event! shard url event))
         communication-fn (fn [[event-type event-data :as value]]
                            (log/debug "Recieved communication value" value "on shard" (:id shard))
-                           (handle-shard-communication! shard value))
+                           (handle-shard-communication! shard url value))
         heartbeat-fn (fn []
                        (if (:ack shard)
                          (do (log/trace "Sending heartbeat payload on shard" (:id shard))
@@ -364,12 +369,18 @@
                      shard-map))]
     (a/go
       (if (:websocket shard)
-        (a/alt!
-          connections-ch ([event] (connections-fn event))
-          communication-ch ([args] (communication-fn args))
-          heartbeat-ch (heartbeat-fn)
-          event-ch ([event] (event-fn event))
-          :priority true)
+        (if (:ready shard)
+          (a/alt!
+            connections-ch ([event] (connections-fn event))
+            communication-ch ([args] (communication-fn args))
+            heartbeat-ch (heartbeat-fn)
+            event-ch ([event] (event-fn event))
+            :priority true)
+          (a/alt!
+            connections-ch ([event] (connections-fn event))
+            heartbeat-ch (heartbeat-fn)
+            event-ch ([event] (event-fn event))
+            :priority true))
         (a/alt!
           connections-ch ([event] (connections-fn event))
           event-ch ([event] (event-fn event))
@@ -527,7 +538,8 @@
                   shard)]
       {:shard (assoc (dissoc shard
                              :heartbeat-ch
-                             :websocket)
+                             :websocket
+                             :ready)
                      :retries retries
                      :requested-disconnect true)
        :effects []})))

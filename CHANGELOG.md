@@ -19,6 +19,7 @@ Discljord follows semantic versioning.
  - `discljord.messaging/execute-webhook!` had its parameters moved to optional ones
 
 ### Fixed
+ - Gateway communication started while a shard is disconnected crashes discljord
  - Invalid payload for bulk-message-delete requests
  - User-requested disconnect does not send a `:disconnect` event
  - Websocket clients of closed websockets were not stopped

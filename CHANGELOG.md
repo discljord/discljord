@@ -5,8 +5,10 @@ Discljord follows semantic versioning.
 ## [Unreleased]
 ### Added
  - Support for removing all reactions of a given emoji from a message
-
  - Support for stream-like data in `discljord.messaging/create-message!`
+
+### Fixed
+ - Gateway communication started while a shard is disconnected crashes discljord
 
 ## [0.2.8] - 2020-04-13
 ### Added
@@ -19,7 +21,6 @@ Discljord follows semantic versioning.
  - `discljord.messaging/execute-webhook!` had its parameters moved to optional ones
 
 ### Fixed
- - Gateway communication started while a shard is disconnected crashes discljord
  - Invalid payload for bulk-message-delete requests
  - User-requested disconnect does not send a `:disconnect` event
  - Websocket clients of closed websockets were not stopped

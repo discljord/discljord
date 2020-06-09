@@ -69,7 +69,10 @@
            ~'_ (log/trace "Response:" response#)
            ~status-sym (:status response#)
            ~body-sym (:body response#)]
-       (deliver prom# ~promise-val)
+       (let [prom-val# ~promise-val]
+         (if (some? prom-val#)
+           (a/>!! prom# prom-val#)
+           (a/close! prom#)))
        response#)))
 
 (defn ^:private json-body
@@ -145,7 +148,10 @@
                              {:headers (assoc (auth-headers (::ds/token @process) user-agent)
                                               "Content-Type" "multipart/form-data")
                               :multipart multipart})]
-    (deliver prom (json-body (:body response)))
+    (let [body (json-body (:body response))]
+      (if (some? body)
+        (a/>!! prom body)
+        (a/close! prom)))
     response))
 
 (defdispatch :create-reaction
@@ -686,9 +692,12 @@
                               :headers (assoc (auth-headers (::ds/token @process) user-agent)
                                               "Content-Type" "multipart/form-data")
                               :multipart multipart})]
-    (deliver prom (if (= (:status response) 200)
-                    (json-body (:body response))
-                    (= (:status response) 204)))
+    (let [body (if (= (:status response) 200)
+                 (json-body (:body response))
+                 (= (:status response) 204))]
+      (if (some? body)
+        (a/>!! prom body)
+        (a/close! prom)))
     response))
 
 (defn rate-limited?

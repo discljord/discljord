@@ -47,7 +47,7 @@
          [~'conn ~@(when major-var-type [major-var]) ~@params ~'& {:keys ~opts :as ~'opts}]
          (let [user-agent# (:user-agent ~'opts)
                audit-reason# (:audit-reason ~'opts)
-               p# (promise)
+               p# (impl/derefable-promise-chan)
                action# {::ms/action ~action}]
            (a/put! ~'conn (into [(if ~major-var-type
                                    (assoc action#

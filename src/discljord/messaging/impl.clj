@@ -9,7 +9,7 @@
    [discljord.http :refer [api-url]]
    [discljord.messaging.specs :as ms]
    [discljord.specs :as ds]
-   [discljord.util :refer [bot-token clean-json-input *enable-logging*]]
+   [discljord.util :refer [bot-token clean-json-input]]
    [org.httpkit.client :as http]
    [taoensso.timbre :as log])
   (:import

@@ -4,6 +4,7 @@ Discljord follows semantic versioning.
 
 ## [Unreleased]
 ### Added
+ - Support for doing a parking take on the promises returned from all REST endpoint functions
  - Support for removing all reactions of a given emoji from a message
  - Support for stream-like data in `discljord.messaging/create-message!`
 

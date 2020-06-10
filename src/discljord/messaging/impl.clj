@@ -732,17 +732,21 @@
                 (* (Long. reset) 1000)
                 (or (::ms/reset rate-limit)
                     0))
+        reset (if (> (or (::ms/reset rate-limit) 0) reset)
+                (::ms/reset rate-limit)
+                reset)
+        current-time (System/currentTimeMillis)
         remaining (:x-ratelimit-remaining headers)
-        remaining (if-let [old-rem (::ms/remaining rate-limit)]
+        remaining (when remaining (Long. remaining))
+        remaining (let [old-rem (::ms/remaining rate-limit)]
                     (if-not remaining
-                      (dec (or old-rem 5))
-                      ;; If the old value is less than the new one and isn't
-                      ;; expired, use it instead
-                      (let [remaining (Long. remaining)]
-                        (if (and (pos? (- (::ms/reset rate-limit) reset))
-                                 (< (or old-rem Integer/MAX_VALUE) remaining))
-                          old-rem
-                          remaining))))
+                      (dec (if (> reset current-time)
+                             (or old-rem 1)
+                             rate))
+                      (min remaining
+                           (or (when (< current-time (or (::ms/reset rate-limit) 0))
+                                 (dec old-rem))
+                               Long/MAX_VALUE))))
         new-rate-limit {::ms/rate rate
                         ::ms/remaining remaining
                         ::ms/reset reset}]
@@ -760,7 +764,7 @@
             (when bucket
               (log/trace "Had bucket, checking rate limit")
               (loop [limit (if-not (= ::global-limit bucket)
-                             (get @rate-limits bucket)
+                             (get-in @rate-limits [bucket (::ms/major-variable endpoint)])
                              @global-limit)
                      reset-in (rate-limited? limit)]
                 (log/trace "Got limit" limit)
@@ -769,7 +773,7 @@
                   (a/<!! (a/timeout reset-in))
                   (log/trace "Waited for limit, re-checking")
                   (recur (if-not (= ::global-limit bucket)
-                           (get @rate-limits bucket)
+                           (get-in @rate-limits [bucket (::ms/major-variable endpoint)])
                            @global-limit)
                          (rate-limited? limit)))))
             (log/trace "Making request")
@@ -777,31 +781,36 @@
                  (catch Exception e
                    (log/error e "Exception in dispatch-http")
                    nil)))]
-    (loop [response (make-request endpoint event-data bucket)
-           bucket bucket]
-      (log/debug "Got response from request" response)
-      (if response
-        (let [headers (:headers response)
-              global (when-let [global (:x-ratelimit-global headers)]
-                       (Boolean. global))
-              new-bucket (or (:x-ratelimit-bucket headers)
-                             bucket)]
-          ;; Update the rate limits
-          (if global
-            (swap! global-limit update-rate-limit headers)
-            (when new-bucket
-              (swap! rate-limits update new-bucket #(update-rate-limit % headers))))
-          (if-not (= 429 (:status response))
+    (try
+      (loop [response (make-request endpoint event-data bucket)
+             bucket bucket]
+        (log/debug "Got response from request" response)
+        (if response
+          (let [headers (:headers response)
+                global (when-let [global (:x-ratelimit-global headers)]
+                         (Boolean. global))
+                new-bucket (or (:x-ratelimit-bucket headers)
+                               bucket)]
+            ;; Update the rate limits
             (if global
-              ::global-limit
-              new-bucket)
-            ;; If we got a 429, wait for the retry time and go again
-            (let [retry-after (:retry-after (json-body (:body response)))]
-              (log/warn "Got a 429 response to request" endpoint event-data "with response" response)
-              (log/trace "Retrying after" retry-after "milliseconds")
-              (a/<!! (a/timeout retry-after))
-              (recur (make-request endpoint event-data new-bucket)
-                     new-bucket))))
+              (swap! global-limit update-rate-limit headers)
+              (when new-bucket
+                (swap! rate-limits
+                       update-in [new-bucket (::ms/major-variable endpoint)] #(update-rate-limit % headers))))
+            (if-not (= 429 (:status response))
+              (if global
+                ::global-limit
+                new-bucket)
+              ;; If we got a 429, wait for the retry time and go again
+              (let [retry-after (:retry-after (json-body (:body response)))]
+                (log/warn "Got a 429 response to request" endpoint event-data "with response" response)
+                (log/trace "Retrying after" retry-after "milliseconds")
+                (a/<!! (a/timeout retry-after))
+                (recur (make-request endpoint event-data new-bucket)
+                       new-bucket))))
+          bucket))
+      (catch Exception e
+        (log/warn "Caught exception on agent" e)
         bucket))))
 (s/fdef make-request!
   :args (s/cat :token ::ds/token

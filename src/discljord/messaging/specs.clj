@@ -18,10 +18,11 @@
 (s/def ::global (s/nilable boolean?))
 (s/def ::rate-limit (s/keys :req [::reset]
                             :opt [::rate ::remaining ::global]))
+(s/def ::rate-limit-family (s/map-of ::major-variable ::rate-limit))
 
 (s/def ::endpoint-agents (s/map-of ::endpoint (ds/agent-of? string?)))
 
-(s/def ::rate-limits (ds/atom-of? (s/map-of string? ::rate-limit)))
+(s/def ::rate-limits (ds/atom-of? (s/map-of string? ::rate-limit-family)))
 
 (s/def ::global-limit (ds/atom-of? (s/nilable number?)))
 

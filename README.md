@@ -106,8 +106,7 @@ This bot builds slightly on the last, in that it sends its message to the channe
 Discljord does not currently have an opinion about how you store your state, however in future it may provide additional message pump types which have opinions about state or other parts of your program. These will always be opt-in, and you will always be able to write your own message pump like the first example.
 
 ## Known Issues
-
-- If you exceed the rate limit of an endpoint, any other messages sent to that endpoint may arrive out of order.
+None at the moment.
 
 If you find any other issues, please report them, and I'll attempt to fix them as soon as possible!
 

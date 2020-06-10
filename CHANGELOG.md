@@ -9,6 +9,7 @@ Discljord follows semantic versioning.
  - Support for stream-like data in `discljord.messaging/create-message!`
 
 ### Fixed
+ - Messages arrive out of order when rate limits are hit
  - Gateway communication started while a shard is disconnected crashes discljord
 
 ## [0.2.8] - 2020-04-13

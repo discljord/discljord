@@ -10,7 +10,7 @@
    [discljord.http :refer [api-url]]
    [discljord.messaging.specs :as ms]
    [discljord.specs :as ds]
-   [discljord.util :refer [bot-token clean-json-input *enable-logging*]]
+   [discljord.util :refer [bot-token clean-json-input]]
    [org.httpkit.client :as http]
    [taoensso.timbre :as log])
   (:import
@@ -24,10 +24,10 @@
   "Takes a process and endpoint, and dispatches an http request.
   Must return the response object from the call to allow the runtime
   to update the rate limit."
-  (fn [process endpoint data]
+  (fn [token endpoint data]
     (::ms/action endpoint)))
 (s/fdef dispatch-http
-  :args (s/cat :process (ds/atom-of? ::ms/process)
+  :args (s/cat :token string?
                :endpoint ::ms/endpoint
                :data (s/coll-of any?)))
 
@@ -49,13 +49,13 @@
    method status-sym body-sym url-str
    method-params promise-val]
   `(defmethod dispatch-http ~endpoint-name
-     [process# endpoint# [prom# ~@params & {user-agent# :user-agent audit-reason# :audit-reason
+     [token# endpoint# [prom# ~@params & {user-agent# :user-agent audit-reason# :audit-reason
                                             :keys [~@opts] :as opts#}]]
      (let [~opts-sym (dissoc opts# :user-agent)
            ~major-var (-> endpoint#
                           ::ms/major-variable
                           ::ms/major-variable-value)
-           headers# (auth-headers (::ds/token @process#) user-agent#)
+           headers# (auth-headers token# user-agent#)
            headers# (if audit-reason#
                       (assoc headers# "X-Audit-Log-Reason" (http/url-encode audit-reason#))
                       headers#)
@@ -125,7 +125,7 @@
   (json-body body))
 
 (defmethod dispatch-http :create-message
-  [process endpoint [prom & {:keys [^java.io.File file user-agent attachments allowed-mentions stream] :as opts}]]
+  [token endpoint [prom & {:keys [^java.io.File file user-agent attachments allowed-mentions stream] :as opts}]]
   (let [channel-id (-> endpoint
                        ::ms/major-variable
                        ::ms/major-variable-value)
@@ -145,7 +145,7 @@
                     (conj multipart (assoc stream :name "file"))
                     multipart)
         response @(http/post (api-url (str "/channels/" channel-id "/messages"))
-                             {:headers (assoc (auth-headers (::ds/token @process) user-agent)
+                             {:headers (assoc (auth-headers token user-agent)
                                               "Content-Type" "multipart/form-data")
                               :multipart multipart})]
     (let [body (json-body (:body response))]
@@ -676,7 +676,7 @@
   (= status 204))
 
 (defmethod dispatch-http :execute-webhook
-  [process endpoint [prom webhook-token & {:keys [^java.io.File file user-agent wait] :as opts
+  [token endpoint [prom webhook-token & {:keys [^java.io.File file user-agent wait] :as opts
                                            :or {wait false}}]]
   (let [webhook-id (-> endpoint
                        ::ms/major-variable
@@ -689,7 +689,7 @@
                     multipart)
         response @(http/post (api-url (str "/webhooks/" webhook-id "/" webhook-token))
                              {:query-params {:wait wait}
-                              :headers (assoc (auth-headers (::ds/token @process) user-agent)
+                              :headers (assoc (auth-headers token user-agent)
                                               "Content-Type" "multipart/form-data")
                               :multipart multipart})]
     (let [body (if (= (:status response) 200)
@@ -701,107 +701,149 @@
     response))
 
 (defn rate-limited?
-  "Takes a process and an endpoint and checks to see if the
-  process is currently rate limited."
-  [process endpoint]
-  (let [specific-limit (select-first [::ms/rate-limits
-                                      ::ms/endpoint-specific-rate-limits
-                                      (keypath endpoint)]
-                                     process)
-        global-limit (select-first [::ms/rate-limits
-                                    ::ms/global-rate-limit]
-                                   process)
-        remaining (or (::ms/remaining specific-limit)
-                      (::ms/remaining global-limit))
-        reset (or (::ms/reset specific-limit)
-                  (::ms/reset global-limit))
+  "Returns the number of millis until the limit expires, or nil if not limited"
+  [rate-limit]
+  (let [remaining (::ms/remaining rate-limit)
+        reset (::ms/reset rate-limit)
         time (System/currentTimeMillis)]
-    (and remaining
-         (<= remaining 0)
-         reset
-         (< time reset))))
+    (when (and remaining
+             (<= remaining 0)
+             reset
+             (< time reset))
+      (- reset time))))
 (s/fdef rate-limited?
-  :args (s/cat :process ::ms/process
-               :endpoint ::ms/endpoint)
-  :ret boolean?)
+  :args (s/cat :rate-limit ::ms/rate-limit)
+  :ret (s/nilable nat-int?))
 
 (defn update-rate-limit
-  "Takes a rate-limit and a response and returns an updated rate-limit.
+  "Takes a rate-limit and a map of headers and returns an updated rate-limit.
 
-  If a rate limit headers are included in the response, then the rate
-  limit is updated to them, otherwise the existing rate limit is used,
-  but the remaining limit is decremented."
-  [rate-limit response]
-  (let [headers (:headers response)
-        rate (:x-ratelimit-limit headers)
+  If rate limit headers are included in the map, then the rate limit is updated
+  to them, otherwise the existing rate limit is used, but the remaining limit is
+  decremented."
+  [rate-limit headers]
+  (let [rate (:x-ratelimit-limit headers)
         rate (if rate
                (Long. rate)
                (or (::ms/rate rate-limit)
                    5))
-        remaining (:x-ratelimit-remaining headers)
-        remaining (if remaining
-                    (Long. remaining)
-                    (dec (or (::ms/remaining rate-limit)
-                             5)))
-        date (when (:date headers)
-               (Date/parse (:date headers)))
         reset (:x-ratelimit-reset headers)
         reset (if reset
                 (* (Long. reset) 1000)
                 (or (::ms/reset rate-limit)
                     0))
-        reset (if date
-                (+ (- reset date) (System/currentTimeMillis))
-                reset)
-        global-str (:x-ratelimit-global headers)
-        global (if global-str
-                 (Boolean. global-str)
-                 (::ms/global rate-limit ::not-found))
+        remaining (:x-ratelimit-remaining headers)
+        remaining (if-let [old-rem (::ms/remaining rate-limit)]
+                    (if-not remaining
+                      (dec (or old-rem 5))
+                      ;; If the old value is less than the new one and isn't
+                      ;; expired, use it instead
+                      (let [remaining (Long. remaining)]
+                        (if (and (pos? (- (::ms/reset rate-limit) reset))
+                                 (< (or old-rem Integer/MAX_VALUE) remaining))
+                          old-rem
+                          remaining))))
         new-rate-limit {::ms/rate rate
                         ::ms/remaining remaining
-                        ::ms/reset reset}
-        new-rate-limit (if-not (= global ::not-found)
-                         (assoc new-rate-limit ::ms/global global)
-                         new-rate-limit)]
+                        ::ms/reset reset}]
     new-rate-limit))
 (s/fdef update-rate-limit
   :args (s/cat :rate-limit (s/nilable ::ms/rate-limit)
-               :response (s/keys :req-un [::headers])))
+               :headers map?)
+  :ret ::ms/rate-limit)
+
+(defn make-request!
+  "Makes a request after waiting for the rate limit, retrying if necessary."
+  [token rate-limits global-limit endpoint event-data bucket]
+  (letfn [(make-request [endpoint event-data bucket]
+            (log/debug "Making request to endpoint" endpoint)
+            (when bucket
+              (log/trace "Had bucket, checking rate limit")
+              (loop [limit (if-not (= ::global-limit bucket)
+                             (get @rate-limits bucket)
+                             @global-limit)
+                     reset-in (rate-limited? limit)]
+                (log/trace "Got limit" limit)
+                (when reset-in
+                  (log/trace "Got millis to reset in" reset-in)
+                  (a/<!! (a/timeout reset-in))
+                  (log/trace "Waited for limit, re-checking")
+                  (recur (if-not (= ::global-limit bucket)
+                           (get @rate-limits bucket)
+                           @global-limit)
+                         (rate-limited? limit)))))
+            (log/trace "Making request")
+            (try (dispatch-http token endpoint event-data)
+                 (catch Exception e
+                   (log/error e "Exception in dispatch-http")
+                   nil)))]
+    (loop [response (make-request endpoint event-data bucket)
+           bucket bucket]
+      (log/debug "Got response from request" response)
+      (if response
+        (let [headers (:headers response)
+              global (when-let [global (:x-ratelimit-global headers)]
+                       (Boolean. global))
+              new-bucket (or (:x-ratelimit-bucket headers)
+                             bucket)]
+          ;; Update the rate limits
+          (if global
+            (swap! global-limit update-rate-limit headers)
+            (when new-bucket
+              (swap! rate-limits update new-bucket #(update-rate-limit % headers))))
+          (if-not (= 429 (:status response))
+            (if global
+              ::global-limit
+              new-bucket)
+            ;; If we got a 429, wait for the retry time and go again
+            (let [retry-after (:retry-after (json-body (:body response)))]
+              (log/warn "Got a 429 response to request" endpoint event-data "with response" response)
+              (log/trace "Retrying after" retry-after "milliseconds")
+              (a/<!! (a/timeout retry-after))
+              (recur (make-request endpoint event-data new-bucket)
+                     new-bucket))))
+        bucket))))
+(s/fdef make-request!
+  :args (s/cat :token ::ds/token
+               :rate-limits ::ms/rate-limits
+               :global-limit ::ms/global-limit
+               :endpoint ::ms/endpoint
+               :event-data any?
+               :bucket string?)
+  :ret string?)
+
+(defn step-agent
+  "Takes a process and an event, and runs the request, respecting rate limits"
+  [process [endpoint & event-data :as event]]
+  (log/trace "Stepping agent with process" process)
+  (let [bucket (or (get-in process [::ms/endpoint-agents endpoint])
+                   (agent nil))]
+    (send-off bucket #(make-request! (::ds/token process)
+                                     (::ms/rate-limits process)
+                                     (::ms/global-limit process)
+                                     endpoint event-data %))
+    (assoc-in process [::ms/endpoint-agents endpoint] bucket)))
+(s/fdef step-agent
+  :args (s/cat :process ::ms/process
+               :event (s/spec (s/cat :endpoint ::ms/endpoint
+                                     :event-data (s/* any?)))))
 
 (defn start!
   "Takes a token for a bot and returns a channel to communicate with the
   message sending process."
   [token]
-  (let [process (atom {::ms/rate-limits {::ms/endpoint-specific-rate-limits {}}
-                       ::ds/channel (a/chan 1000)
-                       ::ds/token token})]
-    (a/go-loop []
-      (let [[endpoint & event-data :as event] (a/<! (::ds/channel @process))]
-        (when-not (= endpoint :disconnect)
-          (if (rate-limited? @process endpoint)
-            (a/>! (::ds/channel @process) event)
-            (when-let [response (a/<! (a/thread (try (dispatch-http process endpoint event-data)
-                                                     (catch Exception e
-                                                       (when *enable-logging*
-                                                         (log/error e "Exception in dispatch-http"))
-                                                       nil))))]
-              (transform [ATOM
-                          ::ms/rate-limits
-                          (if (select-first [:headers :x-ratelimit-global] response)
-                            ::ms/global-rate-limit
-                            ::ms/endpoint-specific-rate-limits)
-                          (keypath endpoint)]
-                         #(update-rate-limit % response)
-                         process)
-              (when (= (:status response)
-                       429)
-                ;; This shouldn't happen for anything but emoji stuff, so this shouldn't happen
-                (when *enable-logging*
-                  (log/info "Bot triggered rate limit response."))
-                ;; Resend the event to dispatch, hopefully this time not brekaing the rate limit
-                (a/>! (::ds/channel @process) event))))
-          (recur))))
-    (::ds/channel @process)))
+  (log/debug "Starting messaging process")
+  (let [process {::ms/rate-limits (atom {})
+                 ::ms/endpoint-agents {}
+                 ::ds/channel (a/chan 1000)
+                 ::ds/token token
+                 ::ms/global-limit (atom nil)}]
+    (a/go-loop [process process]
+      (let [[action :as event] (a/<! (::ds/channel process))]
+        (log/trace "Got event" event)
+        (when-not (= action :disconnect)
+          (recur (step-agent process event)))))
+    (::ds/channel process)))
 (s/fdef start!
   :args (s/cat :token ::ds/token)
   :ret ::ds/channel)

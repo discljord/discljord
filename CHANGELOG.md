@@ -12,6 +12,9 @@ Discljord follows semantic versioning.
  - Messages arrive out of order when rate limits are hit
  - Gateway communication started while a shard is disconnected crashes discljord
 
+### Removed
+ - Dependency on `com.rpl.specter`
+
 ## [0.2.8] - 2020-04-13
 ### Added
  - Support for audit log reasons on all requests made with `discljord.messaging`

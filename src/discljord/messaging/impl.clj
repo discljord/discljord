@@ -6,7 +6,6 @@
    [clojure.data.json :as json]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
-   [com.rpl.specter :refer [ATOM keypath select-first transform]]
    [discljord.http :refer [api-url]]
    [discljord.messaging.specs :as ms]
    [discljord.specs :as ds]

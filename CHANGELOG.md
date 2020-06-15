@@ -13,6 +13,9 @@ Discljord follows semantic versioning.
  - Gateway communication started while a shard is disconnected crashes discljord
  - Spec for embeds had incorrect type for embed field values
 
+### Removed
+ - Dependency on `com.rpl.specter`
+
 ## [0.2.8] - 2020-04-13
 ### Added
  - Support for audit log reasons on all requests made with `discljord.messaging`

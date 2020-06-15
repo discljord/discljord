@@ -11,6 +11,7 @@ Discljord follows semantic versioning.
 ### Fixed
  - Messages arrive out of order when rate limits are hit
  - Gateway communication started while a shard is disconnected crashes discljord
+ - Spec for embeds had incorrect type for embed field values
 
 ## [0.2.8] - 2020-04-13
 ### Added

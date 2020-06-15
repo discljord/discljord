@@ -73,12 +73,14 @@
 (s/def ::file (partial instance? java.io.File))
 
 (s/def :embed/title string?)
-(s/def :embed/type string?)
+(s/def :embed/type #{"rich" "image" "video" "gifv" "article" "link"})
 (s/def :embed/description string?)
 (s/def :embed/url string?)
 (s/def :embed/timestamp string?)
 (s/def :embed/color integer?)
-(s/def :embed/footer (s/keys :opt-un [:embed/icon_url :embed/proxy_icon_url]))
+(s/def :embed.footer/text string?)
+(s/def :embed/footer (s/keys :req-un [:embed.footer/text]
+                             :opt-un [:embed/icon_url :embed/proxy_icon_url]))
 (s/def :embed/image (s/keys :opt-un [:embed/url :embed/proxy_url
                                      :embed/height :embed/width]))
 
@@ -96,7 +98,7 @@
 (s/def :embed/author (s/keys :opt-un [:embed/name :embed/url
                                       :embed/icon_url
                                       :embed/proxy_icon_url]))
-(s/def :embed.field/value any?)
+(s/def :embed.field/value string?)
 (s/def :embed.field/inline boolean?)
 (s/def :embed/fields (s/coll-of (s/keys :req-un [:embed/name :embed.field/value]
                                         :opt-un [:embed.field/inline])))

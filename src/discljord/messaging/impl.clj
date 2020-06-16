@@ -76,9 +76,8 @@
 
 (defn ^:private json-body
   [body]
-  (if-let [json-msg (json/read-str body)]
-    (clean-json-input json-msg)
-    nil))
+  (when-let [json-msg (json/read-str body)]
+    (clean-json-input json-msg)))
 
 (defn ^:private conform-to-json
   [opts]

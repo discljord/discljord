@@ -14,6 +14,7 @@ Discljord follows semantic versioning.
  - Messages arrive out of order when rate limits are hit
  - Gateway communication started while a shard is disconnected crashes discljord
  - Spec for embeds had incorrect type for embed field values
+ - Direct memory leak when reconnects occur
 
 ### Removed
  - Dependency on `com.rpl.specter`

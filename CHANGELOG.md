@@ -3,6 +3,8 @@ All notable changes to this project will be documented in this file. This change
 Discljord follows semantic versioning.
 
 ## [Unreleased]
+
+## [0.2.9] - 2020-06-18
 ### Added
  - Support for doing a parking take on the promises returned from all REST endpoint functions
  - Support for removing all reactions of a given emoji from a message
@@ -182,7 +184,8 @@ Discljord follows semantic versioning.
  - README follows new API
  - Project name from `discljord-functional` to `discljord` 
 
-[Unreleased]: https://github.com/IGJoshua/discljord/compare/0.2.8..develop
+[Unreleased]: https://github.com/IGJoshua/discljord/compare/0.2.9..develop
+[0.2.9]: https://github.com/IGJoshua/discljord/compare/0.2.8..0.2.9
 [0.2.8]: https://github.com/IGJoshua/discljord/compare/0.2.7..0.2.8
 [0.2.7]: https://github.com/IGJoshua/discljord/compare/0.2.6..0.2.7
 [0.2.6]: https://github.com/IGJoshua/discljord/compare/0.2.5..0.2.6

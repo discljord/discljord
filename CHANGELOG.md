@@ -4,6 +4,20 @@ Discljord follows semantic versioning.
 
 ## [Unreleased]
 
+## [0.2.9] - 2020-06-18
+### Added
+ - Support for doing a parking take on the promises returned from all REST endpoint functions
+ - Support for removing all reactions of a given emoji from a message
+ - Support for stream-like data in `discljord.messaging/create-message!`
+
+### Fixed
+ - Messages arrive out of order when rate limits are hit
+ - Gateway communication started while a shard is disconnected crashes discljord
+ - Spec for embeds had incorrect type for embed field values
+
+### Removed
+ - Dependency on `com.rpl.specter`
+
 ## [0.2.8] - 2020-04-13
 ### Added
  - Support for audit log reasons on all requests made with `discljord.messaging`
@@ -170,7 +184,8 @@ Discljord follows semantic versioning.
  - README follows new API
  - Project name from `discljord-functional` to `discljord` 
 
-[Unreleased]: https://github.com/IGJoshua/discljord/compare/0.2.8..develop
+[Unreleased]: https://github.com/IGJoshua/discljord/compare/0.2.9..develop
+[0.2.9]: https://github.com/IGJoshua/discljord/compare/0.2.8..0.2.9
 [0.2.8]: https://github.com/IGJoshua/discljord/compare/0.2.7..0.2.8
 [0.2.7]: https://github.com/IGJoshua/discljord/compare/0.2.6..0.2.7
 [0.2.6]: https://github.com/IGJoshua/discljord/compare/0.2.5..0.2.6

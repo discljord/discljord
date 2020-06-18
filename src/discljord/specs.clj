@@ -20,6 +20,14 @@
     (and (instance? clojure.lang.Atom x)
          (s/valid? s @x))))
 
+(defn agent-of?
+  "Takes a spec, and returns a spec for a clojure.lang.Agent
+  containing a value of that spec."
+  [s]
+  (fn [x]
+    (and (instance? clojure.lang.Agent x)
+         (s/valid? s @x))))
+
 (s/def ::snowflake (partial re-matches #"\d+"))
 
 (s/def ::id ::snowflake)

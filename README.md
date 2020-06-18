@@ -7,7 +7,7 @@ Discljord is a library for the easy creation of Discord Bots in Clojure! It work
 Add the following to your project.clj in leiningen:
 
 ```clojure
-[org.suskalo/discljord "0.2.8"]
+[org.suskalo/discljord "0.2.9"]
 ```
 
 ## Usage
@@ -106,14 +106,13 @@ This bot builds slightly on the last, in that it sends its message to the channe
 Discljord does not currently have an opinion about how you store your state, however in future it may provide additional message pump types which have opinions about state or other parts of your program. These will always be opt-in, and you will always be able to write your own message pump like the first example.
 
 ## Known Issues
-
-- If you exceed the rate limit of an endpoint, any other messages sent to that endpoint may arrive out of order.
+None at the moment.
 
 If you find any other issues, please report them, and I'll attempt to fix them as soon as possible!
 
 ## License
 
-Copyright © 2017-2019 Joshua Suskalo
+Copyright © 2017-2020 Joshua Suskalo
 
 Distributed under the Eclipse Public License either version 1.0 or (at
 your option) any later version.

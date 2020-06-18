@@ -1,5 +1,4 @@
 (ns discljord.util
-  (:use com.rpl.specter)
   (:require
    [clojure.data.json :as json]
    [clojure.spec.alpha :as s]
@@ -54,11 +53,12 @@
   Arrays are converted to vectors with each element recursively conformed."
   [j]
   (cond
-    (map? j) (->> j
-                  (transform [MAP-KEYS] #(if (string? %)
-                                           (json-keyword %)
-                                           (clean-json-input %)))
-                  (transform [MAP-VALS coll?] clean-json-input))
+    (map? j) (into {}
+                   (map (fn [[key val]] [(if (string? key)
+                                           (json-keyword key)
+                                           (clean-json-input key))
+                                         (clean-json-input val)]))
+                   j)
     (vector? j) (mapv clean-json-input j)
     :else j))
 (s/fdef clean-json-input

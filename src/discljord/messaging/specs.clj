@@ -16,18 +16,21 @@
 (s/def ::remaining (s/nilable number?))
 (s/def ::reset (s/nilable number?))
 (s/def ::global (s/nilable boolean?))
-(s/def ::rate-limit (s/keys :req [::rate ::remaining ::reset]
-                            :opt [::global]))
+(s/def ::rate-limit (s/keys :req [::reset]
+                            :opt [::rate ::remaining ::global]))
+(s/def ::rate-limit-family (s/map-of ::major-variable ::rate-limit))
 
-(s/def ::endpoint-specific-rate-limits (s/map-of ::endpoint ::rate-limit))
-(s/def ::global-rate-limit ::rate-limit)
+(s/def ::endpoint-agents (s/map-of ::endpoint (ds/agent-of? string?)))
 
-(s/def ::rate-limits (s/keys :req [::endpoint-specific-rate-limits]
-                             :opt [::global-rate-limit]))
+(s/def ::rate-limits (ds/atom-of? (s/map-of string? ::rate-limit-family)))
 
-(s/def ::process (s/keys :req [::rate-limits
-                               ::ds/channel
-                               ::ds/token]))
+(s/def ::global-limit (ds/atom-of? (s/nilable number?)))
+
+(s/def ::process (s/keys :req [::ds/channel
+                               ::ds/token
+                               ::rate-limits
+                               ::endpoint-agents
+                               ::global-limit]))
 
 ;; -----------------------------------------------------------------------
 ;; Argument specs
@@ -70,12 +73,14 @@
 (s/def ::file (partial instance? java.io.File))
 
 (s/def :embed/title string?)
-(s/def :embed/type string?)
+(s/def :embed/type #{"rich" "image" "video" "gifv" "article" "link"})
 (s/def :embed/description string?)
 (s/def :embed/url string?)
 (s/def :embed/timestamp string?)
 (s/def :embed/color integer?)
-(s/def :embed/footer (s/keys :opt-un [:embed/icon_url :embed/proxy_icon_url]))
+(s/def :embed.footer/text string?)
+(s/def :embed/footer (s/keys :req-un [:embed.footer/text]
+                             :opt-un [:embed/icon_url :embed/proxy_icon_url]))
 (s/def :embed/image (s/keys :opt-un [:embed/url :embed/proxy_url
                                      :embed/height :embed/width]))
 
@@ -93,7 +98,7 @@
 (s/def :embed/author (s/keys :opt-un [:embed/name :embed/url
                                       :embed/icon_url
                                       :embed/proxy_icon_url]))
-(s/def :embed.field/value any?)
+(s/def :embed.field/value string?)
 (s/def :embed.field/inline boolean?)
 (s/def :embed/fields (s/coll-of (s/keys :req-un [:embed/name :embed.field/value]
                                         :opt-un [:embed.field/inline])))

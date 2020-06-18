@@ -1,5 +1,11 @@
 (ns discljord.messaging
-  "Contains functions for communicating with Discord, sending messages, and recieving data."
+  "Contains functions for communicating with Discord, sending messages, and recieving data.
+
+  All endpoint-based functions in this namespace return promises of a sort. The
+  returned value is not a Clojure promise however, but is an implementation
+  of [[IDeref]] which also functions as a `core.async` channel. This means that
+  in addition to [[deref]]ing the return values, they may also have a parking
+  take performed on them for better concurrency."
   (:require
    [clojure.core.async :as a]
    [clojure.spec.alpha :as s]
@@ -47,7 +53,7 @@
          [~'conn ~@(when major-var-type [major-var]) ~@params ~'& {:keys ~opts :as ~'opts}]
          (let [user-agent# (:user-agent ~'opts)
                audit-reason# (:audit-reason ~'opts)
-               p# (promise)
+               p# (impl/derefable-promise-chan)
                action# {::ms/action ~action}]
            (a/put! ~'conn (into [(if ~major-var-type
                                    (assoc action#
@@ -114,9 +120,13 @@
   Keyword Arguments:
   :user-agent changes the User-Agent header sent to Discord.
   :tts is a boolean, defaulting to false, which tells Discord to read
-       your message out loud."
+       your message out loud.
+  :file is a java.io.File object specifying a file for Discord to attach to the message.
+  :attachments is a collection of file-like objects to attach to the message.
+  :stream is a map that has a :content of a java.io.InputStream and a :filename of the filename to attach to the message.
+  :embed is a map specifying the embed format for the message (See Discord API)"
   []
-  [content tts nonce embed file allowed-mentions])
+  [content tts nonce embed file allowed-mentions attachments stream])
 
 (defn ^:deprecated send-message!
   [conn channel-id msg & {:keys [tts none embed file] :as opts}]
@@ -145,6 +155,11 @@
 (defendpoint delete-all-reactions! ::ds/channel-id
   "Deletes all reactions on a message. Returns a promise containing a boolean of if it succeeded."
   [message-id]
+  [])
+
+(defendpoint delete-all-reactions-for-emoji! ::ds/channel-id
+  "Deletes all reactions of a particular emoji on a message. Returns a promise containing a boolean of if it succeeded."
+  [message-id emoji]
   [])
 
 (defendpoint edit-message! ::ds/channel-id

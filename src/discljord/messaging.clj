@@ -1,5 +1,11 @@
 (ns discljord.messaging
-  "Contains functions for communicating with Discord, sending messages, and recieving data."
+  "Contains functions for communicating with Discord, sending messages, and recieving data.
+
+  All endpoint-based functions in this namespace return promises of a sort. The
+  returned value is not a Clojure promise however, but is an implementation
+  of [[IDeref]] which also functions as a `core.async` channel. This means that
+  in addition to [[deref]]ing the return values, they may also have a parking
+  take performed on them for better concurrency."
   (:require
    [clojure.core.async :as a]
    [clojure.spec.alpha :as s]

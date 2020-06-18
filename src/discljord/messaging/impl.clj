@@ -37,7 +37,7 @@
    (str "DiscordBot ("
         "https://github.com/IGJoshua/discljord"
         ", "
-        "0.2.9-SNAPSHOT"
+        "0.2.9"
         ") "
         user-agent)
    "Content-Type" "application/json"})

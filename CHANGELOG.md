@@ -4,6 +4,7 @@ Discljord follows semantic versioning.
 
 ## [Unreleased]
 ### Added
+ - Support for user-level shard control (enabling distributed bots)
  - `:re-shard` event which is sent when a re-shard is requested from Discord and `*handle-re-shard*` is falsey
 
 ### Fixed

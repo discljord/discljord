@@ -532,7 +532,7 @@
     (log/warn "Got invalid session payload, reconnecting shard" (:id shard)))
   (when (:heartbeat-ch shard)
     (a/close! (:heartbeat-ch shard)))
-  (let [retries (inc (or (:retries shard) 0))
+  (let [retries (or (:retries shard) 0)
         retry-wait (min (* 5100 (* retries retries)) (* 15 60 1000))]
     (log/debug "Will try to connect in" (int (/ retry-wait 1000)) "seconds")
     (after-timeout! (fn []
@@ -546,7 +546,7 @@
                              :heartbeat-ch
                              :websocket
                              :ready)
-                     :retries retries
+                     :retries (inc retries)
                      :requested-disconnect true)
        :effects []})))
 

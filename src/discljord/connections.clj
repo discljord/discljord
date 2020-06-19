@@ -97,7 +97,8 @@
                              :remaining-starts (:remaining session-start-limit)
                              :reset-after (:reset-after session-start-limit)})))
           (let [communication-chan (a/chan 100)]
-            (impl/connect-shards! out-ch communication-chan url token intents shard-count shard-ids)
+            (binding [impl/*handle-re-shard* false]
+              (impl/connect-shards! out-ch communication-chan url token intents shard-count shard-ids))
             communication-chan))
       (log/debug "Unable to receive gateway information."))))
 (s/fdef connect-shards!

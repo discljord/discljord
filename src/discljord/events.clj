@@ -21,7 +21,5 @@
   nil)
 (s/fdef message-pump!
   :args (s/cat :channel any?
-               :handle-event (s/fspec :args (s/cat :event-type keyword?
-                                                   :event-data any?)
-                                      :ret any?))
+               :handle-event ifn?)
   :ret nil?)

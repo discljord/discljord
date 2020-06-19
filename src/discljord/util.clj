@@ -64,10 +64,14 @@
 (s/fdef clean-json-input
   :args (s/cat :json-data (s/or :string string?
                                 :number number?
+                                :bool boolean?
                                 :array vector?
-                                :object map?))
+                                :object map?
+                                :null nil?))
   :ret (s/or :string string?
              :number number?
              :array vector?
              :object map?
-             :keyword keyword?))
+             :keyword keyword?
+             :boolean boolean?
+             :nil nil?))

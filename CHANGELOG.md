@@ -11,6 +11,8 @@ Discljord follows semantic versioning.
  - Minimum reconnect time for a single shard reduced to 0 seconds
 
 ### Fixed
+ - Instrumenting `message-pump!` calls the function repeatedly
+ - Instrumenting calls to all functions raises internal errors
  - Resumes do not reset the retry count
  - Direct memory leak when reconnects occur (for real this time)
 

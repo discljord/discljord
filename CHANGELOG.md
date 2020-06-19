@@ -36,11 +36,11 @@ Discljord follows semantic versioning.
  - `discljord.messaging/execute-webhook!` was unable to send files
  - Documentation for create-message! saying file sharing was not implemented
 
-## [0.2.7]
+## [0.2.7] - 2020-02-24
 ### Fixed
  - `:disconnect` event no longer sent when bot shuts down
 
-## [0.2.6]
+## [0.2.6] - 2020-02-24
 ### Fixed
  - Bots are unable to disconnect properly
  - Bots fail to reconnect after spending time with internet unavailable
@@ -52,7 +52,7 @@ Discljord follows semantic versioning.
 ## Upgraded
  - gniazdo version
 
-## [0.2.5]
+## [0.2.5] - 2019-05-27
 ### Added
  - Support for the Watching activity type
  - Support for pass-through activity types in case discljord doesn't support them all

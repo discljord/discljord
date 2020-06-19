@@ -32,3 +32,12 @@
                           :direct-messages :direct-message-reactions
                           :direct-message-typing})
 (s/def ::intents (s/coll-of ::gateway-intent :kind set?))
+
+(s/def ::url string?)
+(s/def ::shard-count pos-int?)
+(s/def ::remaining nat-int?)
+(s/def ::reset-after pos-int?)
+(s/def ::session-start-limit (s/keys :req-un [::remaining ::reset-after]))
+(s/def ::gateway (s/keys :req-un [::url ::shard-count ::session-start-limit]))
+
+(s/def ::identify-when ifn?)

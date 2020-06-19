@@ -3,6 +3,18 @@ All notable changes to this project will be documented in this file. This change
 Discljord follows semantic versioning.
 
 ## [Unreleased]
+### Added
+ - Support for user-level shard control (enabling distributed bots)
+ - `:re-shard` event which is sent when a re-shard is requested from Discord and `*handle-re-shard*` is falsey
+
+### Changed
+ - Minimum reconnect time for a single shard reduced to 0 seconds
+
+### Fixed
+ - Instrumenting `message-pump!` calls the function repeatedly
+ - Instrumenting calls to all functions raises internal errors
+ - Resumes do not reset the retry count
+ - Direct memory leak when reconnects occur (for real this time)
 
 ## [0.2.9] - 2020-06-18
 ### Added

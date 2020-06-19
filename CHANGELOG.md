@@ -3,6 +3,9 @@ All notable changes to this project will be documented in this file. This change
 Discljord follows semantic versioning.
 
 ## [Unreleased]
+### Added
+ - `:re-shard` event which is sent when a re-shard is requested from Discord and `*handle-re-shard*` is falsey
+
 ### Fixed
  - Direct memory leak when reconnects occur (for real this time)
 

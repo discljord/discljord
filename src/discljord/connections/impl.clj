@@ -668,7 +668,9 @@
         (after-timeout! #(a/put! output-ch [:connected-all-shards]) (+ (* (dec shard-count) 5100)
                                                                        100))
         [shards shard-chs]))
-    [nil nil]))
+    (do
+      (a/put! output-ch [:re-shard])
+      [nil nil])))
 
 (defmethod handle-bot-fx! :disconnect
   [output-ch url token shards shard-chs shard-idx _]

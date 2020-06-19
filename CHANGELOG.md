@@ -7,7 +7,11 @@ Discljord follows semantic versioning.
  - Support for user-level shard control (enabling distributed bots)
  - `:re-shard` event which is sent when a re-shard is requested from Discord and `*handle-re-shard*` is falsey
 
+### Changed
+ - Minimum reconnect time for a single shard reduced to 0 seconds
+
 ### Fixed
+ - Resumes do not reset the retry count
  - Direct memory leak when reconnects occur (for real this time)
 
 ## [0.2.9] - 2020-06-18

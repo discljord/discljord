@@ -127,6 +127,16 @@
                  :ready true)
    :effects [[:send-discord-event event-type event]]})
 
+(defmethod handle-discord-event :resumed
+  [shard event-type event]
+  {:shard (dissoc shard
+                  :retries
+                  :stop-code
+                  :disconnect-msg
+                  :invalid-session
+                  :unresumable)
+   :effects [[:send-discord-event event-type event]]})
+
 (defmethod handle-payload :event-dispatch
   [shard {:keys [d t s] :as msg}]
   (handle-discord-event (assoc shard :seq s) (json-keyword t) d))

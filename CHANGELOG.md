@@ -3,6 +3,8 @@ All notable changes to this project will be documented in this file. This change
 Discljord follows semantic versioning.
 
 ## [Unreleased]
+### Fixed
+ - Direct memory leak when reconnects occur (for real this time)
 
 ## [0.2.9] - 2020-06-18
 ### Added

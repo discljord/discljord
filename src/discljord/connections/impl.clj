@@ -63,9 +63,7 @@
   [shard [_ stop-code msg]]
   (if (and shard
            (not (:requested-disconnect shard)))
-    {:shard (assoc (dissoc shard
-                           :websocket
-                           :ready)
+    {:shard (assoc shard
                    :stop-code stop-code
                    :disconnect-msg msg)
      :effects [(cond
@@ -74,9 +72,7 @@
                       (fatal-code? stop-code))   [:disconnect-all]
                  :otherwise                      [:reconnect])]}
     {:shard (when (:requested-disconnect shard)
-              (dissoc shard
-                      :websocket
-                      :ready))
+              shard)
      :effects []}))
 
 (defmethod handle-websocket-event :error
@@ -293,9 +289,8 @@
   (when heartbeat-ch
     (a/close! heartbeat-ch))
   (a/close! communication-ch)
-  (when websocket
-    (ws/close (:ws websocket))
-    (.stop (:client websocket)))
+  (ws/close (:ws websocket))
+  (.stop (:client websocket))
   (log/info "Disconnecting shard"
             id
             "and closing connection")
@@ -344,13 +339,15 @@
                              {:shard (dissoc shard :ack)
                               :effects []})
                          (do
-                           (when websocket
-                             (ws/close (:ws websocket))
-                             (.stop (:client websocket)))
+                           (ws/close (:ws websocket))
+                           (.stop (:client websocket))
                            (log/info "Reconnecting due to zombie heartbeat on shard" (:id shard))
                            (a/close! heartbeat-ch)
                            (a/put! connections-ch [:connect])
-                           {:shard (assoc (dissoc shard :heartbeat-ch)
+                           {:shard (assoc (dissoc shard
+                                                  :heartbeat-ch
+                                                  :websocket
+                                                  :ready)
                                           :requested-disconnect true)
                             :effects []})))
         event-fn (fn [event]
@@ -519,9 +516,8 @@
 
 (defmethod handle-shard-fx! :reconnect
   [heartbeat-ch url token shard event]
-  (when (:websocket shard)
-    (ws/close (:ws (:websocket shard)))
-    (.stop (:client (:websocket shard))))
+  (ws/close (:ws (:websocket shard)))
+  (.stop (:client (:websocket shard)))
   (when (:invalid-session shard)
     (log/warn "Got invalid session payload, reconnecting shard" (:id shard)))
   (when (:heartbeat-ch shard)

@@ -488,26 +488,39 @@
           0
           intents))
 
+(def ^:dynamic *identify-when*
+  "Function that returns a channel that yields when it's time to identify."
+  nil)
+
+(defn make-identify-fn
+  [token shard]
+  (fn []
+    (log/debug "Sending identify payload for shard" (:id shard))
+    (let [payload {"token" token
+                   "properties" {"$os" "linux"
+                                 "$browser" "discljord"
+                                 "$device" "discljord"}
+                   "compress" false
+                   "large_threshold" 50
+                   "shard" [(:id shard) (:count shard)]}
+          payload (if-let [intents (:intents shard)]
+                    (assoc payload "intents" (intents->intent-int intents))
+                    payload)]
+      (log/trace "Identify payload:" payload)
+      (ws/send-msg (:ws (:websocket shard))
+                   (json/write-str {:op 2
+                                    :d payload})))))
+
 (defmethod handle-shard-fx! :identify
   [heartbeat-ch url token shard event]
   (run-on-agent-with-limit
    identify-limiter
-   (fn []
-     (log/debug "Sending identify payload for shard" (:id shard))
-     (let [payload {"token" token
-                    "properties" {"$os" "linux"
-                                  "$browser" "discljord"
-                                  "$device" "discljord"}
-                    "compress" false
-                    "large_threshold" 50
-                    "shard" [(:id shard) (:count shard)]}
-           payload (if-let [intents (:intents shard)]
-                     (assoc payload "intents" (intents->intent-int intents))
-                     payload)]
-       (log/trace "Identify payload:" payload)
-       (ws/send-msg (:ws (:websocket shard))
-                    (json/write-str {:op 2
-                                     :d payload}))))
+   (let [f (make-identify-fn token shard)]
+     (if-not *identify-when*
+       f
+       (fn []
+         (a/<!! (*identify-when* token))
+         (f))))
    5100)
   {:shard shard
    :effects []})

@@ -39,3 +39,5 @@
 (s/def ::reset-after pos-int?)
 (s/def ::session-start-limit (s/keys :req-un [::remaining ::reset-after]))
 (s/def ::gateway (s/keys :req-un [::url ::shard-count ::session-start-limit]))
+
+(s/def ::identify-when ifn?)

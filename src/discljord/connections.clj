@@ -73,7 +73,15 @@
   "Connects a specific set of shard ids to Discord.
 
   Acts like [[connect-bot!]], but also requires a gateway returned
-  from [[get-websocket-gateway]] and a sequence of shard-ids to connect with.
+  from [[get-websocket-gateway]] and a sequence of shard-ids to connect with, as
+  well as a function used to determine when identify payloads are permitted to
+  be sent.
+
+  `identify` must be a function from token to core.async channel which yields an
+  item when an identify is permitted. This must be at least five seconds after
+  the most recent identify by any shard, however any additional attempts to
+  identify from this connection will include that wait by default, only
+  identifies from other connections must be taken into account for this.
 
   The recommended number of shards for your bot can be determined by the return
   value of [[get-websocket-gateway]].
@@ -85,7 +93,7 @@
   amount of synchronization between calls to [[connect-shards!]] must be had.
   Additional calls should only be made five seconds after the
   `:connected-all-shards` event has been received."
-  [token out-ch gateway shard-ids & {:keys [intents]}]
+  [token out-ch gateway shard-ids & {:keys [intents identify-when]}]
   (let [token (bot-token token)
         {:keys [url shard-count session-start-limit]} gateway]
     (if (and url shard-count session-start-limit)
@@ -97,14 +105,15 @@
                              :remaining-starts (:remaining session-start-limit)
                              :reset-after (:reset-after session-start-limit)})))
           (let [communication-chan (a/chan 100)]
-            (binding [impl/*handle-re-shard* false]
+            (binding [impl/*handle-re-shard* false
+                      impl/*identify-when* identify-when]
               (impl/connect-shards! out-ch communication-chan url token intents shard-count shard-ids))
             communication-chan))
       (log/debug "Unable to receive gateway information."))))
 (s/fdef connect-shards!
   :args (s/cat :token ::ds/token :out-ch ::ds/channel
                :gateway ::cs/gateway :shard-ids (s/coll-of nat-int?)
-               :keyword-args (s/keys* :opt-un [::cs/intents]))
+               :keyword-args (s/keys* :opt-un [::cs/intents ::cs/identify-when]))
   :ret ::ds/channel)
 
 (defn disconnect-bot!

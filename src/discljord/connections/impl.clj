@@ -465,7 +465,7 @@
   {:shard shard
    :effects []})
 
-(def identify-limiter (agent nil))
+(def ^:dynamic *identify-limiter* nil)
 (defn run-on-agent-with-limit
   "Runs the given function on the agent, then other actions wait `millis`."
   [a f millis]
@@ -523,7 +523,7 @@
 (defmethod handle-shard-fx! :identify
   [heartbeat-ch url token shard event]
   (run-on-agent-with-limit
-   identify-limiter
+   *identify-limiter*
    (let [f (make-identify-fn token shard)]
      (if-not *identify-when*
        f

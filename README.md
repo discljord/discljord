@@ -45,7 +45,7 @@ Communication between these three processes is facilitiated via core.async's cha
 
 ### Examples
 
-Each of these examples can be run in a REPL, either via `lein repl` (if you're using leiningen) or `clj -r` (if you're using the Clojure CLI tools).  All of the examples are blocking (you will not be returned to the REPL until the bots are terminated).
+Each of these examples can be run in a REPL, either via `lein try org.suskalo/discljord` (if you're using leiningen) or `clj -Sdeps '{:deps {org.suskalo/discljord #:mvn {:version "0.2.9"}}}'` (if you're using the Clojure CLI tools).  All of the examples are blocking (you will not be returned to the REPL until the bots are terminated).
 
 #### Logging Bot
 

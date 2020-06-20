@@ -18,7 +18,7 @@ lein deps
 ```
 or to tools.deps' `deps.edn` and run
 ```
-clj -i "(println \"Dependencies downloaded\")"
+clj -e "(println \"Dependencies downloaded\")"
 ```
 After that, discljord should be ready to go, and you can start building a bot!
 

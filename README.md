@@ -24,7 +24,7 @@ After that, discljord should be ready to go, and you can start building a bot!
 
 ### Bot Registration
 
-Before your code can connect to Discord and start making API requests, it must be registered with Discord.  This involves:
+Before your code can connect to Discord and start making API requests, it must be registered with Discord.  This is a one-time activity per bot, and involves:
 
 1. Logging in to the [Discord developer portal](https://discord.com/developers).
 2. Creating a new application (blue "New Application" button, top right).

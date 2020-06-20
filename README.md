@@ -30,7 +30,7 @@ Before your code can connect to Discord and start making API requests, it must b
 2. Creating a new application (blue "New Application" button, top right).
 3. Navigating to the "Bot" tab on the left, and click the blue "Add Bot" button.  Confirm your choice (blue "Yes, do it!" button).
 4. Copying the bot's auth token (blue "Copy" button) and paste it somewhere secure (**do not save this token anywhere public!**).
-5. Turning off the "Public Bot" setting (halfway down the page).  Optional, and you can turn this back on once your bot is released if you want others to be able to find it.
+5. Turning off the "Public Bot" setting (halfway down the page).  This step is optional, and you can turn this back on once your bot is released if you want others to be able to find it.
 6. Navigating to the "OAuth2" tab on the left, and select the "bot" checkbox in the Scopes section.
 7. Copying the URL generated in the previous step (blue "Copy" button), then paste it into a new browser tab.
 8. Selecting which Discord server(s) you wish to add the bot to (note: you must have the "Manage Servers" role for servers to be visible in the dropdown).
@@ -110,7 +110,7 @@ This small example should also help clarify what the three processes are. The fi
 
 #### Echo Bot
 
-This example responds to messages by echoing whatever is said, except for the message "exit" (which terminates the bot).
+This example responds to messages by echoing whatever is said by human users in a specific channel, except for the message "!exit" (which terminates the bot).
 
 ```clojure
 (require '[clojure.string        :as s])
@@ -131,7 +131,7 @@ This example responds to messages by echoing whatever is said, except for the me
                    (= (:channel-id event-data) channel)
                    (not (:bot (:author event-data))))
           (let [message-content (:content event-data)]
-            (if (= "exit" (s/trim (s/lower-case message-content)))
+            (if (= "!exit" (s/trim (s/lower-case message-content)))
               (do
                 (m/create-message! message-ch channel-id :content "Goodbye!")
                 (a/>!! connection-ch [:disconnect]))
@@ -189,7 +189,7 @@ Discljord also provides a default event pump to assist with simplicity and exten
     (c/disconnect-bot! connection-ch)))
 ```
 
-This bot builds slightly on the last, in that it sends its message to the channel it was messaged on (which should include DMs), and if that message is "!disconnect" it will disconnect itself.
+This bot builds slightly on the earlier Hello World bot, in that it sends its message to the channel it was messaged on (which should include DMs), and if that message is "!disconnect" it will disconnect itself.
 
 Discljord does not currently have an opinion about how you store your state, however in future it may provide additional message pump types which have opinions about state or other parts of your program. These will always be opt-in, and you will always be able to write your own message pump like the first example.
 

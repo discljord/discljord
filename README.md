@@ -16,7 +16,7 @@ To use discljord, add it to the project dependencies in leiningen's `project.clj
 ```
 lein deps
 ```
-or to Clojure tools.deps' `deps.edn` and run
+or to tools.deps' `deps.edn` and run
 ```
 clj -i "(println \"Dependencies downloaded\")"
 ```

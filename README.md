@@ -101,12 +101,17 @@ Discljord also provides a default event pump to assist with simplicity and exten
     (c/disconnect-bot! connection-ch)))
 ```
 
-This bot builds slightly on the last, in that it sends its message to the channel it was messaged on (which should include DMs), and if that message is "!disconnect" it will disconnect itself.
+This bot builds slightly on the last, in that it sends its message to the channel it was messaged on (which should include DMs), and if that message is "!disconnect** it will disconnect itself.
 
 Discljord does not currently have an opinion about how you store your state, however in future it may provide additional message pump types which have opinions about state or other parts of your program. These will always be opt-in, and you will always be able to write your own message pump like the first example.
 
 ## Known Issues
-None at the moment.
+**Buffer Overflow**
+When a bot joins a very large server and has no intents specified or specifies the `:guilds` intent, a `:guild-create` event may overflow the buffer and cause discljord to fail ([example logs](https://hastebin.com/okagafamah.pl)). This has a temporary solution to add the following code to your bot (probably in the `-main` function):
+```clojure
+(alter-var-root #'discljord.connections.impl/buffer-size (constantly (* 1024 1024 20)))
+```
+The specific size can be adjusted to fit with what your bot needs, but this is the basic idea.
 
 If you find any other issues, please report them, and I'll attempt to fix them as soon as possible!
 

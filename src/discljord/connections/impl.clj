@@ -63,7 +63,15 @@
   [shard [_ stop-code msg]]
   (if (and shard
            (not (:requested-disconnect shard)))
-    {:shard (assoc shard
+    {:shard (assoc (if (= 1009 stop-code)
+                     (let [[_ msg-size] (re-find #"Text message size \[(\d+)\]" msg)
+                           msg-size (Long. msg-size)
+                           new-size (loop [buffer-size (:buffer-size shard)]
+                                      (if (< buffer-size msg-size)
+                                        (recur (* buffer-size 2))
+                                        buffer-size))]
+                       (assoc shard :buffer-size new-size))
+                     shard)
                    :stop-code stop-code
                    :disconnect-msg msg)
      :effects [(cond
@@ -308,7 +316,7 @@
    :effects []})
 
 (defmethod handle-connection-event! :connect
-  [{:keys [heartbeat-ch event-ch] :as shard} url _]
+  [{:keys [heartbeat-ch event-ch buffer-size] :as shard} url _]
   (log/info "Connecting shard" (:id shard))
   (when heartbeat-ch
     (a/close! heartbeat-ch))
@@ -424,7 +432,8 @@
    :intents intents
    :event-ch (a/chan 100)
    :communication-ch (a/chan 100)
-   :connections-ch (a/chan 1)})
+   :connections-ch (a/chan 1)
+   :buffer-size buffer-size})
 
 (defn after-timeout!
   "Calls a function of no arguments after the given `timeout`.

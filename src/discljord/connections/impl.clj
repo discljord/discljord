@@ -15,8 +15,8 @@
     SslContextFactory)))
 
 (def buffer-size
-  "The suggested size of a buffer; default: 4MiB."
-  4194304)
+  "The maximum size of the websocket buffer"
+  (int Integer/MAX_VALUE))
 
 (defmulti handle-websocket-event
   "Updates a `shard` based on shard events.

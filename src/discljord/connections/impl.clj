@@ -15,8 +15,8 @@
     SslContextFactory)))
 
 (def buffer-size
-  "The suggested size of a buffer; default: 4MiB."
-  4194304)
+  "The maximum size of the websocket buffer"
+  (int Integer/MAX_VALUE))
 
 (defmulti handle-websocket-event
   "Updates a `shard` based on shard events.
@@ -64,15 +64,7 @@
   [shard [_ stop-code msg]]
   (if (and shard
            (not (:requested-disconnect shard)))
-    {:shard (assoc (if (= 1009 stop-code)
-                     (let [[_ msg-size] (re-find #"Text message size \[(\d+)\]" msg)
-                           msg-size (Long. ^String msg-size)
-                           new-size (loop [buffer-size (:buffer-size shard)]
-                                      (if (< buffer-size msg-size)
-                                        (recur (* buffer-size 2))
-                                        buffer-size))]
-                       (assoc shard :buffer-size new-size))
-                     shard)
+    {:shard (assoc shard
                    :stop-code stop-code
                    :disconnect-msg msg)
      :effects [(cond
@@ -199,8 +191,6 @@
       (.setMaxTextMessageSize buffer-size)
       (.setMaxBinaryMessageSize buffer-size))
     (doto client
-      (.setMaxTextMessageBufferSize buffer-size)
-      (.setMaxBinaryMessageBufferSize buffer-size)
       (.start))
     {:ws (ws/connect
           url
@@ -317,7 +307,7 @@
    :effects []})
 
 (defmethod handle-connection-event! :connect
-  [{:keys [heartbeat-ch event-ch buffer-size] :as shard} url _]
+  [{:keys [heartbeat-ch event-ch] :as shard} url _]
   (log/info "Connecting shard" (:id shard))
   (when heartbeat-ch
     (a/close! heartbeat-ch))
@@ -433,8 +423,7 @@
    :intents intents
    :event-ch (a/chan 100)
    :communication-ch (a/chan 100)
-   :connections-ch (a/chan 1)
-   :buffer-size buffer-size})
+   :connections-ch (a/chan 1)})
 
 (defn after-timeout!
   "Calls a function of no arguments after the given `timeout`.

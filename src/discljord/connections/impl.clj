@@ -525,7 +525,7 @@
   (run-on-agent-with-limit
    *identify-limiter*
    (let [f (make-identify-fn token shard)
-         identifiy-when *identify-when*]
+         identify-when *identify-when*]
      (if-not identify-when
        f
        (fn []

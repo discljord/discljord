@@ -32,6 +32,7 @@
 (defn should-resume?
   "Returns if a shard should try to resume."
   [shard]
+  (log/debug "Testing if shard" (:id shard) "should resume:" shard)
   (when (:stop-code shard)
     (and (not (new-session-stop-code? (:stop-code shard)))
          (:seq shard)
@@ -65,7 +66,7 @@
            (not (:requested-disconnect shard)))
     {:shard (assoc (if (= 1009 stop-code)
                      (let [[_ msg-size] (re-find #"Text message size \[(\d+)\]" msg)
-                           msg-size (Long. msg-size)
+                           msg-size (Long. ^String msg-size)
                            new-size (loop [buffer-size (:buffer-size shard)]
                                       (if (< buffer-size msg-size)
                                         (recur (* buffer-size 2))
@@ -308,7 +309,7 @@
     (a/close! heartbeat-ch))
   (a/close! communication-ch)
   (ws/close (:ws websocket))
-  (.stop (:client websocket))
+  (.stop ^WebSocketClient (:client websocket))
   (log/info "Disconnecting shard"
             id
             "and closing connection")
@@ -358,7 +359,7 @@
                               :effects []})
                          (do
                            (ws/close (:ws websocket))
-                           (.stop (:client websocket))
+                           (.stop ^WebSocketClient (:client websocket))
                            (log/info "Reconnecting due to zombie heartbeat on shard" (:id shard))
                            (a/close! heartbeat-ch)
                            (a/put! connections-ch [:connect])
@@ -550,7 +551,7 @@
 (defmethod handle-shard-fx! :reconnect
   [heartbeat-ch url token shard event]
   (ws/close (:ws (:websocket shard)))
-  (.stop (:client (:websocket shard)))
+  (.stop ^WebSocketClient (:client (:websocket shard)))
   (when (:invalid-session shard)
     (log/warn "Got invalid session payload, reconnecting shard" (:id shard)))
   (when (:heartbeat-ch shard)
@@ -730,7 +731,7 @@
 
 (defn get-shard-from-guild
   [guild-id guild-count]
-  (mod (bit-shift-right (Long. guild-id) 22) guild-count))
+  (mod (bit-shift-right (Long. ^String guild-id) 22) guild-count))
 
 (defmethod handle-communication! :guild-request-members
   [shards shard-chs [_ & {:keys [guild-id]} :as event]]

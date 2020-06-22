@@ -193,6 +193,9 @@ This bot builds slightly on the earlier Hello World bot, in that it sends its me
 
 Discljord does not currently have an opinion about how you store your state, however in future it may provide additional message pump types which have opinions about state or other parts of your program. These will always be opt-in, and you will always be able to write your own message pump like the first example.
 
+### Intents
+As of right now, Discord will send your bot all events which happen on any guild that your bot is in, however you can specify [intents](https://discord.com/developers/docs/topics/gateway#gateway-intents) to specify which events you want to receive. In the future, Discord intends to make these intents mandatory. They can be specified as a keyword argument to `discljord.connections/connect-bot!`, and are represented as a set of keywords in lower-kebab-case.
+
 ## Known Issues
 **Buffer Overflow**
 When a bot joins a very large server and has no intents specified or specifies the `:guilds` intent, a `:guild-create` event may overflow the buffer and cause discljord to fail ([example logs](https://hastebin.com/okagafamah.pl)). This has a temporary solution to add the following code to your bot (probably in the `-main` function):

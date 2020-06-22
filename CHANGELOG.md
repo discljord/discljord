@@ -11,6 +11,7 @@ Discljord follows semantic versioning.
  - Minimum reconnect time for a single shard reduced to 0 seconds
 
 ### Fixed
+ - Multiple bots in the same JVM have identify rate limits interfere with each other
  - Instrumenting `message-pump!` calls the function repeatedly
  - Instrumenting calls to all functions raises internal errors
  - Resumes do not reset the retry count

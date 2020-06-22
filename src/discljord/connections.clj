@@ -48,7 +48,8 @@
                              :remaining-starts (:remaining session-start-limit)
                              :reset-after (:reset-after session-start-limit)})))
           (let [communication-chan (a/chan 100)]
-            (impl/connect-shards! out-ch communication-chan url token intents shard-count (range shard-count))
+            (binding [impl/*identify-limiter* (agent nil)]
+              (impl/connect-shards! out-ch communication-chan url token intents shard-count (range shard-count)))
             communication-chan))
       (log/debug "Unable to recieve gateway information."))))
 (s/fdef connect-bot!
@@ -106,7 +107,8 @@
                              :reset-after (:reset-after session-start-limit)})))
           (let [communication-chan (a/chan 100)]
             (binding [impl/*handle-re-shard* false
-                      impl/*identify-when* identify-when]
+                      impl/*identify-when* identify-when
+                      impl/*identify-limiter* (agent nil)]
               (impl/connect-shards! out-ch communication-chan url token intents shard-count shard-ids))
             communication-chan))
       (log/debug "Unable to receive gateway information."))))

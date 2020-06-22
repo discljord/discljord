@@ -524,11 +524,12 @@
   [heartbeat-ch url token shard event]
   (run-on-agent-with-limit
    *identify-limiter*
-   (let [f (make-identify-fn token shard)]
-     (if-not *identify-when*
+   (let [f (make-identify-fn token shard)
+         identifiy-when *identify-when*]
+     (if-not identify-when
        f
        (fn []
-         (a/<!! (*identify-when* token))
+         (a/<!! (identify-when token))
          (f))))
    5100)
   {:shard shard

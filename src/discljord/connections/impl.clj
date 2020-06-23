@@ -32,7 +32,7 @@
 (defn should-resume?
   "Returns if a shard should try to resume."
   [shard]
-  (log/debug "Testing if shard" (:id shard) "should resume:" shard)
+  (log/trace "Testing if shard" (:id shard) "should resume:" shard)
   (when (:stop-code shard)
     (and (not (new-session-stop-code? (:stop-code shard)))
          (:seq shard)
@@ -61,19 +61,22 @@
   #{4011})
 
 (defmethod handle-websocket-event :disconnect
-  [shard [_ stop-code msg]]
-  (if (and shard
-           (not (:requested-disconnect shard)))
-    {:shard (assoc shard
-                   :stop-code stop-code
-                   :disconnect-msg msg)
-     :effects [(cond
-                 (re-shard-stop-code? stop-code) [:re-shard]
-                 (and *stop-on-fatal-code*
-                      (fatal-code? stop-code))   [:disconnect-all]
-                 :otherwise                      [:reconnect])]}
-    {:shard (when (:requested-disconnect shard)
-              shard)
+  [{:keys [websocket] :as shard} [_ stop-code msg]]
+  (if shard
+    (do
+      (when websocket
+        (.stop ^WebSocketClient (:client websocket)))
+      {:shard (if stop-code
+                (assoc (dissoc shard :websocket)
+                       :stop-code stop-code
+                       :disconnect-msg msg)
+                shard)
+       :effects [(cond
+                   (re-shard-stop-code? stop-code) [:re-shard]
+                   (and *stop-on-fatal-code*
+                        (fatal-code? stop-code))   [:disconnect-all]
+                   :otherwise                      [:reconnect])]})
+    {:shard nil
      :effects []}))
 
 (defmethod handle-websocket-event :error
@@ -150,7 +153,7 @@
 (defmethod handle-payload :reconnect
   [shard {d :d}]
   {:shard shard
-   :effects [[:reconnect]]})
+   :effects [[:disconnect]]})
 
 (defmethod handle-payload :invalid-session
   [shard {d :d}]
@@ -160,7 +163,7 @@
                          :ready)
                  :invalid-session true
                  :unresumable (not d))
-   :effects [[:reconnect]]})
+   :effects [[:disconnect]]})
 
 (defmethod handle-payload :hello
   [shard {{:keys [heartbeat-interval]} :d}]
@@ -192,22 +195,24 @@
       (.setMaxBinaryMessageSize buffer-size))
     (doto client
       (.start))
-    {:ws (ws/connect
-          url
-          :client client
-          :on-connect (fn [_]
-                        (log/trace "Websocket connected")
-                        (a/put! event-ch [:connect]))
-          :on-close (fn [stop-code msg]
-                      (log/debug "Websocket closed with code:" stop-code "and message:" msg)
-                      (a/put! event-ch [:disconnect stop-code msg]))
-          :on-error (fn [err]
-                      (log/warn "Websocket errored" err)
-                      (a/put! event-ch [:error err]))
-          :on-receive (fn [msg]
-                        (log/trace "Websocket recieved message:" msg)
-                        (a/put! event-ch [:message msg])))
-     :client client}))
+    (try {:ws (ws/connect
+                  url
+                :client client
+                :on-connect (fn [_]
+                              (log/trace "Websocket connected")
+                              (a/put! event-ch [:connect]))
+                :on-close (fn [stop-code msg]
+                            (log/debug "Websocket closed with code:" stop-code "and message:" msg)
+                            (a/put! event-ch [:disconnect stop-code msg]))
+                :on-error (fn [err]
+                            (log/warn "Websocket errored" err)
+                            (a/put! event-ch [:error err]))
+                :on-receive (fn [msg]
+                              (log/trace "Websocket recieved message:" msg)
+                              (a/put! event-ch [:message msg])))
+          :client client}
+         (catch Exception e
+           (throw (ex-info "Failed to connect a websocket" {:client client} e))))))
 
 (defmulti handle-shard-fx!
   "Processes an `event` on a given `shard` for side effects.
@@ -289,7 +294,7 @@
    :effects []})
 
 (defmulti handle-connection-event!
-  ""
+  "Handles events which connect or disconnect the shard, returning effects."
   (fn [shard url [event-type & event-data]]
     event-type))
 
@@ -315,12 +320,12 @@
         websocket (try (connect-websocket! buffer-size url event-ch)
                        (catch Exception err
                          (log/warn "Failed to connect a websocket" err)
+                         (.stop ^WebSocketClient (:client (ex-data err)))
                          nil))]
     (when-not websocket
       (a/put! event-ch [:disconnect nil "Failed to connect"]))
     {:shard (assoc (dissoc shard
-                           :heartbeat-ch
-                           :requested-disconnect)
+                           :heartbeat-ch)
                    :websocket websocket
                    :event-ch event-ch)
      :effects []}))
@@ -349,15 +354,12 @@
                               :effects []})
                          (do
                            (ws/close (:ws websocket))
-                           (.stop ^WebSocketClient (:client websocket))
                            (log/info "Reconnecting due to zombie heartbeat on shard" (:id shard))
                            (a/close! heartbeat-ch)
                            (a/put! connections-ch [:connect])
-                           {:shard (assoc (dissoc shard
-                                                  :heartbeat-ch
-                                                  :websocket
-                                                  :ready)
-                                          :requested-disconnect true)
+                           {:shard (dissoc shard
+                                           :heartbeat-ch
+                                           :ready)
                             :effects []})))
         event-fn (fn [event]
                    (let [{:keys [shard effects]} (handle-websocket-event shard event)
@@ -377,19 +379,19 @@
       (if (:websocket shard)
         (if (:ready shard)
           (a/alt!
+            event-ch ([event] (event-fn event))
             connections-ch ([event] (connections-fn event))
             communication-ch ([args] (communication-fn args))
             heartbeat-ch (heartbeat-fn)
-            event-ch ([event] (event-fn event))
             :priority true)
           (a/alt!
+            event-ch ([event] (event-fn event))
             connections-ch ([event] (connections-fn event))
             heartbeat-ch (heartbeat-fn)
-            event-ch ([event] (event-fn event))
             :priority true))
         (a/alt!
-          connections-ch ([event] (connections-fn event))
           event-ch ([event] (event-fn event))
+          connections-ch ([event] (connections-fn event))
           :priority true)))))
 
 (defn get-websocket-gateway
@@ -539,8 +541,6 @@
 
 (defmethod handle-shard-fx! :reconnect
   [heartbeat-ch url token shard event]
-  (ws/close (:ws (:websocket shard)))
-  (.stop ^WebSocketClient (:client (:websocket shard)))
   (when (:invalid-session shard)
     (log/warn "Got invalid session payload, reconnecting shard" (:id shard)))
   (when (:heartbeat-ch shard)
@@ -557,10 +557,8 @@
                   shard)]
       {:shard (assoc (dissoc shard
                              :heartbeat-ch
-                             :websocket
                              :ready)
-                     :retries (inc retries)
-                     :requested-disconnect true)
+                     :retries (inc retries))
        :effects []})))
 
 (defmethod handle-shard-fx! :re-shard
@@ -584,6 +582,12 @@
   [heartbeat-ch url token shard _]
   {:shard shard
    :effects [[:disconnect]]})
+
+(defmethod handle-shard-fx! :disconnect
+  [heartbeat-ch url token {:keys [websocket] :as shard} _]
+  (ws/close (:ws websocket))
+  {:shard shard
+   :effects []})
 
 (defmulti handle-bot-fx!
   "Handles a bot-level side effect triggered by a shard.

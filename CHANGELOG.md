@@ -5,12 +5,14 @@ Discljord follows semantic versioning.
 ## [Unreleased]
 ### Added
  - Support for user-level shard control (enabling distributed bots)
- - `:re-shard` event which is sent when a re-shard is requested from Discord and `*handle-re-shard*` is falsey
 
 ### Changed
  - Minimum reconnect time for a single shard reduced to 0 seconds
 
 ### Fixed
+ - Bots will not try to resume
+ - Buffer size for bots is too small for large servers
+ - Reflection warnings
  - Multiple bots in the same JVM have identify rate limits interfere with each other
  - Instrumenting `message-pump!` calls the function repeatedly
  - Instrumenting calls to all functions raises internal errors

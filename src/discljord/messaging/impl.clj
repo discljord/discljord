@@ -759,7 +759,7 @@
   "Makes a request after waiting for the rate limit, retrying if necessary."
   [token rate-limits global-limit endpoint event-data bucket]
   (letfn [(make-request [endpoint event-data bucket]
-            (log/debug "Making request to endpoint" endpoint)
+            (log/trace "Making request to endpoint" endpoint)
             (when bucket
               (log/trace "Had bucket, checking rate limit")
               (loop [limit (if-not (= ::global-limit bucket)
@@ -783,7 +783,7 @@
     (try
       (loop [response (make-request endpoint event-data bucket)
              bucket bucket]
-        (log/debug "Got response from request" response)
+        (log/trace "Got response from request" response)
         (if response
           (let [headers (:headers response)
                 global (when-let [global (:x-ratelimit-global headers)]

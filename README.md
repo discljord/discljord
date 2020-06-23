@@ -10,6 +10,12 @@ Add the following to your project.clj in leiningen:
 [org.suskalo/discljord "1.0.0-RC1"]
 ```
 
+If you use tools.deps, then add the following to your `:dependencies` key in your `deps.edn`:
+
+```clojure
+{org.suskalo/discljord {:mvn/version "1.0.0-RC1"}}
+```
+
 ## Usage
 
 To use discljord, add it to the project dependencies in leiningen's `project.clj` and run

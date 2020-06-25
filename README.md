@@ -202,6 +202,9 @@ Discljord does not currently have an opinion about how you store your state, how
 ### Intents
 As of right now, Discord will send your bot all events which happen on any guild that your bot is in, however you can specify [intents](https://discord.com/developers/docs/topics/gateway#gateway-intents) to specify which events you want to receive. In the future, Discord intends to make these intents mandatory. They can be specified as a keyword argument to `discljord.connections/connect-bot!`, and are represented as a set of keywords in lower-kebab-case.
 
+## Logging
+Discljord uses [clojure.tools.logging](https://github.com/clojure/tools.logging) for all its logging, which means that you are responsible for providing it with a suitable logging implementation as well as configuration. If no configuration is provided, then it will likely default to whatever gets brought in by your other dependencies, potentially eventually falling back to `java.util.logging`, however it should still function even with no intervention by the library user.
+
 ## Known Issues
 None at the moment
 

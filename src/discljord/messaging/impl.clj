@@ -11,7 +11,7 @@
    [discljord.specs :as ds]
    [discljord.util :refer [bot-token clean-json-input]]
    [org.httpkit.client :as http]
-   [taoensso.timbre :as log])
+   [clojure.tools.logging :as log])
   (:import
    (java.io File Writer)
    (java.net URLEncoder)

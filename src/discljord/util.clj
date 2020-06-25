@@ -4,7 +4,7 @@
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [discljord.specs :as ds]
-   [taoensso.timbre :as log]))
+   [clojure.tools.logging :as log]))
 
 (def ^:dynamic ^:deprecated *enable-logging*
   "Dynamic var to allow you to disable logging entirely.
@@ -18,7 +18,7 @@
   "Sets the logging level for discljord through tambre.
   Levels are :trace, :debug, :info, :warn, :error, :fatal, and :report"
   [logging-level]
-  (log/set-level! logging-level))
+  )
 (s/fdef set-logging-level
   :args (s/cat :logging-level ::logging-level))
 

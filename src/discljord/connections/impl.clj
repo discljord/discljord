@@ -7,7 +7,7 @@
    [discljord.util :refer [json-keyword clean-json-input]]
    [gniazdo.core :as ws]
    [org.httpkit.client :as http]
-   [taoensso.timbre :as log])
+   [clojure.tools.logging :as log])
   (:import
    (org.eclipse.jetty.websocket.client
     WebSocketClient)

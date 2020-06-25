@@ -7,6 +7,7 @@ Discljord follows semantic versioning.
  - Support for user-level shard control (enabling distributed bots)
 
 ### Changed
+ - Logging library from `taoensso.timbre` to `clojure.tools.logging`
  - Minimum reconnect time for a single shard reduced to 0 seconds
 
 ### Fixed

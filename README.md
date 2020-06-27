@@ -2,12 +2,25 @@
 
 Discljord is a library for the easy creation of Discord Bots in Clojure! It works asyncronously by default, and has built-in support for sharding and rate-limits, with no extra work for the bot creator.
 
+## Version 1.0.0 Released
+With version 1.0.0 of discljord finally coming out, it's finally reaching "feature completion", in that it fits with my initial vision of what the library should provide. It has user-controlled sharding and transparent sharding, full support for the entire REST API, support for gateway communication, and transparent representations of all the events that discord sends.
+
+This does not however mean that the project is going into maintenance mode, but rather than further development will be to keep the project up to date with changes to Discord's API, and also add new features to make development of bots easier and more streamlined.
+
+Current future plans involve adding features for caching information Discord sends to the bot, validating user permissions, creating commands, etc.
+
 ## Installation
 
 Add the following to your project.clj in leiningen:
 
 ```clojure
-[org.suskalo/discljord "1.0.0-SNAPSHOT"]
+[org.suskalo/discljord "1.0.0"]
+```
+
+If you use tools.deps, then add the following to your `:dependencies` key in your `deps.edn`:
+
+```clojure
+{org.suskalo/discljord {:mvn/version "1.0.0"}}
 ```
 
 ## Usage
@@ -195,6 +208,9 @@ Discljord does not currently have an opinion about how you store your state, how
 
 ### Intents
 As of right now, Discord will send your bot all events which happen on any guild that your bot is in, however you can specify [intents](https://discord.com/developers/docs/topics/gateway#gateway-intents) to specify which events you want to receive. In the future, Discord intends to make these intents mandatory. They can be specified as a keyword argument to `discljord.connections/connect-bot!`, and are represented as a set of keywords in lower-kebab-case.
+
+## Logging
+Discljord uses [clojure.tools.logging](https://github.com/clojure/tools.logging) for all its logging, which means that you are responsible for providing it with a suitable logging implementation as well as configuration. If no configuration is provided, then it will likely default to whatever gets brought in by your other dependencies, potentially eventually falling back to `java.util.logging`, however it should still function even with no intervention by the library user.
 
 ## Known Issues
 None at the moment

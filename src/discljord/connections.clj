@@ -11,7 +11,7 @@
    [discljord.http :refer [gateway-url]]
    [discljord.specs :as ds]
    [discljord.util :refer [bot-token]]
-   [taoensso.timbre :as log]))
+   [clojure.tools.logging :as log]))
 
 (def gateway-intents #{:guilds :guild-members :guild-bans :guild-emojis
                        :guild-integrations :guild-webhooks :guild-invites

@@ -2,11 +2,14 @@
  {org.clojure/clojure {:mvn/version "1.10.1"}
   org.clojure/core.async {:mvn/version "1.2.603"}
   org.clojure/data.json {:mvn/version "1.0.0"}
-  com.taoensso/timbre {:mvn/version "4.10.0"}
+  org.clojure/tools.logging {:mvn/version "1.1.0"}
   http-kit {:mvn/version "2.4.0-alpha6"}
   stylefruits/gniazdo {:mvn/version "1.1.4"}}
 
- :aliases {:test {:extra-paths ["test"]
+ :aliases {:dev {:extra-paths ["dev"]
+                 :extra-deps {ch.qos.logback/logback-classic {:mvn/version "1.2.3"}}
+                 :jvm-opts ["-Dclojure.tools.logging.factory=clojure.tools.logging.impl/slf4j-factory"]}
+           :test {:extra-paths ["test"]
                   :extra-deps {http-kit.fake {:mvn/version "0.2.2"}
                                org.clojure/test.check {:mvn/version "1.0.0"}}}
            :runner

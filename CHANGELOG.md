@@ -3,10 +3,13 @@ All notable changes to this project will be documented in this file. This change
 Discljord follows semantic versioning.
 
 ## [Unreleased]
+
+## [1.0.0] - 2020-06-27
 ### Added
  - Support for user-level shard control (enabling distributed bots)
 
 ### Changed
+ - Logging library from `taoensso.timbre` to `clojure.tools.logging`
  - Minimum reconnect time for a single shard reduced to 0 seconds
 
 ### Fixed
@@ -200,7 +203,8 @@ Discljord follows semantic versioning.
  - README follows new API
  - Project name from `discljord-functional` to `discljord` 
 
-[Unreleased]: https://github.com/IGJoshua/discljord/compare/0.2.9..develop
+[Unreleased]: https://github.com/IGJoshua/discljord/compare/1.0.0..develop
+[1.0.0]: https://github.com/IGJoshua/discljord/compare/0.2.9..1.0.0
 [0.2.9]: https://github.com/IGJoshua/discljord/compare/0.2.8..0.2.9
 [0.2.8]: https://github.com/IGJoshua/discljord/compare/0.2.7..0.2.8
 [0.2.7]: https://github.com/IGJoshua/discljord/compare/0.2.6..0.2.7

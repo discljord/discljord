@@ -1,7 +1,7 @@
 (ns discljord.events
   (:require [clojure.core.async :as a]
             [clojure.spec.alpha :as s]
-            [taoensso.timbre :as log]))
+            [clojure.tools.logging :as log]))
 
 (defn message-pump!
   "Starts a process which pulls events off of the channel and calls
@@ -21,7 +21,5 @@
   nil)
 (s/fdef message-pump!
   :args (s/cat :channel any?
-               :handle-event (s/fspec :args (s/cat :event-type keyword?
-                                                   :event-data any?)
-                                      :ret any?))
+               :handle-event ifn?)
   :ret nil?)

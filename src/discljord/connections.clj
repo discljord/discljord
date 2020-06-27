@@ -11,7 +11,7 @@
    [discljord.http :refer [gateway-url]]
    [discljord.specs :as ds]
    [discljord.util :refer [bot-token]]
-   [taoensso.timbre :as log]))
+   [clojure.tools.logging :as log]))
 
 (def gateway-intents #{:guilds :guild-members :guild-bans :guild-emojis
                        :guild-integrations :guild-webhooks :guild-invites
@@ -34,11 +34,9 @@
   given period. This means that communication to Discord may be bounded based
   on which shard you use to talk to the server immediately after starting the bot.
 
-  The `buffer-size` parameter is deprecated, and will be ignored.
-
   `intents` is a set containing keywords representing which events will be sent
   to the bot by Discord. Valid values for the set are in [[gateway-intents]]."
-  [token out-ch & {:keys [buffer-size intents]}]
+  [token out-ch & {:keys [intents]}]
   (let [token (bot-token token)
         {:keys [url shard-count session-start-limit]}
         (impl/get-websocket-gateway gateway-url token)]
@@ -50,12 +48,74 @@
                              :remaining-starts (:remaining session-start-limit)
                              :reset-after (:reset-after session-start-limit)})))
           (let [communication-chan (a/chan 100)]
-            (impl/connect-shards! out-ch communication-chan url token intents shard-count (range shard-count))
+            (binding [impl/*identify-limiter* (agent nil)]
+              (impl/connect-shards! out-ch communication-chan url token intents shard-count (range shard-count)))
             communication-chan))
       (log/debug "Unable to recieve gateway information."))))
 (s/fdef connect-bot!
   :args (s/cat :token ::ds/token :out-ch ::ds/channel
-               :keyword-args (s/keys* :opt-un [::cs/buffer-size ::cs/intents]))
+               :keyword-args (s/keys* :opt-un [::cs/intents]))
+  :ret ::ds/channel)
+
+(defn get-websocket-gateway
+  "Gets the shard count and websocket endpoint from Discord's API.
+
+  Takes the `token` of the bot.
+
+  Returns a map with the keys :url, :shard-count, and :session-start limit, or
+  nil in the case of an error."
+  [token]
+  (impl/get-websocket-gateway gateway-url (bot-token token)))
+(s/fdef get-websocket-gateway
+  :args (s/cat :token ::ds/token)
+  :ret ::cs/gateway)
+
+(defn connect-shards!
+  "Connects a specific set of shard ids to Discord.
+
+  Acts like [[connect-bot!]], but also requires a gateway returned
+  from [[get-websocket-gateway]] and a sequence of shard-ids to connect with, as
+  well as a function used to determine when identify payloads are permitted to
+  be sent.
+
+  `identify` must be a function from token to core.async channel which yields an
+  item when an identify is permitted. This must be at least five seconds after
+  the most recent identify by any shard, however any additional attempts to
+  identify from this connection will include that wait by default, only
+  identifies from other connections must be taken into account for this.
+
+  The recommended number of shards for your bot can be determined by the return
+  value of [[get-websocket-gateway]].
+
+  If Discord determines the bot must re-shard, then a `:re-shard` event will be
+  emitted from the returned channel and all shards will be disconnected.
+
+  Because Discord has a limit of one shard connecting per five seconds, some
+  amount of synchronization between calls to [[connect-shards!]] must be had.
+  Additional calls should only be made five seconds after the
+  `:connected-all-shards` event has been received."
+  [token out-ch gateway shard-ids & {:keys [intents identify-when]}]
+  (let [token (bot-token token)
+        {:keys [url shard-count session-start-limit]} gateway]
+    (if (and url shard-count session-start-limit)
+      (do (when (< (:remaining session-start-limit) (count shard-ids))
+            (throw (ex-info "Not enough remaining identify packets for number of shards."
+                            {:token token
+                             :shard-count (count shard-ids)
+                             :shard-ids shard-ids
+                             :remaining-starts (:remaining session-start-limit)
+                             :reset-after (:reset-after session-start-limit)})))
+          (let [communication-chan (a/chan 100)]
+            (binding [impl/*handle-re-shard* false
+                      impl/*identify-when* identify-when
+                      impl/*identify-limiter* (agent nil)]
+              (impl/connect-shards! out-ch communication-chan url token intents shard-count shard-ids))
+            communication-chan))
+      (log/debug "Unable to receive gateway information."))))
+(s/fdef connect-shards!
+  :args (s/cat :token ::ds/token :out-ch ::ds/channel
+               :gateway ::cs/gateway :shard-ids (s/coll-of nat-int?)
+               :keyword-args (s/keys* :opt-un [::cs/intents ::cs/identify-when]))
   :ret ::ds/channel)
 
 (defn disconnect-bot!

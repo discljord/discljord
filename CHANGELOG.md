@@ -4,6 +4,24 @@ Discljord follows semantic versioning.
 
 ## [Unreleased]
 
+## [1.0.0] - 2020-06-27
+### Added
+ - Support for user-level shard control (enabling distributed bots)
+
+### Changed
+ - Logging library from `taoensso.timbre` to `clojure.tools.logging`
+ - Minimum reconnect time for a single shard reduced to 0 seconds
+
+### Fixed
+ - Bots will not try to resume
+ - Buffer size for bots is too small for large servers
+ - Reflection warnings
+ - Multiple bots in the same JVM have identify rate limits interfere with each other
+ - Instrumenting `message-pump!` calls the function repeatedly
+ - Instrumenting calls to all functions raises internal errors
+ - Resumes do not reset the retry count
+ - Direct memory leak when reconnects occur (for real this time)
+
 ## [0.2.9] - 2020-06-18
 ### Added
  - Support for doing a parking take on the promises returned from all REST endpoint functions
@@ -14,6 +32,7 @@ Discljord follows semantic versioning.
  - Messages arrive out of order when rate limits are hit
  - Gateway communication started while a shard is disconnected crashes discljord
  - Spec for embeds had incorrect type for embed field values
+ - Direct memory leak when reconnects occur
 
 ### Removed
  - Dependency on `com.rpl.specter`
@@ -35,11 +54,11 @@ Discljord follows semantic versioning.
  - `discljord.messaging/execute-webhook!` was unable to send files
  - Documentation for create-message! saying file sharing was not implemented
 
-## [0.2.7]
+## [0.2.7] - 2020-02-24
 ### Fixed
  - `:disconnect` event no longer sent when bot shuts down
 
-## [0.2.6]
+## [0.2.6] - 2020-02-24
 ### Fixed
  - Bots are unable to disconnect properly
  - Bots fail to reconnect after spending time with internet unavailable
@@ -51,7 +70,7 @@ Discljord follows semantic versioning.
 ## Upgraded
  - gniazdo version
 
-## [0.2.5]
+## [0.2.5] - 2019-05-27
 ### Added
  - Support for the Watching activity type
  - Support for pass-through activity types in case discljord doesn't support them all
@@ -184,7 +203,8 @@ Discljord follows semantic versioning.
  - README follows new API
  - Project name from `discljord-functional` to `discljord` 
 
-[Unreleased]: https://github.com/IGJoshua/discljord/compare/0.2.9..develop
+[Unreleased]: https://github.com/IGJoshua/discljord/compare/1.0.0..develop
+[1.0.0]: https://github.com/IGJoshua/discljord/compare/0.2.9..1.0.0
 [0.2.9]: https://github.com/IGJoshua/discljord/compare/0.2.8..0.2.9
 [0.2.8]: https://github.com/IGJoshua/discljord/compare/0.2.7..0.2.8
 [0.2.7]: https://github.com/IGJoshua/discljord/compare/0.2.6..0.2.7

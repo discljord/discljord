@@ -13,7 +13,7 @@
                                      run-server
                                      send!
                                      close]]
-   [taoensso.timbre :as log]))
+   [clojure.tools.logging :as log]))
 
 (t/deftest json-conversion
   (t/testing "keywords are produced from strings"

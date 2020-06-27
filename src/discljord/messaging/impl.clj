@@ -11,8 +11,9 @@
    [discljord.specs :as ds]
    [discljord.util :refer [bot-token clean-json-input]]
    [org.httpkit.client :as http]
-   [taoensso.timbre :as log])
+   [clojure.tools.logging :as log])
   (:import
+   (java.io File Writer)
    (java.net URLEncoder)
    (java.util Date)))
 
@@ -37,7 +38,7 @@
    (str "DiscordBot ("
         "https://github.com/IGJoshua/discljord"
         ", "
-        "0.2.9"
+        "1.0.0"
         ") "
         user-agent)
    "Content-Type" "application/json"})
@@ -123,7 +124,7 @@
   (json-body body))
 
 (defmethod dispatch-http :create-message
-  [token endpoint [prom & {:keys [^java.io.File file user-agent attachments allowed-mentions stream] :as opts}]]
+  [token endpoint [prom & {:keys [^File file user-agent attachments allowed-mentions stream] :as opts}]]
   (let [channel-id (-> endpoint
                        ::ms/major-variable
                        ::ms/major-variable-value)
@@ -137,7 +138,7 @@
                     (into multipart (for [attachment attachments]
                                       {:name "attachment"
                                        :content attachment
-                                       :filename (.getName attachment)}))
+                                       :filename (.getName ^File attachment)}))
                     multipart)
         multipart (if stream
                     (conj multipart (assoc stream :name "file"))
@@ -722,12 +723,12 @@
   [rate-limit headers]
   (let [rate (:x-ratelimit-limit headers)
         rate (if rate
-               (Long. rate)
+               (Long. ^String rate)
                (or (::ms/rate rate-limit)
                    5))
         reset (:x-ratelimit-reset headers)
         reset (if reset
-                (* (Long. reset) 1000)
+                (* (Long. ^String reset) 1000)
                 (or (::ms/reset rate-limit)
                     0))
         reset (if (> (or (::ms/reset rate-limit) 0) reset)
@@ -735,7 +736,7 @@
                 reset)
         current-time (System/currentTimeMillis)
         remaining (:x-ratelimit-remaining headers)
-        remaining (when remaining (Long. remaining))
+        remaining (when remaining (Long. ^String remaining))
         remaining (let [old-rem (::ms/remaining rate-limit)]
                     (if-not remaining
                       (dec (if (> reset current-time)
@@ -758,7 +759,7 @@
   "Makes a request after waiting for the rate limit, retrying if necessary."
   [token rate-limits global-limit endpoint event-data bucket]
   (letfn [(make-request [endpoint event-data bucket]
-            (log/debug "Making request to endpoint" endpoint)
+            (log/trace "Making request to endpoint" endpoint)
             (when bucket
               (log/trace "Had bucket, checking rate limit")
               (loop [limit (if-not (= ::global-limit bucket)
@@ -782,11 +783,11 @@
     (try
       (loop [response (make-request endpoint event-data bucket)
              bucket bucket]
-        (log/debug "Got response from request" response)
+        (log/trace "Got response from request" response)
         (if response
           (let [headers (:headers response)
                 global (when-let [global (:x-ratelimit-global headers)]
-                         (Boolean. global))
+                         (Boolean. ^String global))
                 new-bucket (or (:x-ratelimit-bucket headers)
                                bucket)]
             ;; Update the rate limits
@@ -897,14 +898,14 @@
 
 (defmethod print-method DerefablePromiseChannel
   [v w]
-  (.write w "#object[")
-  (.write w (str (str/replace-first (str v) #"@" " ") " \""))
-  (.write w (str v))
-  (.write w "\"]"))
+  (.write ^Writer w "#object[")
+  (.write ^Writer w (str (str/replace-first (str v) #"@" " ") " \""))
+  (.write ^Writer w (str v))
+  (.write ^Writer w "\"]"))
 
 (defmethod print-dup DerefablePromiseChannel
   [o w]
-  (print-ctor o (fn [o w] (print-dup (.-ch o) w)) w))
+  (print-ctor o (fn [o w] (print-dup (.-ch ^DerefablePromiseChannel o) w)) w))
 
 (prefer-method print-method DerefablePromiseChannel clojure.lang.IPersistentMap)
 (prefer-method print-method DerefablePromiseChannel clojure.lang.IDeref)

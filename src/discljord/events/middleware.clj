@@ -16,7 +16,8 @@
   (:require
    [clojure.tools.logging :as log])
   (:refer-clojure :rename {concat concat-seq
-                           filter filter-seq}))
+                           filter filter-seq
+                           map map-seq}))
 
 (defn concat
   "Takes a handler function and creates a middleware which concats the handlers.
@@ -52,4 +53,25 @@
   (fn [handler]
     (fn [event-type event-data]
       (when (pred event-type event-data)
+        (handler event-type event-data)))))
+
+(defn data-mapping
+  "Makes a transform function for use with [[map]] that operates on event-data.
+
+  The resulting function is from a vector of event-type and event-data to a
+  vector of event-type and event-data. The event-type is passed through without
+  change, and event-data is transformed by `f`."
+  [f]
+  (fn [[event-type event-data]]
+    [event-type (f event-data)]))
+
+(defn map
+  "Makes a middleware which runs `f` over events before passing to the handler.
+
+  `f` is a function of a vector of event-type and event-data to a vector of
+  event-type and event-data which are then passed to the handler."
+  [f]
+  (fn [handler]
+    (fn [event-type event-data]
+      (let [[event-type event-data] (f [event-type event-data])]
         (handler event-type event-data)))))

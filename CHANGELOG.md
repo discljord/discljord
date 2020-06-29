@@ -3,6 +3,9 @@ All notable changes to this project will be documented in this file. This change
 Discljord follows semantic versioning.
 
 ## [Unreleased]
+### Added
+ - Middleware to concat handlers
+ - Middleware for event handlers
 
 ## [1.0.0] - 2020-06-27
 ### Added

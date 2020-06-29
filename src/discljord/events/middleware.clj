@@ -12,4 +12,16 @@
     [handler]
     (fn [event-type event-data]
       (handler event-type event-data)))
-  ```")
+  ```"
+  (:refer-clojure :rename {concat concat-seq}))
+
+(defn concat
+  "Takes a handler function and creates a middleware which concats the handlers.
+
+  The events in the handler function passed are always run before the ones that
+  are given to the middleware when it is applied."
+  [handler]
+  (fn [hnd]
+    (fn [event-type event-data]
+      (handler event-type event-data)
+      (hnd event-type event-data))))

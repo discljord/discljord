@@ -4,6 +4,7 @@ Discljord follows semantic versioning.
 
 ## [Unreleased]
 ### Added
+ - Middleware for filtering out messages from bots
  - Middleware for making event streams transducible (somewhat redundant with the channel having a transducer)
  - Middleware for mapping and filtering
  - Middleware to concat handlers

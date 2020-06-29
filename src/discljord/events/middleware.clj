@@ -91,3 +91,15 @@
             (when (reduced? res)
               (vreset! reduced true))
             res))))))
+
+;; =============================================================================
+;; Default middleware
+
+(def ignore-bot-messages
+  "Middleware which won't call the handler if the event is a message from a bot."
+  (filter
+   (fn [event-type event-data]
+     (if (#{:message-create :message-update} event-type)
+       (when-not (:bot (:author event-data))
+         true)
+       true))))

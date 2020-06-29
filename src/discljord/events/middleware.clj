@@ -17,7 +17,8 @@
    [clojure.tools.logging :as log])
   (:refer-clojure :rename {concat concat-seq
                            filter filter-seq
-                           map map-seq}))
+                           map map-seq
+                           transduce transduce-seq}))
 
 (defn concat
   "Takes a handler function and creates a middleware which concats the handlers.
@@ -75,3 +76,18 @@
     (fn [event-type event-data]
       (let [[event-type event-data] (f [event-type event-data])]
         (handler event-type event-data)))))
+
+(defn transduce
+  "Makes a middleware which takes a transducer and runs it over event-data."
+  [xf]
+  (let [reduced (volatile! false)
+        reducer (fn [send-event [event-type event-data]]
+                  (send-event event-type event-data))
+        reducer (xf reducer)]
+    (fn [handler]
+      (fn [event-type event-data]
+        (when-not @reduced
+          (let [res (reducer handler [event-type event-data])]
+            (when (reduced? res)
+              (vreset! reduced true))
+            res))))))

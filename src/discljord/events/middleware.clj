@@ -13,7 +13,10 @@
     (fn [event-type event-data]
       (handler event-type event-data)))
   ```"
-  (:refer-clojure :rename {concat concat-seq}))
+  (:require
+   [clojure.tools.logging :as log])
+  (:refer-clojure :rename {concat concat-seq
+                           filter filter-seq}))
 
 (defn concat
   "Takes a handler function and creates a middleware which concats the handlers.
@@ -40,3 +43,13 @@
           (log/log logging-level (pr-str event-type event-data))
           (log/debug event-type event-data)))
       (handler event-type event-data))))
+
+(defn filter
+  "Makes middleware that only calls the handler if `pred` returns truthy.
+
+  `pred` is a predicate expected to take the event-type and event-data."
+  [pred]
+  (fn [handler]
+    (fn [event-type event-data]
+      (when (pred event-type event-data)
+        (handler event-type event-data)))))

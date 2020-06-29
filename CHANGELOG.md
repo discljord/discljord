@@ -4,6 +4,8 @@ Discljord follows semantic versioning.
 
 ## [Unreleased]
 ### Added
+ - Middleware for making event streams transducible (somewhat redundant with the channel having a transducer)
+ - Middleware for mapping and filtering
  - Middleware to concat handlers
  - Middleware for event handlers
 

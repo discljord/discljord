@@ -4,6 +4,7 @@ Discljord follows semantic versioning.
 
 ## [Unreleased]
 ### Added
+ - Function to create an event handler which dispatches to functions based on event type
  - Middleware for filtering out messages from bots
  - Middleware for making event streams transducible (somewhat redundant with the channel having a transducer)
  - Middleware for mapping and filtering

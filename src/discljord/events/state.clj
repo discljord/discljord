@@ -5,6 +5,19 @@
    [discljord.events :as e]
    [discljord.events.middleware :as mdw]))
 
+(defn- vector->map
+  "Turns a vector into a map from an item of each value to the value.
+
+  `kf` is the function used to generate a key from a value, default is `:id`
+  `vf` is run on the value before it is put in the map, default is [[identity]]
+
+  If multiple items return the same key, only the first one will be used."
+  ([coll] (vector->map :id coll))
+  ([kf coll] (vector->map kf identity coll))
+  ([kf vf coll]
+   (into {} (map (fn [[k v]] [k (vf (first v))]))
+         (group-by kf coll))))
+
 (def ^:private caching-handlers
   "Handler map for all state-caching events."
   {})

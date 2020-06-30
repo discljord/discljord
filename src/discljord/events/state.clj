@@ -97,6 +97,16 @@
          merge-with merge (vector->map (comp :id :user) #(assoc % :user (:id (:user %)))
                                        members)))
 
+(defn guild-role-update
+  [_ {:keys [guild-id role]} state]
+  (swap! state update-in [:guilds guild-id :roles (:id role)]
+         merge role))
+
+(defn guild-role-delete
+  [_ {:keys [guild-id role-id]} state]
+  (swap! state update-in [:guilds guild-id :roles]
+         dissoc role-id))
+
 (def ^:private caching-handlers
   "Handler map for all state-caching events."
   {})

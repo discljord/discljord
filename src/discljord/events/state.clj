@@ -16,3 +16,14 @@
   [state]
   (mdw/concat
    #(e/dispatch-handlers #'caching-handlers %1 %2 state)))
+
+(defn caching-transducer
+  "Creates a transducer which caches event data and passes on all events.
+
+  Values on the transducer are expected to be tuples of event-type and
+  event-data.
+  `state` must be an [[clojure.core/atom]]."
+  [state]
+  (map (fn [[event-type event-data :as event]]
+         (e/dispatch-handlers #'caching-handlers event-type event-data state)
+         event)))

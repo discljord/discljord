@@ -76,6 +76,10 @@
            [:private-channels channel-id :last-pin-timestamp])
          last-pin-timestamp))
 
+(defn guild-emojis-update
+  [_ {:keys [guild-id emojis]} state]
+  (swap! state assoc-in [:guilds guild-id :emojis] emojis))
+
 (def ^:private caching-handlers
   "Handler map for all state-caching events."
   {})

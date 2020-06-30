@@ -35,6 +35,15 @@
   [guild]
   (vector->map (map :user (:members guild))))
 
+(defn ready
+  "Stores the user and guilds into the state."
+  [_ {:keys [user guilds]} state]
+  (swap! state assoc
+         :bot user
+         :guilds (merge (:guilds state)
+                        (into {} (map vector (map :id guilds) (map prepare-guild guilds))))
+         :users (apply merge-with merge (:users state) (map get-users-from-guild guilds))))
+
 (defn guild-update
   "Stores the guild into the state."
   [_ guild state]

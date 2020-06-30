@@ -18,6 +18,31 @@
    (into {} (map (fn [[k v]] [k (vf (first v))]))
          (group-by kf coll))))
 
+(defn- prepare-guild
+  "Takes a guild and prepares it for storing in the cache.
+
+  The roles vector will be transformed to a map keyed off if, members
+  transformed to a map from user id to member object with `:user` key replaced
+  by the user id, channels will be changed to a map from id to channel object."
+  [guild]
+  (assoc guild
+         :roles (vector->map (:roles guild))
+         :channels (vector->map (:channels guild))
+         :members (vector->map (comp :id :user) #(assoc % :user (:id (:user %))) (:members guild))))
+
+(defn- get-users-from-guild
+  "Takes a guild and returns a map from user id to user objects."
+  [guild]
+  (vector->map (map :user (:members guild))))
+
+(defn guild-update
+  "Stores the guild into the state."
+  [_ guild state]
+  (swap! state
+         (fn [state]
+           (update (update-in state [:guilds (:id guild)] merge (prepare-guild guild))
+                   :users (partial merge-with merge) (get-users-from-guild guild)))))
+
 (def ^:private caching-handlers
   "Handler map for all state-caching events."
   {})

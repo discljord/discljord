@@ -107,6 +107,14 @@
   (swap! state update-in [:guilds guild-id :roles]
          dissoc role-id))
 
+(defn message-create
+  [_ {:keys [guild-id channel-id id]} state]
+  (swap! state assoc-in
+         (if guild-id
+           [:guilds guild-id :channels channel-id :last-message-id]
+           [:private-channels channel-id :last-message-id])
+         id))
+
 (def ^:private caching-handlers
   "Handler map for all state-caching events."
   {})

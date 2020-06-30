@@ -52,6 +52,30 @@
            (update (update-in state [:guilds (:id guild)] merge (prepare-guild guild))
                    :users (partial merge-with merge) (get-users-from-guild guild)))))
 
+(defn channel-update
+  [_ channel state]
+  (swap! state assoc-in
+         (if (:guild-id channel)
+           [:guilds (:guild-id channel) :channels (:id channel)]
+           [:private-channels (:id channel)])
+         channel))
+
+(defn channel-delete
+  [_ channel state]
+  (swap! state update-in
+         (if (:guild-id channel)
+           [:guilds (:guild-id channel) :channels]
+           [:private-channels])
+         dissoc (:id channel)))
+
+(defn channel-pins-update
+  [_ {:keys [guild-id channel-id last-pin-timestamp]} state]
+  (swap! state assoc-in
+         (if guild-id
+           [:guilds guild-id :channels channel-id :last-pin-timestamp]
+           [:private-channels channel-id :last-pin-timestamp])
+         last-pin-timestamp))
+
 (def ^:private caching-handlers
   "Handler map for all state-caching events."
   {})

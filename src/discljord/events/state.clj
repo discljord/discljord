@@ -80,6 +80,23 @@
   [_ {:keys [guild-id emojis]} state]
   (swap! state assoc-in [:guilds guild-id :emojis] emojis))
 
+(defn guild-member-update
+  [_ {:keys [guild-id user] :as member} state]
+  (swap! state update-in [:guilds guild-id :members (:id user)]
+         merge (assoc (dissoc member :guild-id)
+                      :user (:id user))))
+
+(defn guild-member-remove
+  [_ {:keys [guild-id user]} state]
+  (swap! state update-in [:guilds guild-id :members]
+         dissoc (:id user)))
+
+(defn guild-members-chunk
+  [_ {:keys [guild-id members]} state]
+  (swap! state update-in [:guilds guild-id :members]
+         merge-with merge (vector->map (comp :id :user) #(assoc % :user (:id (:user %)))
+                                       members)))
+
 (def ^:private caching-handlers
   "Handler map for all state-caching events."
   {})

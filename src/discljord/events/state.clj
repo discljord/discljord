@@ -138,7 +138,26 @@
 
 (def ^:private caching-handlers
   "Handler map for all state-caching events."
-  {})
+  {:ready [#'ready]
+   :guild-create [#'guild-update]
+   :guild-update [#'guild-update]
+   :guild-delete [#'guild-update]
+   :channel-create [#'channel-update]
+   :channel-update [#'channel-update]
+   :channel-delete [#'channel-delete]
+   :channel-pins-update [#'channel-pins-update]
+   :guild-emojis-update [#'guild-emojis-update]
+   :guild-member-add [#'guild-member-update]
+   :guild-member-update [#'guild-member-update]
+   :guild-member-remove [#'guild-member-remove]
+   :guild-members-chunk [#'guild-members-chunk]
+   :guild-role-create [#'guild-role-update]
+   :guild-role-update [#'guild-role-update]
+   :guild-role-delete [#'guild-role-delete]
+   :message-create [#'message-create]
+   :presence-update [#'presence-update]
+   :voice-state-update [#'voice-state-update]
+   :user-update [#'user-update]})
 
 (defn caching-middleware
   "Creates a middleware that caches all Discord event data in `state`.

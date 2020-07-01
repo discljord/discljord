@@ -127,6 +127,11 @@
             :roles roles
             :nick nick))))
 
+(defn voice-state-update
+  [_ {:keys [user-id] :as voice} state]
+  (swap! state assoc-in [:users user-id :voice]
+         (dissoc voice :member)))
+
 (def ^:private caching-handlers
   "Handler map for all state-caching events."
   {})

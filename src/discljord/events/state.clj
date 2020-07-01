@@ -115,6 +115,18 @@
            [:private-channels channel-id :last-message-id])
          id))
 
+(defn presence-update
+  [_ {:keys [user guild-id roles nick] :as presence} state]
+  (swap! state
+         (fn [state]
+           (update-in
+            (update-in state [:users (:id user)]
+                       merge (dissoc presence :user :roles :nick :guild-id))
+            [:guilds guild-id :members (:id user)]
+            assoc
+            :roles roles
+            :nick nick))))
+
 (def ^:private caching-handlers
   "Handler map for all state-caching events."
   {})

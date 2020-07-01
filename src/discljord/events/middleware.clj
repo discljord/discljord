@@ -10,8 +10,8 @@
   (defn identity-middleware
     \"Middleware that passes through events unchanged.\"
     [handler]
-    (fn [event-type event-data]
-      (handler event-type event-data)))
+    (fn [event-type event-data & more]
+      (apply handler event-type event-data more)))
   ```"
   (:require
    [clojure.tools.logging :as log])
@@ -27,9 +27,9 @@
   are given to the middleware when it is applied."
   [handler]
   (fn [hnd]
-    (fn [event-type event-data]
-      (handler event-type event-data)
-      (hnd event-type event-data))))
+    (fn [event-type event-data & more]
+      (apply handler event-type event-data more)
+      (apply hnd event-type event-data more))))
 
 (defn log-when
   "Takes a predicate and if it returns true, logs the event before passing it on.
@@ -39,12 +39,12 @@
   logging level will be used."
   [filter]
   (fn [handler]
-    (fn [event-type event-data]
+    (fn [event-type event-data & more]
       (when-let [logging-level (filter event-type event-data)]
         (if (#{:trace :debug :info :warn :error :fatal} logging-level)
           (log/log logging-level (pr-str event-type event-data))
           (log/debug event-type event-data)))
-      (handler event-type event-data))))
+      (apply handler event-type event-data more))))
 
 (defn filter
   "Makes middleware that only calls the handler if `pred` returns truthy.
@@ -52,9 +52,9 @@
   `pred` is a predicate expected to take the event-type and event-data."
   [pred]
   (fn [handler]
-    (fn [event-type event-data]
+    (fn [event-type event-data & more]
       (when (pred event-type event-data)
-        (handler event-type event-data)))))
+        (apply handler event-type event-data more)))))
 
 (defn data-mapping
   "Makes a transform function for use with [[map]] that operates on event-data.
@@ -73,21 +73,21 @@
   event-type and event-data which are then passed to the handler."
   [f]
   (fn [handler]
-    (fn [event-type event-data]
+    (fn [event-type event-data & more]
       (let [[event-type event-data] (f [event-type event-data])]
-        (handler event-type event-data)))))
+        (apply handler event-type event-data more)))))
 
 (defn transduce
   "Makes a middleware which takes a transducer and runs it over event-data."
   [xf]
   (let [reduced (volatile! false)
-        reducer (fn [send-event [event-type event-data]]
-                  (send-event event-type event-data))
+        reducer (fn [send-event args]
+                  (apply send-event args))
         reducer (xf reducer)]
     (fn [handler]
-      (fn [event-type event-data]
+      (fn [event-type event-data & more]
         (when-not @reduced
-          (let [res (reducer handler [event-type event-data])]
+          (let [res (reducer handler (vec (concat [event-type event-data] more)))]
             (when (reduced? res)
               (vreset! reduced true))
             res))))))

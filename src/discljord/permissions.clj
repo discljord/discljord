@@ -44,3 +44,24 @@
 (defn has-permission-flags?
   [perms perms-int]
   (every? #(has-permission-flag? % perms-int) perms))
+
+(defn permission-int
+  ([everyone roles]
+   (let [perms-int (apply bit-or everyone roles)]
+     (if (has-permission-flag? :administrator perms-int)
+       0xFFFFFFFF
+       perms-int)))
+  ([everyone roles everyone-overrides roles-overrides user-overrides]
+   (let [override (fn [perms-int overrides]
+                    (let [allow (apply bit-or (map :allow overrides))
+                          deny (apply bit-or (map :deny overrides))]
+                      (bit-or
+                       (bit-and
+                        perms-int
+                        (bit-not deny))
+                       allow)))
+
+         perms-int (permission-int everyone roles)
+         perms-int (override perms-int everyone-overrides)
+         perms-int (override perms-int roles-overrides)]
+     (override perms-int user-overrides))))

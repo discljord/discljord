@@ -39,80 +39,80 @@
   "Stores the user and guilds into the state."
   [_ {:keys [user guilds]} state]
   (swap! state assoc
-         :bot user
-         :guilds (merge (:guilds state)
+         ::bot user
+         ::guilds (merge (::guilds state)
                         (into {} (map vector (map :id guilds) (map prepare-guild guilds))))
-         :users (apply merge-with merge (:users state) (map get-users-from-guild guilds))))
+         ::users (apply merge-with merge (::users state) (map get-users-from-guild guilds))))
 
 (defn guild-update
   "Stores the guild into the state."
   [_ guild state]
   (swap! state
          (fn [state]
-           (update (update-in state [:guilds (:id guild)] merge (prepare-guild guild))
-                   :users (partial merge-with merge) (get-users-from-guild guild)))))
+           (update (update-in state [::guilds (:id guild)] merge (prepare-guild guild))
+                   ::users (partial merge-with merge) (get-users-from-guild guild)))))
 
 (defn channel-update
   [_ channel state]
   (swap! state assoc-in
          (if (:guild-id channel)
-           [:guilds (:guild-id channel) :channels (:id channel)]
-           [:private-channels (:id channel)])
+           [::guilds (:guild-id channel) :channels (:id channel)]
+           [::private-channels (:id channel)])
          channel))
 
 (defn channel-delete
   [_ channel state]
   (swap! state update-in
          (if (:guild-id channel)
-           [:guilds (:guild-id channel) :channels]
-           [:private-channels])
+           [::guilds (:guild-id channel) :channels]
+           [::private-channels])
          dissoc (:id channel)))
 
 (defn channel-pins-update
   [_ {:keys [guild-id channel-id last-pin-timestamp]} state]
   (swap! state assoc-in
          (if guild-id
-           [:guilds guild-id :channels channel-id :last-pin-timestamp]
-           [:private-channels channel-id :last-pin-timestamp])
+           [::guilds guild-id :channels channel-id :last-pin-timestamp]
+           [::private-channels channel-id :last-pin-timestamp])
          last-pin-timestamp))
 
 (defn guild-emojis-update
   [_ {:keys [guild-id emojis]} state]
-  (swap! state assoc-in [:guilds guild-id :emojis] emojis))
+  (swap! state assoc-in [::guilds guild-id :emojis] emojis))
 
 (defn guild-member-update
   [_ {:keys [guild-id user] :as member} state]
-  (swap! state update-in [:guilds guild-id :members (:id user)]
+  (swap! state update-in [::guilds guild-id :members (:id user)]
          merge (assoc (dissoc member :guild-id)
                       :user (:id user))))
 
 (defn guild-member-remove
   [_ {:keys [guild-id user]} state]
-  (swap! state update-in [:guilds guild-id :members]
+  (swap! state update-in [::guilds guild-id :members]
          dissoc (:id user)))
 
 (defn guild-members-chunk
   [_ {:keys [guild-id members]} state]
-  (swap! state update-in [:guilds guild-id :members]
+  (swap! state update-in [::guilds guild-id :members]
          merge-with merge (vector->map (comp :id :user) #(assoc % :user (:id (:user %)))
                                        members)))
 
 (defn guild-role-update
   [_ {:keys [guild-id role]} state]
-  (swap! state update-in [:guilds guild-id :roles (:id role)]
+  (swap! state update-in [::guilds guild-id :roles (:id role)]
          merge role))
 
 (defn guild-role-delete
   [_ {:keys [guild-id role-id]} state]
-  (swap! state update-in [:guilds guild-id :roles]
+  (swap! state update-in [::guilds guild-id :roles]
          dissoc role-id))
 
 (defn message-create
   [_ {:keys [guild-id channel-id id]} state]
   (swap! state assoc-in
          (if guild-id
-           [:guilds guild-id :channels channel-id :last-message-id]
-           [:private-channels channel-id :last-message-id])
+           [::guilds guild-id :channels channel-id :last-message-id]
+           [::private-channels channel-id :last-message-id])
          id))
 
 (defn presence-update
@@ -120,21 +120,21 @@
   (swap! state
          (fn [state]
            (update-in
-            (update-in state [:users (:id user)]
+            (update-in state [::users (:id user)]
                        merge (dissoc presence :user :roles :nick :guild-id))
-            [:guilds guild-id :members (:id user)]
+            [::guilds guild-id :members (:id user)]
             assoc
             :roles roles
             :nick nick))))
 
 (defn voice-state-update
   [_ {:keys [user-id] :as voice} state]
-  (swap! state assoc-in [:users user-id :voice]
+  (swap! state assoc-in [::users user-id :voice]
          (dissoc voice :member)))
 
 (defn user-update
   [_ user state]
-  (swap! state update :bot merge user))
+  (swap! state update ::bot merge user))
 
 (def ^:private caching-handlers
   "Handler map for all state-caching events."
@@ -166,17 +166,17 @@
 
   The state saved is of the following form:
   ```clojure
-  {:bot <current-user>
-   :guilds {<guild-id> <guild-object>}
-   :users {<user-id> <user-object>}
-   :private-channels {<channel-id> <channel-object>}}
+  {:discljord.events.state/bot <current-user>
+   :discljord.events.state/guilds {<guild-id> <guild-object>}
+   :discljord.events.state/users {<user-id> <user-object>}
+   :discljord.events.state/private-channels {<channel-id> <channel-object>}}
   ```
 
   Guild objects are modified in a few ways. Roles, members, and channels are all
   stored as maps from id to object, and members' user key is the id of the user
-  which is stored under the state's `:users` key. Any information received from
-  `:presence-update` events is also merged into the user object, and a voice
-  state object is stored under `:voice`.
+  which is stored under the state's `:discljord.events.state/users` key. Any
+  information received from `:presence-update` events is also merged into the
+  user object, and a voice state object is stored under `:voice`.
 
   Private channels are channels which lack a guild, including direct messages
   and group messages."

@@ -34,3 +34,13 @@
    :manage-roles 0x10000000
    :manage-webooks 0x20000000
    :manage-emojis 0x40000000})
+
+(defn has-permission-flag?
+  [perm perms-int]
+  (when perms-int
+    (when-let [bit (permissions-bit perm)]
+      (not (zero? (bit-and bit perms-int))))))
+
+(defn has-permission-flags?
+  [perms perms-int]
+  (every? #(has-permission-flag? % perms-int) perms))

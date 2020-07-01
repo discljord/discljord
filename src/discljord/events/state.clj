@@ -132,6 +132,10 @@
   (swap! state assoc-in [:users user-id :voice]
          (dissoc voice :member)))
 
+(defn user-update
+  [_ user state]
+  (swap! state update :bot merge user))
+
 (def ^:private caching-handlers
   "Handler map for all state-caching events."
   {})

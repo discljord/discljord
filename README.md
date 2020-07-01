@@ -110,12 +110,11 @@ This example responds with "Hello, World" to every message a human user posts in
                    (not (:bot (:author event-data))))
           (m/create-message! message-ch channel :content "Hello, World!"))
         (when (= :channel-pins-update event-type)
-          (a/>!! connection-ch [:disconnect]))
+          (c/disconnect-bot! connection-ch))
         (when-not (= :disconnect event-type)
           (recur))))
     (finally
       (m/stop-connection! message-ch)
-      (c/disconnect-bot!  connection-ch)
       (a/close!           event-ch))))
 ```
 
@@ -147,15 +146,14 @@ This example responds to messages by echoing whatever is said by human users in 
             (if (= "!exit" (s/trim (s/lower-case message-content)))
               (do
                 (m/create-message! message-ch channel-id :content "Goodbye!")
-                (a/>!! connection-ch [:disconnect]))
+                (c/disconnect-bot! connection-ch))
               (m/create-message! message-ch channel :content message-content))))
         (when (= :channel-pins-update event-type)
-          (a/>!! connection-ch [:disconnect]))
+          (c/disconnect-bot! connection-ch))
         (when-not (= :disconnect event-type)
           (recur))))
     (finally
       (m/stop-connection! message-ch)
-      (c/disconnect-bot!  connection-ch)
       (a/close!           event-ch))))
 ```
 
@@ -183,7 +181,7 @@ Discljord also provides a default event pump to assist with simplicity and exten
 (defmethod handle-event :message-create
   [event-type {{bot :bot} :author :keys [channel-id content]}]
   (if (= content "!disconnect")
-    (a/put! (:connection @state) [:disconnect])
+    (c/disconnect-bot! (:connection @state))
     (when-not bot
       (m/create-message! (:messaging @state) channel-id :content "Hello, World!"))))
 
@@ -197,7 +195,7 @@ Discljord also provides a default event pump to assist with simplicity and exten
   (try (e/message-pump! event-ch handle-event)
     (finally
       (m/stop-connection! messaging-ch)
-      (c/disconnect-bot! connection-ch))))
+      (a/close!           event-ch))))
 ```
 
 This bot builds slightly on the earlier Hello World bot, in that it sends its message to the channel it was messaged on (which should include DMs), and if that message is "!disconnect" it will disconnect itself.

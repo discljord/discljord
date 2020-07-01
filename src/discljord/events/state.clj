@@ -162,7 +162,24 @@
 (defn caching-middleware
   "Creates a middleware that caches all Discord event data in `state`.
 
-  `state` must be an [[clojure.core/atom]]."
+  `state` must be an [[clojure.core/atom]] containing a map.
+
+  The state saved is of the following form:
+  ```clojure
+  {:bot <current-user>
+   :guilds {<guild-id> <guild-object>}
+   :users {<user-id> <user-object>}
+   :private-channels {<channel-id> <channel-object>}}
+  ```
+
+  Guild objects are modified in a few ways. Roles, members, and channels are all
+  stored as maps from id to object, and members' user key is the id of the user
+  which is stored under the state's `:users` key. Any information received from
+  `:presence-update` events is also merged into the user object, and a voice
+  state object is stored under `:voice`.
+
+  Private channels are channels which lack a guild, including direct messages
+  and group messages."
   [state]
   (mdw/concat
    #(e/dispatch-handlers #'caching-handlers %1 %2 state)))
@@ -172,7 +189,9 @@
 
   Values on the transducer are expected to be tuples of event-type and
   event-data.
-  `state` must be an [[clojure.core/atom]]."
+  `state` must be an [[clojure.core/atom]] containing a map.
+
+  Saved state is identical to [[caching-middleware]]."
   [state]
   (map (fn [[event-type event-data :as event]]
          (e/dispatch-handlers #'caching-handlers event-type event-data state)

@@ -65,3 +65,19 @@
          perms-int (override perms-int everyone-overrides)
          perms-int (override perms-int roles-overrides)]
      (override perms-int user-overrides))))
+
+(defn has-permission?
+  ([perm everyone roles]
+   (has-permission-flag? perm (permission-int everyone roles)))
+  ([perm everyone roles everyone-overrides roles-overrides user-overrides]
+   (has-permission-flag?
+    perm
+    (permission-int everyone roles everyone-overrides roles-overrides user-overrides))))
+
+(defn has-permissions?
+  ([perms everyone roles]
+   (has-permission-flags? perms (permission-int everyone roles)))
+  ([perms everyone roles everyone-overrides roles-overrides user-overrides]
+   (has-permission-flags?
+    perms
+    (permission-int everyone roles everyone-overrides roles-overrides user-overrides))))

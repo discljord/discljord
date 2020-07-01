@@ -164,11 +164,10 @@ This example responds to messages by echoing whatever is said by human users in 
 Discljord also provides a default event pump to assist with simplicity and extensibility of the code. The one currently supported is a simple pump very similar to the one above which calls a function or multimethod you pass in.
 
 ```clojure
-(ns example.event-handler
-  (:require [discljord.connections :as c]
-            [discljord.messaging :as m]
-            [discljord.events :as e]
-            [clojure.core.async :as a]))
+(require '[discljord.connections :as c])
+(require '[discljord.messaging :as m])
+(require '[discljord.events :as e])
+(require '[clojure.core.async :as a])
 
 (def token "TOKEN")
 
@@ -188,18 +187,17 @@ Discljord also provides a default event pump to assist with simplicity and exten
     (when-not bot
       (m/create-message! (:messaging @state) channel-id :content "Hello, World!"))))
 
-(defn -main
-  [& args]
-  (let [event-ch (a/chan 100)
-        connection-ch (c/connect-bot! token event-ch)
-        messaging-ch (m/start-connection! token)
-        init-state {:connection connection-ch
-                    :event event-ch
-                    :messaging messaging-ch}]
-    (reset! state init-state)
-    (e/message-pump! event-ch handle-event)
-    (m/stop-connection! messaging-ch)
-    (c/disconnect-bot! connection-ch)))
+(let [event-ch (a/chan 100)
+      connection-ch (c/connect-bot! token event-ch)
+      messaging-ch (m/start-connection! token)
+      init-state {:connection connection-ch
+                  :event event-ch
+                  :messaging messaging-ch}]
+  (reset! state init-state)
+  (try (e/message-pump! event-ch handle-event)
+    (finally
+      (m/stop-connection! messaging-ch)
+      (c/disconnect-bot! connection-ch))))
 ```
 
 This bot builds slightly on the earlier Hello World bot, in that it sends its message to the channel it was messaged on (which should include DMs), and if that message is "!disconnect" it will disconnect itself.

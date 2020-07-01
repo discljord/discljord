@@ -202,6 +202,54 @@ This bot builds slightly on the earlier Hello World bot, in that it sends its me
 
 Discljord does not currently have an opinion about how you store your state, however in future it may provide additional message pump types which have opinions about state or other parts of your program. These will always be opt-in, and you will always be able to write your own message pump like the first example.
 
+### Declarative Event Handlers
+
+The event pump provided by discljord will accept any function that takes an event type and event data, but discljord also provides a utility function to perform event dispatch to different functions per event type.
+
+```clojure
+(require '[discljord.connections :as c])
+(require '[discljord.messaging :as m])
+(require '[discljord.events :as e])
+(require '[clojure.core.async :as a])
+
+(def token "TOKEN")
+
+(def state (atom nil))
+
+(defn greet-or-disconnect
+  [event-type {{bot :bot} :author :keys [channel-id content]}]
+  (if (= content "!disconnect")
+    (a/put! (:connection @state) [:disconnect])
+    (when-not bot
+      (m/create-message! (:messaging @state) channel-id :content "Hello, World!"))))
+
+(defn send-emoji
+  [event-type {:keys [channel-id emoji]}]
+  (when (:name emoji)
+    (m/create-message! (:messaging @state) channel-id
+                       :content (if (:id emoji)
+                                  (str "<:" (:name emoji) ":" (:id emoji) ">")
+                                  (:name emoji)))))
+
+(def handlers
+  {:message-create [#'greet-or-disconnect]
+   :message-reaction-add [#'send-emoji]})
+
+(let [event-ch (a/chan 100)
+      connection-ch (c/connect-bot! token event-ch)
+      messaging-ch (m/start-connection! token)
+      init-state {:connection connection-ch
+                  :event event-ch
+                  :messaging messaging-ch}]
+  (reset! state init-state)
+  (try (e/message-pump! event-ch (partial e/dispatch-handlers #'handlers))
+    (finally
+      (m/stop-connection! messaging-ch)
+      (c/disconnect-bot! connection-ch))))
+```
+
+This bot will send emoji to the channel that a reaction is added in, as well as perform the same hello-world response the previous bot did. The main difference is that the actual dispatch to different handler functions is done via data, rather than via a multimethod. Additionally, this adds the ability to call multiple handler functions with a single event.
+
 ### Intents
 As of right now, Discord will send your bot all events which happen on any guild that your bot is in, however you can specify [intents](https://discord.com/developers/docs/topics/gateway#gateway-intents) to specify which events you want to receive. In the future, Discord intends to make these intents mandatory. They can be specified as a keyword argument to `discljord.connections/connect-bot!`, and are represented as a set of keywords in lower-kebab-case.
 

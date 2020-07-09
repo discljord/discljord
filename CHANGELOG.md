@@ -4,6 +4,7 @@ Discljord follows semantic versioning.
 
 ## [Unreleased]
 ### Added
+ - Support for get current application information endpoint
  - Middleware to cache information that Discord sends during events
  - Function to create an event handler which dispatches to functions based on event type
  - Middleware for filtering out messages from bots

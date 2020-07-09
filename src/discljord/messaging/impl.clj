@@ -699,6 +699,12 @@
         (a/close! prom)))
     response))
 
+(defdispatch :get-current-application-information
+  [] [] _ :get _ body
+  "/oauth2/applications/@me"
+  {}
+  (json-body body))
+
 (defn rate-limited?
   "Returns the number of millis until the limit expires, or nil if not limited"
   [rate-limit]

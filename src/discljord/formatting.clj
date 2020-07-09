@@ -1,5 +1,6 @@
 (ns discljord.formatting
-  "Contains utility functions to help with Discord message formatting.")
+  "Contains utility functions to help with Discord message formatting."
+  (:require [clojure.string :refer [split-lines join]]))
 
 (def user-mention #"<@!?(?<id>\d+)>")
 
@@ -83,7 +84,7 @@
   I.e.:
   > text"
   [text]
-  (str "\n> " text \newline))
+  (str "\n> " (join "\n> " (split-lines text)) \newline))
 
 (defn embed-link
   "Creates an inline-style link with an optional title.

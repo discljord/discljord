@@ -19,3 +19,6 @@
         (str \< (if animated \a "") \: name \: id \>)
         name))
     (str "<:_:" emoji \>)))
+
+(defn user-tag [{:keys [username discriminator] :as user}]
+  (str username \# discriminator))

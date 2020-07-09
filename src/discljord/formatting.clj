@@ -41,14 +41,14 @@
   [text]
   (str \` text \`))
 
-(defn codeblock
+(defn code-block
   "Puts the given text in a codeblock with corresponding syntax highlighting, if a language is given.
   I.e.:
   ```lang
   text
   ```"
   ([lang text] (str "```" lang \newline text "\n```"))
-  ([text] (codeblock "" text)))
+  ([text] (code-block "" text)))
 
 (defn italics
   "Returns the given text as *italics*."
@@ -65,12 +65,12 @@
   [text]
   (str "__" text "__"))
 
-(defn strikethrough
+(defn strike-through
   "Returns the given text with ~~strikethrough~~."
   [text]
   (str "~~" text "~~"))
 
-(defn blockquote
+(defn block-quote
   "Returns the given text in a blockquote, with new lines pre- and appended.
   I.e.:
   > text"

@@ -77,7 +77,7 @@
   [text]
   (str "\n> " text \newline))
 
-(defn link
+(defn embed-link
   "Creates an inline-style link with an optional title.
   I.e.: [text](url \"title\") or [text](url).
   Can only be used in embeds, not in regular messages."

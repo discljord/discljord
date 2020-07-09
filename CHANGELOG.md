@@ -11,6 +11,7 @@ Discljord follows semantic versioning.
  - Middleware for mapping and filtering
  - Middleware to concat handlers
  - Middleware for event handlers
+ - Message formatting utilities including functions to create mentions, Markdown styling and user tags (User#1234)
 
 ## [1.0.0] - 2020-06-27
 ### Added

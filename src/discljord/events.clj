@@ -1,7 +1,9 @@
 (ns discljord.events
-  (:require [clojure.core.async :as a]
-            [clojure.spec.alpha :as s]
-            [clojure.tools.logging :as log]))
+  "Functions for getting events off of a queue and processing them."
+  (:require
+   [clojure.core.async :as a]
+   [clojure.spec.alpha :as s]
+   [clojure.tools.logging :as log]))
 
 (defn message-pump!
   "Starts a process which pulls events off of the channel and calls
@@ -22,4 +24,20 @@
 (s/fdef message-pump!
   :args (s/cat :channel any?
                :handle-event ifn?)
+  :ret nil?)
+
+(defn dispatch-handlers
+  "Calls event handlers from `handlers` with the event and `args`.
+
+  The `handlers` argument is a map from a keyword event type to a vector of
+  event handler functions (with additional arguments filled by `args`) to be run
+  in sequence."
+  [handlers event-type event-data & args]
+  (doseq [f (handlers event-type)]
+    (apply f event-type event-data args)))
+(s/fdef dispatch-handlers
+  :args (s/cat :handlers (s/map-of keyword? (s/coll-of ifn? :kind vector?))
+               :event-type keyword?
+               :event-data any?
+               :args (s/* any?))
   :ret nil?)

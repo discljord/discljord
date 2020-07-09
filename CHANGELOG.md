@@ -3,6 +3,14 @@ All notable changes to this project will be documented in this file. This change
 Discljord follows semantic versioning.
 
 ## [Unreleased]
+### Added
+ - Middleware to cache information that Discord sends during events
+ - Function to create an event handler which dispatches to functions based on event type
+ - Middleware for filtering out messages from bots
+ - Middleware for making event streams transducible (somewhat redundant with the channel having a transducer)
+ - Middleware for mapping and filtering
+ - Middleware to concat handlers
+ - Middleware for event handlers
 
 ## [1.0.0] - 2020-06-27
 ### Added

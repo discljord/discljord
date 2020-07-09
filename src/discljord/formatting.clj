@@ -8,7 +8,7 @@
 
 (def channel-mention #"<#(?<id>\d+)>")
 
-(def emoji-mention #"<(?<animated>a)?:(?<name>):(?<id>\d+)>")
+(def emoji-mention #"<(?<animated>a)?:(?<name>\w+):(?<id>\d+)>")
 
 (defn- extract-id [entity]
   (cond-> entity (map? entity) :id))

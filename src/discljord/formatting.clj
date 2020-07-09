@@ -35,3 +35,35 @@
   "Takes a user object and returns a string representing it as a tag, i.e. \"username#discriminator\"."
   [{:keys [username discriminator] :as user}]
   (str username \# discriminator))
+
+(defn code
+  [text]
+  (str \` text \`))
+
+(defn codeblock
+  ([lang text] (str "```" lang \newline text "```"))
+  ([text] (codeblock "" text)))
+
+(defn italics
+  [text]
+  (str \* text \*))
+
+(defn bold
+  [text]
+  (str "**" text "**"))
+
+(defn underline
+  [text]
+  (str "__" text "__"))
+
+(defn strikethrough
+  [text]
+  (str "~~" text "~~"))
+
+(defn blockquote
+  [text]
+  (str "\n> " text \newline))
+
+(defn link
+  ([text url title] (str \[ text "](" url \space \" title \" \)))
+  ([text url] (str \[ text "](" url \))))

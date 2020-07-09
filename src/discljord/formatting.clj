@@ -100,6 +100,11 @@
   [text]
   (str "\n> " (join "\n> " (split-lines text)) \newline))
 
+(def full-block-quote
+  "The full block quote (`>>>`).
+  Everything that follows this separator is shown as a block quote in Discord messages."
+  "\n>>> ")
+
 (defn embed-link
   "Creates an inline-style link with an optional title.
   I.e.: [text](url \"title\") or [text](url).

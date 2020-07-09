@@ -2,13 +2,27 @@
   "Contains utility functions to help with Discord message formatting."
   (:require [clojure.string :refer [split-lines join]]))
 
-(def user-mention #"<@!?(?<id>\d+)>")
+(def user-mention
+  "Regex pattern that matches user or member mentions.
+  Captures the user id in its first capture group labelled \"id\"."
+  #"<@!?(?<id>\d+)>")
 
-(def role-mention #"<@&(?<id>\d+)>")
+(def role-mention
+  "Regex pattern that matches role mentions.
+  Captures the role id in its first capture group labelled \"id\"."
+  #"<@&(?<id>\d+)>")
 
-(def channel-mention #"<#(?<id>\d+)>")
+(def channel-mention
+  "Regex pattern that matches text channel mentions.
+  Captures the channel id in its first capture group labelled \"id\"."
+  #"<#(?<id>\d+)>")
 
-(def emoji-mention #"<(?<animated>a)?:(?<name>\w+):(?<id>\d+)>")
+(def emoji-mention
+  "Regex pattern that matches custom emoji mentions.
+  (Optionally) captures the `a` prefix in its first capture group labelled \"animated\"
+  to indicate if the emoji is animated; Captures the emoji name in its second capture group labelled
+  \"name\" and the id in a last capture group labelled \"id\"."
+  #"<(?<animated>a)?:(?<name>\w+):(?<id>\d+)>")
 
 (defn- extract-id [entity]
   (cond-> entity (map? entity) :id))

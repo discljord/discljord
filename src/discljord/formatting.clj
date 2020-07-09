@@ -37,33 +37,49 @@
   (str username \# discriminator))
 
 (defn code
+  "Wraps the given text in an `inline code block`."
   [text]
   (str \` text \`))
 
 (defn codeblock
-  ([lang text] (str "```" lang \newline text "```"))
+  "Puts the given text in a codeblock with corresponding syntax highlighting, if a language is given.
+  I.e.:
+  ```lang
+  text
+  ```"
+  ([lang text] (str "```" lang \newline text "\n```"))
   ([text] (codeblock "" text)))
 
 (defn italics
+  "Returns the given text as *italics*."
   [text]
   (str \* text \*))
 
 (defn bold
+  "Returns the given text in **bold**."
   [text]
   (str "**" text "**"))
 
 (defn underline
+  "Returns the given text __underlined__."
   [text]
   (str "__" text "__"))
 
 (defn strikethrough
+  "Returns the given text with ~~strikethrough~~."
   [text]
   (str "~~" text "~~"))
 
 (defn blockquote
+  "Returns the given text in a blockquote, with new lines pre- and appended.
+  I.e.:
+  > text"
   [text]
   (str "\n> " text \newline))
 
 (defn link
+  "Creates an inline-style link with an optional title.
+  I.e.: [text](url \"title\") or [text](url).
+  Can only be used in embeds, not in regular messages."
   ([text url title] (str \[ text "](" url \space \" title \" \)))
   ([text url] (str \[ text "](" url \))))

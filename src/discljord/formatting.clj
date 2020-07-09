@@ -1,14 +1,13 @@
 (ns discljord.formatting
   "Contains utility functions to help with Discord message formatting.")
 
-
 (def user-mention #"<@!?(?<id>\d+)>")
 
 (def role-mention #"<@&(?<id>\d+)>")
 
 (def channel-mention #"<#(?<id>\d+)>")
 
-(def emoji-mention #"<(?<animated>a)?:(?<name>):(?<id>)>")
+(def emoji-mention #"<(?<animated>a)?:(?<name>):(?<id>\d+)>")
 
 (defn- extract-id [entity]
   (cond-> entity (map? entity) :id))

@@ -700,7 +700,7 @@
     response))
 
 (defdispatch :get-current-application-information
-  [] [] _ :get _ body
+  [_] [] _ :get _ body
   "/oauth2/applications/@me"
   {}
   (json-body body))

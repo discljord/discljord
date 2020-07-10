@@ -18,7 +18,7 @@
    (into {} (map (fn [[k v]] [k (vf (first v))]))
          (group-by kf coll))))
 
-(defn- prepare-guild
+(defn prepare-guild
   "Takes a guild and prepares it for storing in the cache.
 
   The roles vector will be transformed to a map keyed off if, members

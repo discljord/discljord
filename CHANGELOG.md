@@ -4,6 +4,8 @@ Discljord follows semantic versioning.
 
 ## [Unreleased]
 ### Added
+ - Namespace with functions for validating if a user has a given permission
+ - Support for get current application information endpoint
  - Middleware to cache information that Discord sends during events
  - Function to create an event handler which dispatches to functions based on event type
  - Middleware for filtering out messages from bots
@@ -11,6 +13,10 @@ Discljord follows semantic versioning.
  - Middleware for mapping and filtering
  - Middleware to concat handlers
  - Middleware for event handlers
+ - Message formatting utilities including functions to create mentions, Markdown styling and user tags (User#1234)
+
+### Changed
+ - Gateway connections now use zlib transport compression
 
 ## [1.0.0] - 2020-06-27
 ### Added

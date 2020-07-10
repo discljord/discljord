@@ -66,17 +66,45 @@
          perms-int (override perms-int roles-overrides)]
      (override perms-int user-overrides))))
 
+(defn- user-roles
+  [guild user-id]
+  (map :permissions (vals (select-keys (:roles guild) (:roles ((:members guild) user-id))))))
+
 (defn has-permission?
-  ([perm everyone roles]
-   (has-permission-flag? perm (permission-int everyone roles)))
+  {:arglists '([perm everyone roles] [perm guild user-id] [perm guild user-id channel-id]
+               [perm everyone roles everyone-overrides roles-overrides user-overrides])}
+  ([perm everyone-or-guild roles-or-user-id]
+   (if (map? everyone-or-guild)
+     (has-permission-flag? perm (permission-int (:permissions ((:roles everyone-or-guild) (:id everyone-or-guild)))
+                                                (user-roles everyone-or-guild roles-or-user-id)))
+     (has-permission-flag? perm (permission-int everyone-or-guild roles-or-user-id))))
+  ([perm guild user-id channel-id]
+   (let [everyone (:permissions ((:roles guild) (:id guild)))
+         roles (user-roles guild user-id)]
+     (has-permission-flag?
+      perm
+      (permission-int everyone roles))))
   ([perm everyone roles everyone-overrides roles-overrides user-overrides]
    (has-permission-flag?
     perm
     (permission-int everyone roles everyone-overrides roles-overrides user-overrides))))
 
 (defn has-permissions?
-  ([perms everyone roles]
-   (has-permission-flags? perms (permission-int everyone roles)))
+  {:arglists '([perms everyone roles] [perms guild user-id] [perms guild user-id channel-id]
+               [perms everyone roles everyone-overrides roles-overrides user-overrides])}
+  ([perms everyone-or-guild roles-or-user-id]
+   (if (map? everyone-or-guild)
+     (has-permission-flags?
+      perms
+      (permission-int (:permissions ((:roles everyone-or-guild) (:id everyone-or-guild)))
+                      (user-roles everyone-or-guild roles-or-user-id)))
+     (has-permission-flags? perms (permission-int everyone-or-guild roles-or-user-id))))
+  ([perms guild user-id channel-id]
+   (let [everyone (:permissions ((:roles guild) (:id guild)))
+         roles (user-roles guild user-id)]
+     (has-permission-flags?
+      perms
+      (permission-int everyone roles))))
   ([perms everyone roles everyone-overrides roles-overrides user-overrides]
    (has-permission-flags?
     perms

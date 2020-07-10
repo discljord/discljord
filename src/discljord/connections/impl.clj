@@ -10,6 +10,8 @@
    [gniazdo.core :as ws]
    [org.httpkit.client :as http])
   (:import
+   (java.io
+    ByteArrayOutputStream)
    (java.util.zip
     Inflater)
    (org.eclipse.jetty.websocket.client
@@ -226,16 +228,16 @@
                               (a/put! event-ch [:message msg]))
                 :on-binary (fn [buf start len]
                              (.setInput inflater buf start len)
-                             (let [acc (StringBuilder.)
-                                   _ (loop [off start
-                                            rem len]
-                                       (when (pos? rem)
-                                         (let [bytes-read (.inflate inflater out-buffer 0 byte-array-buffer-size)]
-                                           (.append acc (String. out-buffer 0 bytes-read "UTF-8"))
-                                           (recur (mod (+ off bytes-read)
-                                                       (count buf))
-                                                  (- rem bytes-read)))))
-                                   msg (.toString acc)]
+                             (let [acc (ByteArrayOutputStream.)
+                                   msg (loop [off start
+                                              rem len]
+                                         (if (pos? rem)
+                                           (let [bytes-read (.inflate inflater out-buffer 0 byte-array-buffer-size)]
+                                             (.write acc out-buffer 0 bytes-read)
+                                             (recur (mod (+ off bytes-read)
+                                                         (count buf))
+                                                    (- rem bytes-read)))
+                                           (String. (.toByteArray acc) "UTF-8")))]
                                (log/trace "Websocket received binary message:" msg)
                                (a/put! event-ch [:message msg]))))
           :client client}

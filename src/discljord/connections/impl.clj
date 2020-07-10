@@ -3,12 +3,15 @@
   (:require
    [clojure.core.async :as a]
    [clojure.data.json :as json]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
    [discljord.http :refer [gateway-url]]
    [discljord.util :refer [json-keyword clean-json-input]]
    [gniazdo.core :as ws]
-   [org.httpkit.client :as http]
-   [clojure.tools.logging :as log])
+   [org.httpkit.client :as http])
   (:import
+   (java.util.zip
+    Inflater)
    (org.eclipse.jetty.websocket.client
     WebSocketClient)
    (org.eclipse.jetty.util.ssl
@@ -17,6 +20,10 @@
 (def buffer-size
   "The maximum size of the websocket buffer"
   (int Integer/MAX_VALUE))
+
+(def byte-array-buffer-size
+  "The size of the byte array to allocate for the decompression buffer"
+  (int (* 1024 1024 1)))
 
 (defmulti handle-websocket-event
   "Updates a `shard` based on shard events.
@@ -188,8 +195,15 @@
   | `:message`    | String message."
   [buffer-size url event-ch]
   (log/debug "Starting websocket of size" buffer-size "at url" url)
-  (let [client (WebSocketClient. (doto (SslContextFactory.)
-                                   (.setEndpointIdentificationAlgorithm "HTTPS")))]
+  (let [url (str url
+                 (when-not (str/ends-with? url "/") "/")
+                 "?v=6"
+                 "&encoding=json"
+                 "&compress=zlib-stream")
+        client (WebSocketClient. (doto (SslContextFactory.)
+                                   (.setEndpointIdentificationAlgorithm "HTTPS")))
+        inflater (Inflater.)
+        out-buffer (byte-array byte-array-buffer-size)]
     (doto (.getPolicy client)
       (.setMaxTextMessageSize buffer-size)
       (.setMaxBinaryMessageSize buffer-size))
@@ -208,8 +222,22 @@
                             (log/warn "Websocket errored" err)
                             (a/put! event-ch [:error err]))
                 :on-receive (fn [msg]
-                              (log/trace "Websocket recieved message:" msg)
-                              (a/put! event-ch [:message msg])))
+                              (log/trace "Websocket received message:" msg)
+                              (a/put! event-ch [:message msg]))
+                :on-binary (fn [buf start len]
+                             (.setInput inflater buf start len)
+                             (let [acc (StringBuilder.)
+                                   _ (loop [off start
+                                            rem len]
+                                       (when (pos? rem)
+                                         (let [bytes-read (.inflate inflater out-buffer 0 byte-array-buffer-size)]
+                                           (.append acc (String. out-buffer 0 bytes-read "UTF-8"))
+                                           (recur (mod (+ off bytes-read)
+                                                       (count buf))
+                                                  (- rem bytes-read)))))
+                                   msg (.toString acc)]
+                               (log/trace "Websocket received binary message:" msg)
+                               (a/put! event-ch [:message msg]))))
           :client client}
          (catch Exception e
            (throw (ex-info "Failed to connect a websocket" {:client client} e))))))

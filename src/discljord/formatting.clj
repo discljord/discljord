@@ -4,21 +4,25 @@
 
 (def user-mention
   "Regex pattern that matches user or member mentions.
+
   Captures the user id in its first capture group labelled \"id\"."
   #"<@!?(?<id>\d+)>")
 
 (def role-mention
   "Regex pattern that matches role mentions.
+
   Captures the role id in its first capture group labelled \"id\"."
   #"<@&(?<id>\d+)>")
 
 (def channel-mention
   "Regex pattern that matches text channel mentions.
+
   Captures the channel id in its first capture group labelled \"id\"."
   #"<#(?<id>\d+)>")
 
 (def emoji-mention
   "Regex pattern that matches custom emoji mentions.
+
   (Optionally) captures the `a` prefix in its first capture group labelled \"animated\"
   to indicate if the emoji is animated; Captures the emoji name in its second capture group labelled
   \"name\" and the id in a last capture group labelled \"id\"."
@@ -44,6 +48,7 @@
 
 (defn mention-emoji
   "Takes an emoji object or a custom emoji id and returns a mention of that emoji for use in messages.
+
   A provided emoji object may also represent a regular unicode emoji with just a name,
   in which case that name will be returned."
   [emoji]
@@ -66,6 +71,7 @@
 
 (defn code-block
   "Puts the given text in a codeblock with corresponding syntax highlighting, if a language is given.
+
   I.e.:
   ```lang
   text
@@ -95,6 +101,7 @@
 
 (defn block-quote
   "Returns the given text in a blockquote, with new lines pre- and appended.
+
   I.e.:
   > text"
   [text]
@@ -102,11 +109,13 @@
 
 (def full-block-quote
   "The full block quote (`>>>`).
+
   Everything that follows this separator is shown as a block quote in Discord messages."
   "\n>>> ")
 
 (defn embed-link
   "Creates an inline-style link with an optional title.
+
   I.e.: [text](url \"title\") or [text](url).
   Can only be used in embeds, not in regular messages."
   ([text url title] (str \[ text "](" url \space \" title \" \)))

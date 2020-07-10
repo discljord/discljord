@@ -4,7 +4,9 @@ Discljord follows semantic versioning.
 
 ## [Unreleased]
 ### Added
+ - Namespace with utilities to create URLs to Discord's CDN, such as avatars or icons
  - Namespace with functions for validating if a user has a given permission
+ - Message formatting utilities including functions to create mentions, Markdown styling and user tags (User#1234)
  - Support for get current application information endpoint
  - Middleware to cache information that Discord sends during events
  - Function to create an event handler which dispatches to functions based on event type
@@ -13,7 +15,6 @@ Discljord follows semantic versioning.
  - Middleware for mapping and filtering
  - Middleware to concat handlers
  - Middleware for event handlers
- - Message formatting utilities including functions to create mentions, Markdown styling and user tags (User#1234)
 
 ### Changed
  - Gateway connections now use zlib transport compression

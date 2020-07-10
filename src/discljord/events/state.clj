@@ -28,7 +28,8 @@
   (assoc guild
          :roles (vector->map (:roles guild))
          :channels (vector->map (:channels guild))
-         :members (vector->map (comp :id :user) #(assoc % :user (:id (:user %))) (:members guild))))
+         :members (vector->map (comp :id :user) #(assoc % :user (:id (:user %))) (:members guild))
+         :presences (vector->map (comp :id :user) #(assoc % :user (:id (:user %))) (:presences guild))))
 
 (defn- get-users-from-guild
   "Takes a guild and returns a map from user id to user objects."
@@ -172,11 +173,12 @@
    :discljord.events.state/private-channels {<channel-id> <channel-object>}}
   ```
 
-  Guild objects are modified in a few ways. Roles, members, and channels are all
-  stored as maps from id to object, and members' user key is the id of the user
-  which is stored under the state's `:discljord.events.state/users` key. Any
-  information received from `:presence-update` events is also merged into the
-  user object, and a voice state object is stored under `:voice`.
+  Guild objects are modified in a few ways. Roles, members, presences, and
+  channels are all stored as maps from id to object, and members' and presence's
+  user keys are the id of the user which is stored under the state's
+  `:discljord.events.state/users` key. Any information received from
+  `:presence-update` events is also merged into the user object, and a voice
+  state object is stored under `:voice`.
 
   Private channels are channels which lack a guild, including direct messages
   and group messages."

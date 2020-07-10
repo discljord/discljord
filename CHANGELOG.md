@@ -14,6 +14,9 @@ Discljord follows semantic versioning.
  - Middleware for event handlers
  - Message formatting utilities including functions to create mentions, Markdown styling and user tags (User#1234)
 
+### Changed
+ - Gateway connections now use zlib transport compression
+
 ## [1.0.0] - 2020-06-27
 ### Added
  - Support for user-level shard control (enabling distributed bots)

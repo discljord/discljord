@@ -60,6 +60,11 @@
   [user]
   (or (user-avatar user) (default-user-avatar user)))
 
+(def application-icon
+  "Takes an OAuth2 application info object and returns a url to its icon.
+  The current application info is obtainable via [[discljord.messaging/get-current-application-information!]]."
+  (image-url-generator "app-icons" :icon))
+
 (defn resize
   "Adds a size query parameter to the given image url, resulting in a resize of the image.
   Any power of 2 between 16 and 4096 is a valid size."

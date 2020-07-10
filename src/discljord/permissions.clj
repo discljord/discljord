@@ -69,7 +69,7 @@
          perms-int (override perms-int roles-overrides)]
      (override perms-int user-overrides))))
 
-(defn- user-roles
+(defn user-roles
   "Returns a sequence of permissions integers for a user's roles."
   [guild user-id]
   (map :permissions (vals (select-keys (:roles guild) (:roles ((:members guild) user-id))))))

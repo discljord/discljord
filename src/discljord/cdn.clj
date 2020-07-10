@@ -60,7 +60,7 @@
   [user]
   (or (user-avatar user) (default-user-avatar user)))
 
-(defn size
+(defn resize
   "Adds a size query parameter to the given image url, resulting in a resize of the image.
   Any power of 2 between 16 and 4096 is a valid size."
   [url size]

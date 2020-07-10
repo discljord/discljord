@@ -47,14 +47,14 @@
 
 (defn permission-int
   ([everyone roles]
-   (let [perms-int (apply bit-or everyone roles)]
+   (let [perms-int (reduce bit-or 0 (conj roles everyone))]
      (if (has-permission-flag? :administrator perms-int)
        0xFFFFFFFF
        perms-int)))
   ([everyone roles everyone-overrides roles-overrides user-overrides]
    (let [override (fn [perms-int overrides]
-                    (let [allow (apply bit-or (map :allow overrides))
-                          deny (apply bit-or (map :deny overrides))]
+                    (let [allow (reduce bit-or 0 (map :allow overrides))
+                          deny (reduce bit-or 0 (map :deny overrides))]
                       (bit-or
                        (bit-and
                         perms-int

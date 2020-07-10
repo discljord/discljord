@@ -6,6 +6,7 @@
 
 (defn custom-emoji
   "Takes a custom emoji object or id and returns a url to the image data.
+
   Note that an id alone is not enough to determine whether the emoji is animated or not,
   so if you pass an id you will always get a url to a png."
   [emoji]
@@ -56,17 +57,20 @@
 
 (defn effective-user-avatar
   "Takes a user object and returns a url to the effective avatar of that user.
+
   I.e., if the user has a custom avatar, it returns that, otherwise it returns the default avatar for that user."
   [user]
   (or (user-avatar user) (default-user-avatar user)))
 
 (def application-icon
   "Takes an OAuth2 application info object and returns a url to its icon.
+
   The current application info is obtainable via [[discljord.messaging/get-current-application-information!]]."
   (image-url-generator "app-icons" :icon))
 
 (defn resize
   "Adds a size query parameter to the given image url, resulting in a resize of the image.
+
   Any power of 2 between 16 and 4096 is a valid size."
   [url size]
   (str url "?size=" size))

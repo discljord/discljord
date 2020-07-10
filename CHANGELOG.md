@@ -4,6 +4,7 @@ Discljord follows semantic versioning.
 
 ## [Unreleased]
 ### Added
+ - Namespace with functions for validating if a user has a given permission
  - Support for get current application information endpoint
  - Middleware to cache information that Discord sends during events
  - Function to create an event handler which dispatches to functions based on event type

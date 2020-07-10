@@ -39,7 +39,8 @@
   "Returns if the given permission integer includes a permission flag."
   [perm perms-int]
   (when perms-int
-    (when-let [bit (permissions-bit perm)]
+    (when-let [bit (or (permissions-bit perm)
+                       perm)]
       (not (zero? (bit-and bit perms-int))))))
 
 (defn has-permission-flags?

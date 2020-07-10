@@ -70,7 +70,10 @@
      (override perms-int user-overrides))))
 
 (defn user-roles
-  "Returns a sequence of permissions integers for a user's roles."
+  "Returns a sequence of permissions integers for a user's roles.
+
+  `guild` is a guild object like those returned
+  from [[discljord.events.state/prepare-guild]]."
   [guild user-id]
   (map :permissions (vals (select-keys (:roles guild) (:roles ((:members guild) user-id))))))
 
@@ -80,7 +83,8 @@
   `everyone` and `everyone-overrides` are permissions integers; `roles`,
   `role-overrides`, and `user-overrides` are sequences of permissions integers.
 
-  `guild` is a guild object like those from [[discljord.events.state]]."
+  `guild` is a guild object like those
+  from [[discljord.events.state/prepare-guild]]."
   {:arglists '([perm everyone roles] [perm guild user-id] [perm guild user-id channel-id]
                [perm everyone roles everyone-overrides roles-overrides user-overrides])}
   ([perm everyone-or-guild roles-or-user-id]

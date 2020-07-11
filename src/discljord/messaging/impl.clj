@@ -849,7 +849,7 @@
   "Takes a token for a bot and returns a channel to communicate with the
   message sending process."
   [token]
-  (log/debug "Starting messaging process")
+  (log/info "Starting messaging process")
   (let [process {::ms/rate-limits (atom {})
                  ::ms/endpoint-agents {}
                  ::ds/channel (a/chan 1000)

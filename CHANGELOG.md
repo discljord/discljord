@@ -17,6 +17,7 @@ Discljord follows semantic versioning.
  - Middleware for event handlers
 
 ### Changed
+ - If the promise returned by `message-create!` contains a body but the response code was not a success, it will be wrapped as the body of an `ex-info`
  - Gateway connections now use zlib transport compression
 
 ## [1.0.0] - 2020-06-27

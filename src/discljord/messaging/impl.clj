@@ -147,7 +147,10 @@
                              {:headers (assoc (auth-headers token user-agent)
                                               "Content-Type" "multipart/form-data")
                               :multipart multipart})]
-    (let [body (json-body (:body response))]
+    (let [body (json-body (:body response))
+          body (if (= 2 (int (/ (:status response) 100)))
+                 body
+                 (ex-info "" body))]
       (if (some? body)
         (a/>!! prom body)
         (a/close! prom)))

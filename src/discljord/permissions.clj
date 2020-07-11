@@ -104,6 +104,19 @@
   [guild user-id]
   (map :permissions (vals (select-keys (:roles guild) (:roles ((:members guild) user-id))))))
 
+(defn- permissions-and-overrides
+  "Constructs a vector with the arguments needed for a call to [[permission-int]]."
+  [guild user-id channel-id]
+  (let [everyone (:permissions ((:roles guild) (:id guild)))
+        roles (user-roles guild user-id)
+        {:keys [permission-overwrites]} ((:channels guild) channel-id)
+        {role-overrides "role" member-overrides "member"} (group-by :type permission-overwrites)
+        member ((:members guild) user-id)
+        everyone-override (first (filter (comp #{(:id guild)} :id) role-overrides))
+        role-overrides (filter (comp (set (:roles member)) :id) role-overrides)
+        member-override (first (filter (comp #{user-id} :id) member-overrides))]
+    [everyone roles everyone-override role-overrides member-override]))
+
 (defn has-permission?
   "Returns if the given user has a permission.
 
@@ -123,17 +136,9 @@
                                                 (user-roles everyone-or-guild roles-or-user-id)))
      (has-permission-flag? perm (permission-int everyone-or-guild roles-or-user-id))))
   ([perm guild user-id channel-id]
-   (let [everyone (:permissions ((:roles guild) (:id guild)))
-         roles (user-roles guild user-id)
-         {:keys [permission-overwrites]} ((:channels guild) channel-id)
-         {role-overrides "role" member-overrides "member"} (group-by :type permission-overwrites)
-         member ((:members guild) user-id)
-         everyone-override (first (filter #{(:id guild)} role-overrides))
-         role-overrides (filter (comp (set (:roles member)) :id) role-overrides)
-         member-override (first (filter #{user-id} member-overrides))]
-     (has-permission-flag?
-      perm
-      (permission-int everyone roles everyone-override role-overrides member-override))))
+   (has-permission-flag?
+    perm
+    (apply permission-int (permissions-and-overrides guild user-id channel-id))))
   ([perm everyone roles everyone-override roles-overrides user-override]
    (has-permission-flag?
     perm
@@ -160,17 +165,9 @@
                       (user-roles everyone-or-guild roles-or-user-id)))
      (has-permission-flags? perms (permission-int everyone-or-guild roles-or-user-id))))
   ([perms guild user-id channel-id]
-   (let [everyone (:permissions ((:roles guild) (:id guild)))
-         roles (user-roles guild user-id)
-         {:keys [permission-overwrites]} ((:channels guild) channel-id)
-         {role-overrides "role" member-overrides "member"} (group-by :type permission-overwrites)
-         member ((:members guild) user-id)
-         everyone-override (first (filter #{(:id guild)} role-overrides))
-         role-overrides (filter (comp (set (:roles member)) :id) role-overrides)
-         member-override (first (filter #{user-id} member-overrides))]
-     (has-permission-flags?
-      perms
-      (permission-int everyone roles everyone-override role-overrides member-override))))
+   (has-permission-flags?
+    perms
+    (apply permission-int (permissions-and-overrides guild user-id channel-id))))
   ([perms everyone roles everyone-override roles-overrides user-override]
    (has-permission-flags?
     perms

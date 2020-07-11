@@ -36,7 +36,9 @@
    :manage-emojis 0x40000000})
 
 (defn has-permission-flag?
-  "Returns if the given permission integer includes a permission flag."
+  "Returns if the given permission integer includes a permission flag.
+
+  `perm` is a keyword from the keys of [[permissions-int]]."
   [perm perms-int]
   (when perms-int
     (when-let [bit (or (permissions-bit perm)
@@ -44,48 +46,88 @@
       (not (zero? (bit-and bit perms-int))))))
 
 (defn has-permission-flags?
-  "Returns if the given permission integer includes all the given permission flags."
+  "Returns if the given permission integer includes all the given permission flags.
+
+  `perm` is a keyword from the keys of [[permissions-int]]."
   [perms perms-int]
   (every? #(has-permission-flag? % perms-int) perms))
 
+(defn- override
+  "Integrates the overrides into the permissions int."
+  [perms-int overrides]
+  (let [allow (or (when (seq overrides)
+                    (reduce bit-or 0 (map :allow overrides)))
+                  0)
+        deny (or (when (seq overrides)
+                   (reduce bit-or 0 (map :deny overrides)))
+                 0)]
+    (bit-or
+     (bit-and
+      perms-int
+      (bit-not deny))
+     allow)))
+
 (defn permission-int
-  "Constructs a permissions integer given a set of roles and overrides."
+  "Constructs a permissions integer from role permissions integers and overrides.
+
+  `everyone` is a permissions integer.
+  `roles` is a sequence of permissions integers.
+
+  Each of the override objects is an [overwrite object](https://discord.com/developers/docs/resources/channel#overwrite-object)
+  from their respective items (everyone, roles, and member overrides).
+
+  `roles-overrides` is a sequence of these objects."
   ([everyone roles]
    (let [perms-int (reduce bit-or 0 (conj roles everyone))]
      (if (has-permission-flag? :administrator perms-int)
        0xFFFFFFFF
        perms-int)))
-  ([everyone roles everyone-overrides roles-overrides user-overrides]
-   (let [override (fn [perms-int overrides]
-                    (let [allow (reduce bit-or 0 (map :allow overrides))
-                          deny (reduce bit-or 0 (map :deny overrides))]
-                      (bit-or
-                       (bit-and
-                        perms-int
-                        (bit-not deny))
-                       allow)))
-
-         perms-int (permission-int everyone roles)
-         perms-int (override perms-int everyone-overrides)
-         perms-int (override perms-int roles-overrides)]
-     (override perms-int user-overrides))))
+  ([everyone roles everyone-override roles-overrides user-override]
+   (let [base-perms-int (permission-int everyone roles)]
+     (if (has-permission-flag? :administrator base-perms-int)
+       0xFFFFFFFF
+       (-> base-perms-int
+           (override (when everyone-override
+                       [everyone-override]))
+           (override roles-overrides)
+           (override (when user-override
+                       [user-override])))))))
 
 (defn user-roles
   "Returns a sequence of permissions integers for a user's roles.
 
-  `guild` is a guild object like those returned
-  from [[discljord.events.state/prepare-guild]]."
+  `guild` is a guild object like those returned from
+  [[discljord.events.state/prepare-guild]] or stored in the state atom from
+  [[discljord.events.state/caching-middleware]].
+
+  This is primarily used to construct calls to [[permission-int]]."
   [guild user-id]
   (map :permissions (vals (select-keys (:roles guild) (:roles ((:members guild) user-id))))))
+
+(defn- permissions-and-overrides
+  "Constructs a vector with the arguments needed for a call to [[permission-int]]."
+  [guild user-id channel-id]
+  (let [everyone (:permissions ((:roles guild) (:id guild)))
+        roles (user-roles guild user-id)
+        {:keys [permission-overwrites]} ((:channels guild) channel-id)
+        {role-overrides "role" member-overrides "member"} (group-by :type permission-overwrites)
+        member ((:members guild) user-id)
+        everyone-override (first (filter (comp #{(:id guild)} :id) role-overrides))
+        role-overrides (filter (comp (set (:roles member)) :id) role-overrides)
+        member-override (first (filter (comp #{user-id} :id) member-overrides))]
+    [everyone roles everyone-override role-overrides member-override]))
 
 (defn has-permission?
   "Returns if the given user has a permission.
 
-  `everyone` and `everyone-overrides` are permissions integers; `roles`,
-  `role-overrides`, and `user-overrides` are sequences of permissions integers.
+  `perm` is a keyword from the keys of [[permissions-bit]].
+  `everyone` is a permissions integer.
+  `roles` is a sequence of permissions integers.
+  `guild` is a guild object like those from [[discljord.events.state/prepare-guild]].
 
-  `guild` is a guild object like those
-  from [[discljord.events.state/prepare-guild]]."
+  If not passed a guild object, the calling code will have to construct the list
+  of overrides and role permissions ints itself. See [[permission-int]] for
+  documentation of override objects."
   {:arglists '([perm everyone roles] [perm guild user-id] [perm guild user-id channel-id]
                [perm everyone roles everyone-overrides roles-overrides user-overrides])}
   ([perm everyone-or-guild roles-or-user-id]
@@ -94,23 +136,25 @@
                                                 (user-roles everyone-or-guild roles-or-user-id)))
      (has-permission-flag? perm (permission-int everyone-or-guild roles-or-user-id))))
   ([perm guild user-id channel-id]
-   (let [everyone (:permissions ((:roles guild) (:id guild)))
-         roles (user-roles guild user-id)]
-     (has-permission-flag?
-      perm
-      (permission-int everyone roles))))
-  ([perm everyone roles everyone-overrides roles-overrides user-overrides]
    (has-permission-flag?
     perm
-    (permission-int everyone roles everyone-overrides roles-overrides user-overrides))))
+    (apply permission-int (permissions-and-overrides guild user-id channel-id))))
+  ([perm everyone roles everyone-override roles-overrides user-override]
+   (has-permission-flag?
+    perm
+    (permission-int everyone roles everyone-override roles-overrides user-override))))
 
 (defn has-permissions?
   "Returns if the given user has each of a sequence of permissions.
 
-  `everyone` and `everyone-overrides` are permissions integers; `roles`,
-  `role-overrides`, and `user-overrides` are sequences of permissions integers.
+  `perms` is a sequence of keywords from the keys of [[permissions-bit]].
+  `everyone` is a permissions integer.
+  `roles` is a sequence of permissions integers.
+  `guild` is a guild object like those from [[discljord.events.state/prepare-guild]].
 
-  `guild` is a guild object like those from [[discljord.events.state]]."
+  If not passed a guild object, the calling code will have to construct the list
+  of overrides and role permissions ints itself. See [[permission-int]] for
+  documentation of override objects."
   {:arglists '([perms everyone roles] [perms guild user-id] [perms guild user-id channel-id]
                [perms everyone roles everyone-overrides roles-overrides user-overrides])}
   ([perms everyone-or-guild roles-or-user-id]
@@ -121,12 +165,10 @@
                       (user-roles everyone-or-guild roles-or-user-id)))
      (has-permission-flags? perms (permission-int everyone-or-guild roles-or-user-id))))
   ([perms guild user-id channel-id]
-   (let [everyone (:permissions ((:roles guild) (:id guild)))
-         roles (user-roles guild user-id)]
-     (has-permission-flags?
-      perms
-      (permission-int everyone roles))))
-  ([perms everyone roles everyone-overrides roles-overrides user-overrides]
    (has-permission-flags?
     perms
-    (permission-int everyone roles everyone-overrides roles-overrides user-overrides))))
+    (apply permission-int (permissions-and-overrides guild user-id channel-id))))
+  ([perms everyone roles everyone-override roles-overrides user-override]
+   (has-permission-flags?
+    perms
+    (permission-int everyone roles everyone-override roles-overrides user-override))))

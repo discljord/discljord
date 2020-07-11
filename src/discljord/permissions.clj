@@ -104,10 +104,10 @@
      (has-permission-flag?
       perm
       (permission-int everyone roles))))
-  ([perm everyone roles everyone-overrides roles-overrides user-overrides]
+  ([perm everyone roles everyone-override roles-overrides user-override]
    (has-permission-flag?
     perm
-    (permission-int everyone roles everyone-overrides roles-overrides user-overrides))))
+    (permission-int everyone roles everyone-override roles-overrides user-override))))
 
 (defn has-permissions?
   "Returns if the given user has each of a sequence of permissions.
@@ -131,7 +131,7 @@
      (has-permission-flags?
       perms
       (permission-int everyone roles))))
-  ([perms everyone roles everyone-overrides roles-overrides user-overrides]
+  ([perms everyone roles everyone-override roles-overrides user-override]
    (has-permission-flags?
     perms
-    (permission-int everyone roles everyone-overrides roles-overrides user-overrides))))
+    (permission-int everyone roles everyone-override roles-overrides user-override))))

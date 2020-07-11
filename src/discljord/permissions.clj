@@ -118,10 +118,16 @@
      (has-permission-flag? perm (permission-int everyone-or-guild roles-or-user-id))))
   ([perm guild user-id channel-id]
    (let [everyone (:permissions ((:roles guild) (:id guild)))
-         roles (user-roles guild user-id)]
+         roles (user-roles guild user-id)
+         {:keys [permission-overwrites]} ((:channels guild) channel-id)
+         {role-overrides "role" member-overrides "member"} (group-by :type permission-overwrites)
+         member ((:members guild) user-id)
+         everyone-override (first (filter #{(:id guild)} role-overrides))
+         role-overrides (filter (comp (set (:roles member)) :id) role-overrides)
+         member-override (first (filter #{user-id} member-overrides))]
      (has-permission-flag?
       perm
-      (permission-int everyone roles))))
+      (permission-int everyone roles everyone-override role-overrides member-override))))
   ([perm everyone roles everyone-override roles-overrides user-override]
    (has-permission-flag?
     perm
@@ -149,10 +155,16 @@
      (has-permission-flags? perms (permission-int everyone-or-guild roles-or-user-id))))
   ([perms guild user-id channel-id]
    (let [everyone (:permissions ((:roles guild) (:id guild)))
-         roles (user-roles guild user-id)]
+         roles (user-roles guild user-id)
+         {:keys [permission-overwrites]} ((:channels guild) channel-id)
+         {role-overrides "role" member-overrides "member"} (group-by :type permission-overwrites)
+         member ((:members guild) user-id)
+         everyone-override (first (filter #{(:id guild)} role-overrides))
+         role-overrides (filter (comp (set (:roles member)) :id) role-overrides)
+         member-override (first (filter #{user-id} member-overrides))]
      (has-permission-flags?
       perms
-      (permission-int everyone roles))))
+      (permission-int everyone roles everyone-override role-overrides member-override))))
   ([perms everyone roles everyone-override roles-overrides user-override]
    (has-permission-flags?
     perms

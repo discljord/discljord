@@ -15,8 +15,7 @@
   ([coll] (vector->map :id coll))
   ([kf coll] (vector->map kf identity coll))
   ([kf vf coll]
-   (into {} (map (fn [[k v]] [k (vf (first v))]))
-         (group-by kf coll))))
+   (zipmap (map kf coll) (map vf coll))))
 
 (defn prepare-guild
   "Takes a guild and prepares it for storing in the cache.

@@ -48,6 +48,17 @@
   [perms perms-int]
   (every? #(has-permission-flag? % perms-int) perms))
 
+(defn- override
+  "Integrates the overrides into the permissions int."
+  [perms-int overrides]
+  (let [allow (reduce bit-or 0 (map :allow overrides))
+        deny (reduce bit-or 0 (map :deny overrides))]
+    (bit-or
+     (bit-and
+      perms-int
+      (bit-not deny))
+     allow)))
+
 (defn permission-int
   "Constructs a permissions integer given a set of roles and overrides."
   ([everyone roles]
@@ -55,20 +66,14 @@
      (if (has-permission-flag? :administrator perms-int)
        0xFFFFFFFF
        perms-int)))
-  ([everyone roles everyone-overrides roles-overrides user-overrides]
-   (let [override (fn [perms-int overrides]
-                    (let [allow (reduce bit-or 0 (map :allow overrides))
-                          deny (reduce bit-or 0 (map :deny overrides))]
-                      (bit-or
-                       (bit-and
-                        perms-int
-                        (bit-not deny))
-                       allow)))
-
-         perms-int (permission-int everyone roles)
-         perms-int (override perms-int everyone-overrides)
-         perms-int (override perms-int roles-overrides)]
-     (override perms-int user-overrides))))
+  ([everyone roles everyone-override roles-overrides user-override]
+   (let [base-perms-int (permission-int everyone roles)]
+     (if (has-permission-flag? :administrator base-perms-int)
+       0xFFFFFFFF
+       (-> base-perms-int
+           (override [everyone-override])
+           (override roles-overrides)
+           (override [user-override]))))))
 
 (defn user-roles
   "Returns a sequence of permissions integers for a user's roles.

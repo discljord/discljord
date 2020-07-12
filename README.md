@@ -256,6 +256,15 @@ As of right now, Discord will send your bot all events which happen on any guild
 ## Logging
 Discljord uses [clojure.tools.logging](https://github.com/clojure/tools.logging) for all its logging, which means that you are responsible for providing it with a suitable logging implementation as well as configuration. If no configuration is provided, then it will likely default to whatever gets brought in by your other dependencies, potentially eventually falling back to `java.util.logging`, however it should still function even with no intervention by the library user.
 
+Logging levels in discljord follow a basic pattern that anything at a `warn` level or lower is handled by discljord, and `error` or `fatal` will be used to inform the user of something that they can or should take action in an attempt to fix. Besides the generalization, here is a more specific listing of the purpose of the logging levels:
+
+ - Fatal :: Used when some condition is met that prevents discljord from continuing, even with user input
+ - Error :: Used when an unhandled error occurs or when user error causes the application to fail
+ - Warn :: Used when an error occurs but is handled by discljord without user input
+ - Info :: Used for application-scale control flow
+ - Debug :: Used for process-scale control flow
+ - Trace :: Used for logging all communication events and function-level control flow
+
 ## Known Issues
 None at the moment
 

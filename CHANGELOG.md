@@ -17,8 +17,12 @@ Discljord follows semantic versioning.
  - Middleware for event handlers
 
 ### Changed
+ - Stop code 4013 (invalid intent) labeled as user error
  - If the promise returned by `message-create!` contains a body but the response code was not a success, it will be wrapped as the body of an `ex-info`
  - Gateway connections now use zlib transport compression
+
+### Fixed
+ - Gateway disconnects when a heartbeat is sent on a closed websocket
 
 ## [1.0.0] - 2020-06-27
 ### Added

@@ -346,12 +346,16 @@
                            (handle-shard-communication! shard url value))
         heartbeat-fn (fn []
                        (if (:ack shard)
-                         (do (log/trace "Sending heartbeat payload on shard" (:id shard))
-                             (ws/send-msg (:ws websocket)
-                                          (json/write-str {:op 1
-                                                           :d (:seq shard)}))
-                             {:shard (dissoc shard :ack)
-                              :effects []})
+                         (try (log/trace "Sending heartbeat payload on shard" (:id shard))
+                              (ws/send-msg (:ws websocket)
+                                           (json/write-str {:op 1
+                                                            :d (:seq shard)}))
+                              {:shard (dissoc shard :ack)
+                               :effects []}
+                              (catch java.nio.channels.ClosedChannelException e
+                                (log/warn e "Race condition hit, ran a heartbeat on a closed websocket.")
+                                {:shard shard
+                                 :effects []}))
                          (do
                            (ws/close (:ws websocket))
                            (log/info "Reconnecting due to zombie heartbeat on shard" (:id shard))

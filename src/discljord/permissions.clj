@@ -101,19 +101,30 @@
   [[discljord.events.state/caching-middleware]].
 
   This is primarily used to construct calls to [[permission-int]]."
-  [guild user-id]
-  (map :permissions (vals (select-keys (:roles guild) (:roles ((:members guild) user-id))))))
+  [guild user-id-or-member]
+  (map :permissions (vals (select-keys (:roles guild)
+                                       (:roles (if (map? user-id-or-member)
+                                                 user-id-or-member
+                                                 ((:members guild) user-id-or-member)))))))
 
 (defn- permissions-and-overrides
   "Constructs a vector with the arguments needed for a call to [[permission-int]]."
-  [guild user-id channel-id]
+  [guild user-id-or-member channel-id]
   (let [everyone (:permissions ((:roles guild) (:id guild)))
-        roles (user-roles guild user-id)
+        roles (user-roles guild user-id-or-member)
         {:keys [permission-overwrites]} ((:channels guild) channel-id)
         {role-overrides "role" member-overrides "member"} (group-by :type permission-overwrites)
-        member ((:members guild) user-id)
+        member (if (map? user-id-or-member)
+                 user-id-or-member
+                 ((:members guild) user-id-or-member))
         everyone-override (first (filter (comp #{(:id guild)} :id) role-overrides))
         role-overrides (filter (comp (set (:roles member)) :id) role-overrides)
+        user-id (if (map? user-id-or-member)
+                  (let [user (:user user-id-or-member)]
+                    (if (map? user)
+                      (:id user)
+                      user))
+                  user-id-or-member)
         member-override (first (filter (comp #{user-id} :id) member-overrides))]
     [everyone roles everyone-override role-overrides member-override]))
 
@@ -128,17 +139,17 @@
   If not passed a guild object, the calling code will have to construct the list
   of overrides and role permissions ints itself. See [[permission-int]] for
   documentation of override objects."
-  {:arglists '([perm everyone roles] [perm guild user-id] [perm guild user-id channel-id]
+  {:arglists '([perm everyone roles] [perm guild user-id-or-member] [perm guild user-id-or-member channel-id]
                [perm everyone roles everyone-overrides roles-overrides user-overrides])}
-  ([perm everyone-or-guild roles-or-user-id]
+  ([perm everyone-or-guild roles-or-user-id-or-member]
    (if (map? everyone-or-guild)
      (has-permission-flag? perm (permission-int (:permissions ((:roles everyone-or-guild) (:id everyone-or-guild)))
-                                                (user-roles everyone-or-guild roles-or-user-id)))
-     (has-permission-flag? perm (permission-int everyone-or-guild roles-or-user-id))))
-  ([perm guild user-id channel-id]
+                                                (user-roles everyone-or-guild roles-or-user-id-or-member)))
+     (has-permission-flag? perm (permission-int everyone-or-guild roles-or-user-id-or-member))))
+  ([perm guild user-id-or-member channel-id]
    (has-permission-flag?
     perm
-    (apply permission-int (permissions-and-overrides guild user-id channel-id))))
+    (apply permission-int (permissions-and-overrides guild user-id-or-member channel-id))))
   ([perm everyone roles everyone-override roles-overrides user-override]
    (has-permission-flag?
     perm
@@ -155,19 +166,19 @@
   If not passed a guild object, the calling code will have to construct the list
   of overrides and role permissions ints itself. See [[permission-int]] for
   documentation of override objects."
-  {:arglists '([perms everyone roles] [perms guild user-id] [perms guild user-id channel-id]
+  {:arglists '([perms everyone roles] [perms guild user-id-or-member] [perms guild user-id-or-member channel-id]
                [perms everyone roles everyone-overrides roles-overrides user-overrides])}
-  ([perms everyone-or-guild roles-or-user-id]
+  ([perms everyone-or-guild roles-or-user-id-or-member]
    (if (map? everyone-or-guild)
      (has-permission-flags?
       perms
       (permission-int (:permissions ((:roles everyone-or-guild) (:id everyone-or-guild)))
-                      (user-roles everyone-or-guild roles-or-user-id)))
-     (has-permission-flags? perms (permission-int everyone-or-guild roles-or-user-id))))
-  ([perms guild user-id channel-id]
+                      (user-roles everyone-or-guild roles-or-user-id-or-member)))
+     (has-permission-flags? perms (permission-int everyone-or-guild roles-or-user-id-or-member))))
+  ([perms guild user-id-or-member channel-id]
    (has-permission-flags?
     perms
-    (apply permission-int (permissions-and-overrides guild user-id channel-id))))
+    (apply permission-int (permissions-and-overrides guild user-id-or-member channel-id))))
   ([perms everyone roles everyone-override roles-overrides user-override]
    (has-permission-flags?
     perms

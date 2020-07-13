@@ -3,6 +3,8 @@ All notable changes to this project will be documented in this file. This change
 Discljord follows semantic versioning.
 
 ## [Unreleased]
+
+## [1.1.0] - 2020-07-12
 ### Added
  - Namespace with utilities to create URLs to Discord's CDN, such as avatars or icons
  - Namespace with functions for validating if a user has a given permission
@@ -17,8 +19,12 @@ Discljord follows semantic versioning.
  - Middleware for event handlers
 
 ### Changed
+ - Stop code 4013 (invalid intent) labeled as user error
  - If the promise returned by `message-create!` contains a body but the response code was not a success, it will be wrapped as the body of an `ex-info`
  - Gateway connections now use zlib transport compression
+
+### Fixed
+ - Gateway disconnects when a heartbeat is sent on a closed websocket
 
 ## [1.0.0] - 2020-06-27
 ### Added
@@ -219,7 +225,8 @@ Discljord follows semantic versioning.
  - README follows new API
  - Project name from `discljord-functional` to `discljord` 
 
-[Unreleased]: https://github.com/IGJoshua/discljord/compare/1.0.0..develop
+[Unreleased]: https://github.com/IGJoshua/discljord/compare/1.1.0..develop
+[1.1.0]: https://github.com/IGJoshua/discljord/compare/1.0.0..1.1.0
 [1.0.0]: https://github.com/IGJoshua/discljord/compare/0.2.9..1.0.0
 [0.2.9]: https://github.com/IGJoshua/discljord/compare/0.2.8..0.2.9
 [0.2.8]: https://github.com/IGJoshua/discljord/compare/0.2.7..0.2.8

@@ -61,9 +61,11 @@
 
 (def fatal-code?
   "Set of stop codes which after recieving, discljord will disconnect all shards."
-  ;; NOTE(Joshua): the 4013 code is for invalid intents. In future that should
-  ;;               be called out specifically since it's a user error.
-  #{4001 4002 4003 4004 4005 4008 4010 4013})
+  #{4001 4002 4003 4004 4005 4008 4010})
+
+(def user-error-code?
+  "Set of stop codes which can only be received if there was user error."
+  #{4013 4014})
 
 (def re-shard-stop-code?
   "Stop codes which Discord will send when the bot needs to be re-sharded."
@@ -84,6 +86,11 @@
                    (re-shard-stop-code? stop-code) [:re-shard]
                    (and *stop-on-fatal-code*
                         (fatal-code? stop-code))   [:disconnect-all]
+                   (user-error-code? stop-code)  (do
+                                                   (log/fatal (str "Received stop code " stop-code
+                                                                   " which can only occur on user error."
+                                                                   " Disconecting bot."))
+                                                   [:disconnect-all])
                    :otherwise                      [:reconnect])]})
     {:shard nil
      :effects []}))
@@ -376,12 +383,16 @@
                            (handle-shard-communication! shard url value))
         heartbeat-fn (fn []
                        (if (:ack shard)
-                         (do (log/trace "Sending heartbeat payload on shard" (:id shard))
-                             (ws/send-msg (:ws websocket)
-                                          (json/write-str {:op 1
-                                                           :d (:seq shard)}))
-                             {:shard (dissoc shard :ack)
-                              :effects []})
+                         (try (log/trace "Sending heartbeat payload on shard" (:id shard))
+                              (ws/send-msg (:ws websocket)
+                                           (json/write-str {:op 1
+                                                            :d (:seq shard)}))
+                              {:shard (dissoc shard :ack)
+                               :effects []}
+                              (catch java.nio.channels.ClosedChannelException e
+                                (log/warn e "Race condition hit, ran a heartbeat on a closed websocket.")
+                                {:shard shard
+                                 :effects []}))
                          (do
                            (ws/close (:ws websocket))
                            (log/info "Reconnecting due to zombie heartbeat on shard" (:id shard))

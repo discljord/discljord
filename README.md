@@ -14,13 +14,13 @@ Current future plans involve adding features for caching information Discord sen
 Add the following to your project.clj in leiningen:
 
 ```clojure
-[org.suskalo/discljord "1.1.0-SNAPSHOT"]
+[org.suskalo/discljord "1.1.0"]
 ```
 
 If you use tools.deps, then add the following to your `:dependencies` key in your `deps.edn`:
 
 ```clojure
-{org.suskalo/discljord {:mvn/version "1.1.0-SNAPSHOT"}}
+{org.suskalo/discljord {:mvn/version "1.1.0"}}
 ```
 
 ## Usage

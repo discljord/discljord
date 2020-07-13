@@ -38,7 +38,7 @@
    (str "DiscordBot ("
         "https://github.com/IGJoshua/discljord"
         ", "
-        "1.0.0"
+        "1.1.0"
         ") "
         user-agent)
    "Content-Type" "application/json"})
@@ -147,7 +147,10 @@
                              {:headers (assoc (auth-headers token user-agent)
                                               "Content-Type" "multipart/form-data")
                               :multipart multipart})]
-    (let [body (json-body (:body response))]
+    (let [body (json-body (:body response))
+          body (if (= 2 (int (/ (:status response) 100)))
+                 body
+                 (ex-info "" body))]
       (if (some? body)
         (a/>!! prom body)
         (a/close! prom)))
@@ -699,6 +702,12 @@
         (a/close! prom)))
     response))
 
+(defdispatch :get-current-application-information
+  [_] [] _ :get _ body
+  "/oauth2/applications/@me"
+  {}
+  (json-body body))
+
 (defn rate-limited?
   "Returns the number of millis until the limit expires, or nil if not limited"
   [rate-limit]
@@ -840,7 +849,7 @@
   "Takes a token for a bot and returns a channel to communicate with the
   message sending process."
   [token]
-  (log/debug "Starting messaging process")
+  (log/info "Starting messaging process")
   (let [process {::ms/rate-limits (atom {})
                  ::ms/endpoint-agents {}
                  ::ds/channel (a/chan 1000)

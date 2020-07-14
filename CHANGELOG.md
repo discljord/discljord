@@ -3,6 +3,8 @@ All notable changes to this project will be documented in this file. This change
 Discljord follows semantic versioning.
 
 ## [Unreleased]
+### Added
+- Namespace with functions to extract information from Discord's snowflake ids
 
 ## [1.1.0] - 2020-07-12
 ### Added

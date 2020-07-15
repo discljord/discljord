@@ -235,7 +235,7 @@ Discljord follows semantic versioning.
  - README follows new API
  - Project name from `discljord-functional` to `discljord` 
 
-[Unreleased]: https://github.com/IGJoshua/discljord/compare/1.1.0..develop
+[Unreleased]: https://github.com/IGJoshua/discljord/compare/1.1.1..develop
 [1.1.1]: https://github.com/IGJoshua/discljord/compare/1.1.0..1.1.1
 [1.1.0]: https://github.com/IGJoshua/discljord/compare/1.0.0..1.1.0
 [1.0.1]: https://github.com/IGJoshua/discljord/compare/1.0.0..1.0.1

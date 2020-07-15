@@ -4,6 +4,10 @@ Discljord follows semantic versioning.
 
 ## [Unreleased]
 
+## [1.0.1] - 2020-07-15
+### Fixed
+ - Gateway disconnects when a heartbeat is sent on a closed websocket
+
 ## [1.0.0] - 2020-06-27
 ### Added
  - Support for user-level shard control (enabling distributed bots)
@@ -204,6 +208,7 @@ Discljord follows semantic versioning.
  - Project name from `discljord-functional` to `discljord` 
 
 [Unreleased]: https://github.com/IGJoshua/discljord/compare/1.0.0..develop
+[1.0.1]: https://github.com/IGJoshua/discljord/compare/1.0.0..1.0.1
 [1.0.0]: https://github.com/IGJoshua/discljord/compare/0.2.9..1.0.0
 [0.2.9]: https://github.com/IGJoshua/discljord/compare/0.2.8..0.2.9
 [0.2.8]: https://github.com/IGJoshua/discljord/compare/0.2.7..0.2.8

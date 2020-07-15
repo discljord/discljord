@@ -389,10 +389,13 @@
                                                             :d (:seq shard)}))
                               {:shard (dissoc shard :ack)
                                :effects []}
-                              (catch java.nio.channels.ClosedChannelException e
-                                (log/warn e "Race condition hit, ran a heartbeat on a closed websocket.")
-                                {:shard shard
-                                 :effects []}))
+                              (catch java.util.concurrent.ExecutionException e
+                                (if (instance? java.nio.channels.ClosedChannelException (.getCause e))
+                                  (do
+                                    (log/warn e "Race condition hit, ran a heartbeat on a closed websocket.")
+                                    {:shard shard
+                                     :effects []})
+                                  (throw e))))
                          (do
                            (ws/close (:ws websocket))
                            (log/info "Reconnecting due to zombie heartbeat on shard" (:id shard))

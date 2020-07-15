@@ -6,6 +6,10 @@ Discljord follows semantic versioning.
 ### Added
 - Namespace with functions to extract information from Discord's snowflake ids
 
+## [1.1.1] - 2020-07-15
+### Fixed
+ - Gateway disconnects when a heartbeat is sent on a closed websocket (for real this time)
+
 ## [1.1.0] - 2020-07-12
 ### Added
  - Namespace with utilities to create URLs to Discord's CDN, such as avatars or icons
@@ -232,6 +236,7 @@ Discljord follows semantic versioning.
  - Project name from `discljord-functional` to `discljord` 
 
 [Unreleased]: https://github.com/IGJoshua/discljord/compare/1.1.0..develop
+[1.1.1]: https://github.com/IGJoshua/discljord/compare/1.1.0..1.1.1
 [1.1.0]: https://github.com/IGJoshua/discljord/compare/1.0.0..1.1.0
 [1.0.1]: https://github.com/IGJoshua/discljord/compare/1.0.0..1.0.1
 [1.0.0]: https://github.com/IGJoshua/discljord/compare/0.2.9..1.0.0

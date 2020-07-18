@@ -36,7 +36,7 @@
 
   `intents` is a set containing keywords representing which events will be sent
   to the bot by Discord. Valid values for the set are in [[gateway-intents]]."
-  [token out-ch & {:keys [intents]}]
+  [token out-ch & {:keys [intents disable-compression]}]
   (let [token (bot-token token)
         {:keys [url shard-count session-start-limit]}
         (impl/get-websocket-gateway gateway-url token)]
@@ -49,12 +49,13 @@
                              :reset-after (:reset-after session-start-limit)})))
           (let [communication-chan (a/chan 100)]
             (binding [impl/*identify-limiter* (agent nil)]
-              (impl/connect-shards! out-ch communication-chan url token intents shard-count (range shard-count)))
+              (impl/connect-shards! out-ch communication-chan url token intents shard-count (range shard-count)
+                                    (not disable-compression)))
             communication-chan))
       (log/debug "Unable to recieve gateway information."))))
 (s/fdef connect-bot!
   :args (s/cat :token ::ds/token :out-ch ::ds/channel
-               :keyword-args (s/keys* :opt-un [::cs/intents]))
+               :keyword-args (s/keys* :opt-un [::cs/intents ::cs/disable-compression]))
   :ret ::ds/channel)
 
 (defn get-websocket-gateway
@@ -94,7 +95,7 @@
   amount of synchronization between calls to [[connect-shards!]] must be had.
   Additional calls should only be made five seconds after the
   `:connected-all-shards` event has been received."
-  [token out-ch gateway shard-ids & {:keys [intents identify-when]}]
+  [token out-ch gateway shard-ids & {:keys [intents identify-when disable-compression]}]
   (let [token (bot-token token)
         {:keys [url shard-count session-start-limit]} gateway]
     (if (and url shard-count session-start-limit)
@@ -109,13 +110,14 @@
             (binding [impl/*handle-re-shard* false
                       impl/*identify-when* identify-when
                       impl/*identify-limiter* (agent nil)]
-              (impl/connect-shards! out-ch communication-chan url token intents shard-count shard-ids))
+              (impl/connect-shards! out-ch communication-chan url token intents shard-count shard-ids
+                                    (not disable-compression)))
             communication-chan))
       (log/debug "Unable to receive gateway information."))))
 (s/fdef connect-shards!
   :args (s/cat :token ::ds/token :out-ch ::ds/channel
                :gateway ::cs/gateway :shard-ids (s/coll-of nat-int?)
-               :keyword-args (s/keys* :opt-un [::cs/intents ::cs/identify-when]))
+               :keyword-args (s/keys* :opt-un [::cs/intents ::cs/identify-when ::cs/disable-compression]))
   :ret ::ds/channel)
 
 (defn disconnect-bot!

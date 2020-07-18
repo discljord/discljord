@@ -202,13 +202,14 @@
   | `:disconnect` | Stop code, string message.
   | `:error`      | Error value.
   | `:message`    | String message."
-  [buffer-size url event-ch]
+  [buffer-size url event-ch compress]
   (log/debug "Starting websocket of size" buffer-size "at url" url)
   (let [url (str url
                  (when-not (str/ends-with? url "/") "/")
                  "?v=6"
                  "&encoding=json"
-                 "&compress=zlib-stream")
+                 (when compress
+                   "&compress=zlib-stream"))
         client (WebSocketClient. (doto (SslContextFactory.)
                                    (.setEndpointIdentificationAlgorithm "HTTPS")))
         inflater (Inflater.)
@@ -349,12 +350,12 @@
    :effects []})
 
 (defmethod handle-connection-event! :connect
-  [{:keys [heartbeat-ch event-ch] :as shard} url _]
+  [{:keys [heartbeat-ch event-ch compress] :as shard} url _]
   (log/info "Connecting shard" (:id shard))
   (when heartbeat-ch
     (a/close! heartbeat-ch))
   (let [event-ch (a/chan 100)
-        websocket (try (connect-websocket! buffer-size url event-ch)
+        websocket (try (connect-websocket! buffer-size url event-ch compress)
                        (catch Exception err
                          (log/warn "Failed to connect a websocket" err)
                          (.stop ^WebSocketClient (:client (ex-data err)))
@@ -463,13 +464,14 @@
 
 (defn make-shard
   "Creates a new shard with the given `id` and `shard-count`."
-  [intents id shard-count]
+  [intents id shard-count compress]
   {:id id
    :count shard-count
    :intents intents
    :event-ch (a/chan 100)
    :communication-ch (a/chan 100)
-   :connections-ch (a/chan 1)})
+   :connections-ch (a/chan 1)
+   :compress compress})
 
 (defn after-timeout!
   "Calls a function of no arguments after the given `timeout`.
@@ -660,8 +662,8 @@
 (defn connect-shards!
   "Connects a set of shards with the given `shard-ids`.
   Returns nil."
-  [output-ch communication-ch url token intents shard-count shard-ids]
-  (let [shards (mapv #(make-shard intents % shard-count) shard-ids)]
+  [output-ch communication-ch url token intents shard-count shard-ids compress]
+  (let [shards (mapv #(make-shard intents % shard-count compress) shard-ids)]
     (a/go-loop [shards shards
                 shard-chs (mapv #(step-shard! % url token) shards)]
       (if (some identity shard-chs)
@@ -731,7 +733,8 @@
                          :shards-requested shard-count
                          :remaining-starts (:remaining session-start-limit)
                          :reset-after (:reset-after session-start-limit)})))
-      (let [shards (mapv #(make-shard (:intents (nth shards shard-idx)) % shard-count)
+      (let [shards (mapv #(make-shard (:intents (nth shards shard-idx)) % shard-count
+                                      (:compress (nth shards shard-idx)))
                          (range shard-count))
             shard-chs (mapv #(step-shard! % url token) shards)]
         (doseq [[idx shard] (map-indexed vector shards)]

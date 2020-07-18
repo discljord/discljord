@@ -4,6 +4,7 @@ Discljord follows semantic versioning.
 
 ## [Unreleased]
 ### Added
+ - Option to disable transport compression on the gateway api
  - Namespace with functions to extract information from Discord's snowflake ids
 
 ### Fixed

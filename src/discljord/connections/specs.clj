@@ -41,3 +41,4 @@
 (s/def ::gateway (s/keys :req-un [::url ::shard-count ::session-start-limit]))
 
 (s/def ::identify-when ifn?)
+(s/def ::disable-compression boolean?)

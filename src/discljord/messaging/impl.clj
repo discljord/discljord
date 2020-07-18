@@ -33,7 +33,7 @@
 
 (defn auth-headers
   [token user-agent]
-  {"Authorization" (bot-token token)
+  {"Authorization" token
    "User-Agent"
    (str "DiscordBot ("
         "https://github.com/IGJoshua/discljord"
@@ -853,7 +853,7 @@
   (let [process {::ms/rate-limits (atom {})
                  ::ms/endpoint-agents {}
                  ::ds/channel (a/chan 1000)
-                 ::ds/token token
+                 ::ds/token (bot-token token)
                  ::ms/global-limit (atom nil)}]
     (a/go-loop [process process]
       (let [[action :as event] (a/<! (::ds/channel process))]

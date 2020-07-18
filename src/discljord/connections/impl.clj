@@ -3,12 +3,17 @@
   (:require
    [clojure.core.async :as a]
    [clojure.data.json :as json]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
    [discljord.http :refer [gateway-url]]
    [discljord.util :refer [json-keyword clean-json-input]]
    [gniazdo.core :as ws]
-   [org.httpkit.client :as http]
-   [clojure.tools.logging :as log])
+   [org.httpkit.client :as http])
   (:import
+   (java.io
+    ByteArrayOutputStream)
+   (java.util.zip
+    Inflater)
    (org.eclipse.jetty.websocket.client
     WebSocketClient)
    (org.eclipse.jetty.util.ssl
@@ -17,6 +22,10 @@
 (def buffer-size
   "The maximum size of the websocket buffer"
   (int Integer/MAX_VALUE))
+
+(def byte-array-buffer-size
+  "The size of the byte array to allocate for the decompression buffer"
+  (int (* 1024 1024 1)))
 
 (defmulti handle-websocket-event
   "Updates a `shard` based on shard events.
@@ -52,9 +61,11 @@
 
 (def fatal-code?
   "Set of stop codes which after recieving, discljord will disconnect all shards."
-  ;; NOTE(Joshua): the 4013 code is for invalid intents. In future that should
-  ;;               be called out specifically since it's a user error.
-  #{4001 4002 4003 4004 4005 4008 4010 4013})
+  #{4001 4002 4003 4004 4005 4008 4010})
+
+(def user-error-code?
+  "Set of stop codes which can only be received if there was user error."
+  #{4013 4014})
 
 (def re-shard-stop-code?
   "Stop codes which Discord will send when the bot needs to be re-sharded."
@@ -75,6 +86,11 @@
                    (re-shard-stop-code? stop-code) [:re-shard]
                    (and *stop-on-fatal-code*
                         (fatal-code? stop-code))   [:disconnect-all]
+                   (user-error-code? stop-code)  (do
+                                                   (log/fatal (str "Received stop code " stop-code
+                                                                   " which can only occur on user error."
+                                                                   " Disconecting bot."))
+                                                   [:disconnect-all])
                    :otherwise                      [:reconnect])]})
     {:shard nil
      :effects []}))
@@ -188,8 +204,15 @@
   | `:message`    | String message."
   [buffer-size url event-ch]
   (log/debug "Starting websocket of size" buffer-size "at url" url)
-  (let [client (WebSocketClient. (doto (SslContextFactory.)
-                                   (.setEndpointIdentificationAlgorithm "HTTPS")))]
+  (let [url (str url
+                 (when-not (str/ends-with? url "/") "/")
+                 "?v=6"
+                 "&encoding=json"
+                 "&compress=zlib-stream")
+        client (WebSocketClient. (doto (SslContextFactory.)
+                                   (.setEndpointIdentificationAlgorithm "HTTPS")))
+        inflater (Inflater.)
+        out-buffer (byte-array byte-array-buffer-size)]
     (doto (.getPolicy client)
       (.setMaxTextMessageSize buffer-size)
       (.setMaxBinaryMessageSize buffer-size))
@@ -208,8 +231,22 @@
                             (log/warn "Websocket errored" err)
                             (a/put! event-ch [:error err]))
                 :on-receive (fn [msg]
-                              (log/trace "Websocket recieved message:" msg)
-                              (a/put! event-ch [:message msg])))
+                              (log/trace "Websocket received message:" msg)
+                              (a/put! event-ch [:message msg]))
+                :on-binary (fn [buf start len]
+                             (.setInput inflater buf start len)
+                             (let [acc (ByteArrayOutputStream.)
+                                   msg (loop [off start
+                                              rem len]
+                                         (if (pos? rem)
+                                           (let [bytes-read (.inflate inflater out-buffer 0 byte-array-buffer-size)]
+                                             (.write acc out-buffer 0 bytes-read)
+                                             (recur (mod (+ off bytes-read)
+                                                         (count buf))
+                                                    (- rem bytes-read)))
+                                           (String. (.toByteArray acc) "UTF-8")))]
+                               (log/trace "Websocket received binary message:" msg)
+                               (a/put! event-ch [:message msg]))))
           :client client}
          (catch Exception e
            (throw (ex-info "Failed to connect a websocket" {:client client} e))))))
@@ -352,13 +389,10 @@
                                                             :d (:seq shard)}))
                               {:shard (dissoc shard :ack)
                                :effects []}
-                              (catch java.util.concurrent.ExecutionException e
-                                (if (instance? java.nio.channels.ClosedChannelException (.getCause e))
-                                  (do
-                                    (log/warn e "Race condition hit, ran a heartbeat on a closed websocket.")
-                                    {:shard shard
-                                     :effects []})
-                                  (throw e))))
+                              (catch java.nio.channels.ClosedChannelException e
+                                (log/warn e "Race condition hit, ran a heartbeat on a closed websocket.")
+                                {:shard shard
+                                 :effects []}))
                          (do
                            (ws/close (:ws websocket))
                            (log/info "Reconnecting due to zombie heartbeat on shard" (:id shard))

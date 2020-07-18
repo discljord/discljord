@@ -4,7 +4,10 @@ Discljord follows semantic versioning.
 
 ## [Unreleased]
 ### Added
-- Namespace with functions to extract information from Discord's snowflake ids
+ - Namespace with functions to extract information from Discord's snowflake ids
+
+### Fixed
+ - Errors occur when tokens have whitespace at the beginning and ends
 
 ## [1.1.1] - 2020-07-15
 ### Fixed

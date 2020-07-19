@@ -2,6 +2,7 @@
   (:require
    [clojure.data.json :as json]
    [clojure.spec.alpha :as s]
+   [clojure.edn :as edn]
    [clojure.string :as str]
    [discljord.specs :as ds]
    [clojure.tools.logging :as log]))
@@ -17,8 +18,8 @@
 (defn ^:deprecated set-logging-level!
   "Sets the logging level for discljord through tambre.
   Levels are :trace, :debug, :info, :warn, :error, :fatal, and :report"
-  [logging-level]
-  )
+  [logging-level])
+
 (s/fdef set-logging-level
   :args (s/cat :logging-level ::logging-level))
 
@@ -75,3 +76,12 @@
              :keyword keyword?
              :boolean boolean?
              :nil nil?))
+
+(defn parse-if-str [input]
+  (cond
+    (number? input) input
+    (string? input) (let [parsed (edn/read-string input)]
+                      (if (number? parsed)
+                        parsed
+                        (throw (IllegalArgumentException. "String must represent a valid number"))))
+    :else (throw (IllegalArgumentException. "Argument must be string or number"))))

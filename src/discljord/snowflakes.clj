@@ -1,19 +1,10 @@
 (ns discljord.snowflakes
   "Contains utility functions to parse, deconstruct and create [snowflake ids](https://discord.com/developers/docs/reference#snowflakes)."
-  (:require [clojure.edn :as edn]))
+  (:require [discljord.util :refer [parse-if-str]]))
 
 (def ^:const discord-epoch
   "The Discord epoch - the number of milliseconds that had passed since January 1, 1970, on January 1, 2015."
   1420070400000)
-
-(defn- parse-if-str [input]
-  (cond
-    (number? input) input
-    (string? input) (let [parsed (edn/read-string input)]
-                      (if (number? parsed)
-                        parsed
-                        (throw (IllegalArgumentException. "Snowflake string must represent a valid number"))))
-    :else (throw (IllegalArgumentException. "Snowflake must be string or number"))))
 
 (defn timestamp
   "Returns the UNIX timestamp (ms) for when this id was generated.

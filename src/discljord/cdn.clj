@@ -1,6 +1,8 @@
 (ns discljord.cdn
   "Namespace with functions to create [cdn urls](https://discord.com/developers/docs/reference#image-formatting) to image data from API entities such as users or guilds."
-  (:require [clojure.string :refer [starts-with?]]))
+  (:require
+    [clojure.string :refer [starts-with?]]
+    [discljord.util :refer [parse-if-str]]))
 
 (def base-url "https://cdn.discordapp.com")
 
@@ -49,7 +51,7 @@
 (defn default-user-avatar
   "Takes a user object or a discriminator and returns a url to the default avatar image of that user/discriminator."
   [user-or-discrim]
-  (str base-url "/embed/avatars/" (mod (cond-> user-or-discrim (map? user-or-discrim) :discriminator) 5) ".png"))
+  (str base-url "/embed/avatars/" (mod (cond-> user-or-discrim (map? user-or-discrim) :discriminator true parse-if-str) 5) ".png"))
 
 (def user-avatar
   "Takes a user object and returns a url to the avatar of that user or `nil` if the user does not have an avatar."

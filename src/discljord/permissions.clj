@@ -1,5 +1,6 @@
 (ns discljord.permissions
-  "Functions for determining users' permissions.")
+  "Functions for determining users' permissions."
+  (:require [clojure.set :refer [map-invert]]))
 
 (def permissions-bit
   "Map from permission names to the binary flag representation of it."
@@ -35,6 +36,17 @@
    :manage-webooks 0x20000000
    :manage-emojis 0x40000000})
 
+(def permissions-key
+  "Map from binary flag representation to permission name."
+  (map-invert permissions-bit))
+
+(defn permission-flags
+  "Returns a sequence of all permissions included in a given permission integer."
+  [perms-int]
+  (->> (vals permissions-bit)
+       (filter (partial bit-and perms-int))
+       (map permissions-key)))
+
 (defn has-permission-flag?
   "Returns if the given permission integer includes a permission flag.
 
@@ -68,7 +80,9 @@
      allow)))
 
 (defn permission-int
-  "Constructs a permissions integer from role permissions integers and overrides.
+  "Constructs a permissions integer from role permissions integers and overrides or a sequence of permissions.
+
+  `perms` is a sequence or collection of permission names (keywords as defined in [[permissions-bit]]).
 
   `everyone` is a permissions integer.
   `roles` is a sequence of permissions integers.
@@ -77,6 +91,8 @@
   from their respective items (everyone, roles, and member overrides).
 
   `roles-overrides` is a sequence of these objects."
+  ([perms]
+   (reduce bit-or 0 (map permissions-bit perms)))
   ([everyone roles]
    (let [perms-int (reduce bit-or 0 (conj roles everyone))]
      (if (has-permission-flag? :administrator perms-int)

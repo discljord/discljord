@@ -44,13 +44,13 @@
   "Returns a sequence of all permissions included in a given permission integer."
   [perms-int]
   (->> (vals permissions-bit)
-       (filter (partial bit-and perms-int))
+       (filter (comp (complement zero?) (partial bit-and perms-int)))
        (map permissions-key)))
 
 (defn has-permission-flag?
   "Returns if the given permission integer includes a permission flag.
 
-  `perm` is a keyword from the keys of [[permissions-int]]."
+  `perm` is a keyword from the keys of [[permissions-bit]]."
   [perm perms-int]
   (when perms-int
     (when-let [bit (or (permissions-bit perm)
@@ -60,7 +60,7 @@
 (defn has-permission-flags?
   "Returns if the given permission integer includes all the given permission flags.
 
-  `perm` is a keyword from the keys of [[permissions-int]]."
+  `perm` is a keyword from the keys of [[permissions-bit]]."
   [perms perms-int]
   (every? #(has-permission-flag? % perms-int) perms))
 

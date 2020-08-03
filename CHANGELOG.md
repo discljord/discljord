@@ -4,6 +4,8 @@ Discljord follows semantic versioning.
 
 ## [Unreleased]
 ### Added
+ - `discljord.permissions/permission-flags` as a counterpart to `permission-int`
+ - `discljord.permissions/permission-int` arity to construct custom permission integers
  - Option to disable transport compression on the gateway api
  - Namespace with functions to extract information from Discord's snowflake ids
 

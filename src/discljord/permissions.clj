@@ -41,11 +41,12 @@
   (map-invert permissions-bit))
 
 (defn permission-flags
-  "Returns a sequence of all permissions included in a given permission integer."
+  "Returns a set of all permissions included in a given permission integer."
   [perms-int]
   (->> (vals permissions-bit)
        (filter (comp (complement zero?) (partial bit-and perms-int)))
-       (map permissions-key)))
+       (map permissions-key)
+       (set)))
 
 (defn has-permission-flag?
   "Returns if the given permission integer includes a permission flag.

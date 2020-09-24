@@ -129,9 +129,9 @@ This example responds with "Hello, World" to every message a human user posts in
     (loop []
       (let [[event-type event-data] (a/<!! event-ch)]
         (when (and (= :message-create event-type)
-                   (= (:channel-id event-data) channel)
+                   (= (:channel-id event-data) channel-id)
                    (not (:bot (:author event-data))))
-          (m/create-message! message-ch channel :content "Hello, World!"))
+          (m/create-message! message-ch channel-id :content "Hello, World!"))
         (when (= :channel-pins-update event-type)
           (c/disconnect-bot! connection-ch))
         (when-not (= :disconnect event-type)

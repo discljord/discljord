@@ -159,7 +159,9 @@
 
 (defmethod handle-payload :event-dispatch
   [shard {:keys [d t s] :as msg}]
-  (handle-discord-event (assoc shard :seq s) (json-keyword t) d))
+  (handle-discord-event (assoc shard :seq s)
+                        (json-keyword t)
+                        (merge d {:session-seq s})))
 
 (defmethod handle-payload :heartbeat
   [shard msg]

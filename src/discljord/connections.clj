@@ -35,8 +35,11 @@
   on which shard you use to talk to the server immediately after starting the bot.
 
   `intents` is a set containing keywords representing which events will be sent
-  to the bot by Discord. Valid values for the set are in [[gateway-intents]]."
-  [token out-ch & {:keys [intents]}]
+  to the bot by Discord. Valid values for the set are in [[gateway-intents]].
+
+  `session-id` is a String which represent discord websocket sessionID received in `ready` event.
+  `sessoin-seq` is an integer value of last seq corresponding to discord last session with session-id"
+  [token out-ch & {:keys [intents session-id session-seq]}]
   (let [token (bot-token token)
         {:keys [url shard-count session-start-limit]}
         (impl/get-websocket-gateway gateway-url token)]
@@ -49,7 +52,9 @@
                              :reset-after (:reset-after session-start-limit)})))
           (let [communication-chan (a/chan 100)]
             (binding [impl/*identify-limiter* (agent nil)]
-              (impl/connect-shards! out-ch communication-chan url token intents shard-count (range shard-count)))
+              (impl/connect-shards! out-ch communication-chan url token intents shard-count (range shard-count)
+                                    :session-id session-id
+                                    :session-seq session-seq))
             communication-chan))
       (log/debug "Unable to recieve gateway information."))))
 (s/fdef connect-bot!

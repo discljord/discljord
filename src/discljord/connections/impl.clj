@@ -42,11 +42,10 @@
   "Returns if a shard should try to resume."
   [shard]
   (log/trace "Testing if shard" (:id shard) "should resume:" shard)
-  (when (:stop-code shard)
-    (and (not (new-session-stop-code? (:stop-code shard)))
-         (:seq shard)
-         (:session-id shard)
-         (not (:unresumable shard)))))
+  (and (not (new-session-stop-code? (:stop-code shard)))
+       (:seq shard)
+       (:session-id shard)
+       (not (:unresumable shard))))
 
 (defmethod handle-websocket-event :connect
   [shard [_]]
@@ -465,13 +464,16 @@
 
 (defn make-shard
   "Creates a new shard with the given `id` and `shard-count`."
-  [intents id shard-count]
-  {:id id
-   :count shard-count
-   :intents intents
-   :event-ch (a/chan 100)
-   :communication-ch (a/chan 100)
-   :connections-ch (a/chan 1)})
+  [intents id shard-count & {:keys [session-id session-seq]}]
+  (merge {:id id
+          :count shard-count
+          :intents intents
+          :event-ch (a/chan 100)
+          :communication-ch (a/chan 100)
+          :connections-ch (a/chan 1)}
+         (when (and session-id session-seq)
+           {:session-id session-id
+            :seq session-seq})))
 
 (defn after-timeout!
   "Calls a function of no arguments after the given `timeout`.
@@ -662,8 +664,11 @@
 (defn connect-shards!
   "Connects a set of shards with the given `shard-ids`.
   Returns nil."
-  [output-ch communication-ch url token intents shard-count shard-ids]
-  (let [shards (mapv #(make-shard intents % shard-count) shard-ids)]
+  [output-ch communication-ch url token intents shard-count shard-ids & {:keys [session-id session-seq]}]
+  (let [shards (mapv #(make-shard intents % shard-count
+                                  :session-id session-id
+                                  :session-seq session-seq)
+                     shard-ids)]
     (a/go-loop [shards shards
                 shard-chs (mapv #(step-shard! % url token) shards)]
       (if (some identity shard-chs)

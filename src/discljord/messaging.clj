@@ -131,22 +131,22 @@
   (apply create-message! conn channel-id :content msg (into [] cat opts)))
 
 (defendpoint create-reaction! ::ds/channel-id
-  "Creates a new reaction on the message with the given emoji (either unicode or the id of a custom emoji). Returns a promise containing a boolean, telling you if it succeeded."
+  "Creates a new reaction on the message with the given emoji (either unicode or \"name:id\" for a custom emoji). Returns a promise containing a boolean, telling you if it succeeded."
   [message-id emoji]
   [])
 
 (defendpoint delete-own-reaction! ::ds/channel-id
-  "Deletes your reaction on the messasge with the given emoji (either unicode or the id of a custom emoji). Returns a promise containing a boolean, telling you if it succeeded."
+  "Deletes your reaction on the messasge with the given emoji (either unicode or \"name:id\" for a custom emoji). Returns a promise containing a boolean, telling you if it succeeded."
   [message-id emoji]
   [])
 
 (defendpoint delete-user-reaction! ::ds/channel-id
-  "Deletes a given user's reaction to a message with the given emoji (either unicode or the id of a custom emoji). Returns a promise containing a boolean, telling you if it succeeded."
+  "Deletes a given user's reaction to a message with the given emoji (either unicode or \"name:id\" for a custom emoji). Returns a promise containing a boolean, telling you if it succeeded."
   [message-id emoji user-id]
   [])
 
 (defendpoint get-reactions! ::ds/channel-id
-  "Returns a promise containing a list of all users who reacted to the message with the emoji (either unicode or the id of a custom emoji), based on the provided limits."
+  "Returns a promise containing a list of all users who reacted to the message with the emoji (either unicode or \"name:id\" for a custom emoji), based on the provided limits."
   [message-id emoji]
   [before after limit])
 

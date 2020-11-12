@@ -70,7 +70,8 @@
            ~status-sym (:status response#)
            ~body-sym (:body response#)]
        (let [prom-val# ~promise-val]
-         (if (some? prom-val#)
+         (if (and (some? prom-val#)
+                  (not (= (:status response#) 429)))
            (a/>!! prom# prom-val#)
            (a/close! prom#)))
        response#)))
@@ -151,7 +152,8 @@
           body (if (= 2 (int (/ (:status response) 100)))
                  body
                  (ex-info "" body))]
-      (if (some? body)
+      (if (and (some? body)
+               (not (= (:status response) 429)))
         (a/>!! prom body)
         (a/close! prom)))
     response))
@@ -697,7 +699,8 @@
     (let [body (if (= (:status response) 200)
                  (json-body (:body response))
                  (= (:status response) 204))]
-      (if (some? body)
+      (if (and (some? body)
+               (not (= (:status response) 429)))
         (a/>!! prom body)
         (a/close! prom)))
     response))

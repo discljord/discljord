@@ -197,3 +197,10 @@
 (s/def ::allowed-mentions (s/or :parse (s/keys :req-un [:allowed-mentions/parse])
                                 :manual (s/keys :opt-un [:allowed-mentions/users
                                                          :allowed-mentions/roles])))
+
+(s/def :message-reference/message_id ::ds/snowflake)
+(s/def :message-reference/channel_id ::ds/snowflake)
+(s/def :message-reference/guild_id ::ds/snowflake)
+(s/def ::message-reference (s/keys :req-un [:message-reference/message_id
+                                            :message-reference/channel_id
+                                            :message-reference/guild_id]))

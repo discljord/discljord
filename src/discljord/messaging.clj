@@ -124,7 +124,7 @@
   :stream is a map that has a :content of a java.io.InputStream and a :filename of the filename to attach to the message.
   :embed is a map specifying the embed format for the message (See Discord API)"
   []
-  [content tts nonce embed file allowed-mentions attachments stream])
+  [content tts nonce embed file allowed-mentions attachments stream message-reference])
 
 (defn ^:deprecated send-message!
   [conn channel-id msg & {:keys [tts none embed file] :as opts}]

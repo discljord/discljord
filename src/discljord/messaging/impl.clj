@@ -125,7 +125,7 @@
   (json-body body))
 
 (defmethod dispatch-http :create-message
-  [token endpoint [prom & {:keys [^File file user-agent attachments allowed-mentions stream] :as opts}]]
+  [token endpoint [prom & {:keys [^File file user-agent attachments allowed-mentions stream message-reference] :as opts}]]
   (let [channel-id (-> endpoint
                        ::ms/major-variable
                        ::ms/major-variable-value)

@@ -426,10 +426,23 @@
   [integration-id]
   [])
 
-(defendpoint get-guild-embed! ::ds/guild-id
-  "Returns a promise containing the guild embed object."
+(defendpoint get-guild-widget-settings! ::ds/guild-id
+  "Returns a promise containing the guild widget settings object."
   []
   [])
+
+(defn ^:deprecated get-guild-embed!
+  "Returns a promise containing the guild embed object.
+
+  DEPRECATED: Prefer using [[get-guild-widget-settings!]]"
+  {:arglists '([conn guild-id & {:keys [user-agent audit-reason]}])}
+  [& args]
+  (apply get-guild-widget-settings! args))
+(s/fdef get-guild-embed!
+  :args (s/cat :conn ::ds/channel
+               :guild-id ::ds/guild-id
+               :keyword-args (s/keys* :opt-un [::ds/user-agent ::ds/audit-reason]))
+  :ret ::ds/promise)
 
 (defendpoint modify-guild-embed! ::ds/guild-id
   "Modifies the guild embed object. Returns a promise containing the modified guild embed object."

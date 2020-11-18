@@ -526,9 +526,9 @@
   {}
   (= status 204))
 
-(defdispatch :get-guild-embed
+(defdispatch :get-guild-widget-settings
   [guild-id] [] _ :get _ body
-  (str "/guilds/" guild-id "/embed")
+  (str "/guilds/" guild-id "/widget")
   {}
   (json-body body))
 

@@ -526,9 +526,9 @@
   {}
   (= status 204))
 
-(defdispatch :get-guild-embed
+(defdispatch :get-guild-widget-settings
   [guild-id] [] _ :get _ body
-  (str "/guilds/" guild-id "/embed")
+  (str "/guilds/" guild-id "/widget")
   {}
   (json-body body))
 
@@ -740,7 +740,7 @@
                    5))
         reset (:x-ratelimit-reset headers)
         reset (if reset
-                (* (Long. ^String reset) 1000)
+                (long (* (Double. ^String reset) 1000))
                 (or (::ms/reset rate-limit)
                     0))
         reset (if (> (or (::ms/reset rate-limit) 0) reset)
@@ -815,8 +815,8 @@
               ;; If we got a 429, wait for the retry time and go again
               (let [retry-after (:retry-after (json-body (:body response)))]
                 (log/warn "Got a 429 response to request" endpoint event-data "with response" response)
-                (log/trace "Retrying after" retry-after "milliseconds")
-                (a/<!! (a/timeout retry-after))
+                (log/trace "Retrying after" retry-after "seconds")
+                (a/<!! (a/timeout (long (* 1000 retry-after))))
                 (recur (make-request endpoint event-data new-bucket)
                        new-bucket))))
           bucket))

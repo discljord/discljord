@@ -31,28 +31,32 @@
   Discord.
 
   Keep in mind that Discord sets a limit to how many shards can connect in a
-  given period. This means that communication to Discord may be bounded based
-  on which shard you use to talk to the server immediately after starting the bot.
+  given period. This means that communication to Discord may be bounded based on
+  which shard you use to talk to the server immediately after starting the bot.
 
   `intents` is a set containing keywords representing which events will be sent
-  to the bot by Discord. Valid values for the set are in [[gateway-intents]]."
+  to the bot by Discord. Valid values for the set are in [[gateway-intents]]. If
+  `intents` is unspecified, a [[clojure.core/ex-info]] is returned with a
+  relevant message."
   [token out-ch & {:keys [intents disable-compression]}]
-  (let [token (bot-token token)
-        {:keys [url shard-count session-start-limit]}
-        (impl/get-websocket-gateway gateway-url token)]
-    (if (and url shard-count session-start-limit)
-      (do (when (< (:remaining session-start-limit) shard-count)
-            (throw (ex-info "Not enough remaining identify packets for number of shards."
-                            {:token token
-                             :shard-count shard-count
-                             :remaining-starts (:remaining session-start-limit)
-                             :reset-after (:reset-after session-start-limit)})))
-          (let [communication-chan (a/chan 100)]
-            (binding [impl/*identify-limiter* (agent nil)]
-              (impl/connect-shards! out-ch communication-chan url token intents shard-count (range shard-count)
-                                    (not disable-compression)))
-            communication-chan))
-      (log/debug "Unable to recieve gateway information."))))
+  (if-not intents
+    (ex-info "Intents are required as of v8 of the API")
+    (let [token (bot-token token)
+          {:keys [url shard-count session-start-limit]}
+          (impl/get-websocket-gateway gateway-url token)]
+      (if (and url shard-count session-start-limit)
+        (do (when (< (:remaining session-start-limit) shard-count)
+              (throw (ex-info "Not enough remaining identify packets for number of shards."
+                              {:token token
+                               :shard-count shard-count
+                               :remaining-starts (:remaining session-start-limit)
+                               :reset-after (:reset-after session-start-limit)})))
+            (let [communication-chan (a/chan 100)]
+              (binding [impl/*identify-limiter* (agent nil)]
+                (impl/connect-shards! out-ch communication-chan url token intents shard-count (range shard-count)
+                                      (not disable-compression)))
+              communication-chan))
+        (log/debug "Unable to recieve gateway information.")))))
 (s/fdef connect-bot!
   :args (s/cat :token ::ds/token :out-ch ::ds/channel
                :keyword-args (s/keys* :opt-un [::cs/intents ::cs/disable-compression]))

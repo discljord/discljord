@@ -130,7 +130,7 @@
   (let [everyone (:permissions ((:roles guild) (:id guild)))
         roles (user-roles guild user-id-or-member)
         {:keys [permission-overwrites]} ((:channels guild) channel-id)
-        {role-overrides "role" member-overrides "member"} (group-by :type permission-overwrites)
+        {role-overrides 0 member-overrides 1} (group-by :type permission-overwrites)
         member (if (map? user-id-or-member)
                  user-id-or-member
                  ((:members guild) user-id-or-member))

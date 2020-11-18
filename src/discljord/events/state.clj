@@ -121,7 +121,7 @@
          (fn [state]
            (update-in
             (update-in state [::users (:id user)]
-                       merge (dissoc presence :user :roles :nick :guild-id))
+                       merge (dissoc presence :user :guild-id))
             [::guilds guild-id :members (:id user)]
             assoc
             :roles roles

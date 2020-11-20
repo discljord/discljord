@@ -532,10 +532,16 @@
   {}
   (json-body body))
 
-(defdispatch :modify-guild-embed
-  [guild-id embed] [] _ :patch _ body
-  (str "/guilds/" guild-id "/embed")
-  {:body (json/write-str embed)}
+(defdispatch :modify-guild-widget
+  [guild-id widget] [] _ :patch _ body
+  (str "/guilds/" guild-id "/widget")
+  {:body (json/write-str widget)}
+  (json-body body))
+
+(defdispatch :get-guild-widget
+  [guild-id] [] _ :get _ body
+  (str "/guilds/" guild-id "/widget.json")
+  {}
   (json-body body))
 
 (defdispatch :get-guild-vanity-url

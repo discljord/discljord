@@ -204,3 +204,7 @@
 (s/def ::message-reference (s/keys :req-un [:message-reference/message_id
                                             :message-reference/channel_id
                                             :message-reference/guild_id]))
+
+(s/def :widget/enabled boolean?)
+(s/def :widget/channel_id ::ds/snowflake)
+(s/def ::widget (s/keys :req-un [:widget/enabled :widget/channel_id]))

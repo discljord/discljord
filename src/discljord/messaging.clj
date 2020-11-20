@@ -463,6 +463,11 @@
                :keyword-args (s/keys* :opt-un [::ds/user-agent ::ds/audit-reason]))
   :ret ::ds/promise)
 
+(defendpoint get-guild-widget! ::ds/guild-id
+  "Returns a promise containing the guild widget object."
+  []
+  [])
+
 (defendpoint get-guild-vanity-url! ::ds/guild-id
   "Returns a promise containing a partial invite object if the guild supports it, otherwise nil."
   []

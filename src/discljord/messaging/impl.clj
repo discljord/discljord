@@ -537,6 +537,11 @@
   (str "/guilds/" guild-id "/widget")
   {:body (json/write-str widget)}
   (json-body body))
+
+(defdispatch :get-guild-widget
+  [guild-id] [] _ :get _ body
+  (str "/guilds/" guild-id "/widget.json")
+  {}
   (json-body body))
 
 (defdispatch :get-guild-vanity-url

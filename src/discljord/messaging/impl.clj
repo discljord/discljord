@@ -69,11 +69,11 @@
            ~'_ (log/trace "Response:" response#)
            ~status-sym (:status response#)
            ~body-sym (:body response#)]
-       (let [prom-val# ~promise-val]
-         (if (and (some? prom-val#)
-                  (not (= (:status response#) 429)))
-           (a/>!! prom# prom-val#)
-           (a/close! prom#)))
+       (when-not (= ~status-sym 429)
+         (let [prom-val# ~promise-val]
+           (if (some? prom-val#)
+             (a/>!! prom# prom-val#)
+             (a/close! prom#))))
        response#)))
 
 (defn ^:private json-body
@@ -152,10 +152,10 @@
           body (if (= 2 (int (/ (:status response) 100)))
                  body
                  (ex-info "" body))]
-      (if (and (some? body)
-               (not (= (:status response) 429)))
-        (a/>!! prom body)
-        (a/close! prom)))
+      (when-not (= (:status response) 429)
+        (if (some? body)
+          (a/>!! prom body)
+          (a/close! prom))))
     response))
 
 (defdispatch :create-reaction
@@ -699,10 +699,10 @@
     (let [body (if (= (:status response) 200)
                  (json-body (:body response))
                  (= (:status response) 204))]
-      (if (and (some? body)
-               (not (= (:status response) 429)))
-        (a/>!! prom body)
-        (a/close! prom)))
+      (when-not (= (:status response) 429)
+        (if (some? body)
+          (a/>!! prom body)
+          (a/close! prom))))
     response))
 
 (defdispatch :get-current-application-information

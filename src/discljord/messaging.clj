@@ -444,10 +444,24 @@
                :keyword-args (s/keys* :opt-un [::ds/user-agent ::ds/audit-reason]))
   :ret ::ds/promise)
 
-(defendpoint modify-guild-embed! ::ds/guild-id
-  "Modifies the guild embed object. Returns a promise containing the modified guild embed object."
+(defendpoint modify-guild-widget! ::ds/guild-id
+  "Modifies a guild widget object. Returns a promise containing the modified guild widget."
   [embed]
   [])
+
+(defn ^:deprecated modify-guild-embed!
+  "Modifies the guild embed object. Returns a promise containing the modified guild embed object.
+
+  DEPRECATED: Prefer using [[get-guild-widget-settings!]]"
+  {:arglists '([conn guild-id embed & {:keys [user-agent audit-reason]}])}
+  [& args]
+  (apply modify-guild-widget! args))
+(s/fdef modify-guild-embed!
+  :args (s/cat :conn ::ds/channel
+               :guild-id ::ds/guild-id
+               :embed ::ms/widget
+               :keyword-args (s/keys* :opt-un [::ds/user-agent ::ds/audit-reason]))
+  :ret ::ds/promise)
 
 (defendpoint get-guild-vanity-url! ::ds/guild-id
   "Returns a promise containing a partial invite object if the guild supports it, otherwise nil."

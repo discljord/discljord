@@ -4,13 +4,24 @@ Discljord follows semantic versioning.
 
 ## [Unreleased]
 ### Added
+ - `discljord.messaging/get-guild-widget!` to fetch the full guild widget json
+ - Support for creating replies
+ - Updated to API v8
  - `discljord.permissions/permission-flags` as a counterpart to `permission-int`
  - `discljord.permissions/permission-int` arity to construct custom permission integers
  - Option to disable transport compression on the gateway api
  - Namespace with functions to extract information from Discord's snowflake ids
 
+### Changed
+ - Connection functions return an `ex-info` when `intents` are not specified, in compliance with API v8
+
 ### Fixed
+ - `ex-info` values are sent on 429s from HTTP endpoints even if they are later retried
  - Errors occur when tokens have whitespace at the beginning and ends
+
+### Deprecated
+ - `discljord.messaging/get-guild-embed!`, prefer `get-guild-widget-settings!`
+ - `discljord.messaging/modify-guild-embed!`, prefer `modify-guild-widget!`
 
 ## [1.1.1] - 2020-07-15
 ### Fixed

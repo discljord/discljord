@@ -100,24 +100,26 @@
   Additional calls should only be made five seconds after the
   `:connected-all-shards` event has been received."
   [token out-ch gateway shard-ids & {:keys [intents identify-when disable-compression]}]
-  (let [token (bot-token token)
-        {:keys [url shard-count session-start-limit]} gateway]
-    (if (and url shard-count session-start-limit)
-      (do (when (< (:remaining session-start-limit) (count shard-ids))
-            (throw (ex-info "Not enough remaining identify packets for number of shards."
-                            {:token token
-                             :shard-count (count shard-ids)
-                             :shard-ids shard-ids
-                             :remaining-starts (:remaining session-start-limit)
-                             :reset-after (:reset-after session-start-limit)})))
-          (let [communication-chan (a/chan 100)]
-            (binding [impl/*handle-re-shard* false
-                      impl/*identify-when* identify-when
-                      impl/*identify-limiter* (agent nil)]
-              (impl/connect-shards! out-ch communication-chan url token intents shard-count shard-ids
-                                    (not disable-compression)))
-            communication-chan))
-      (log/debug "Unable to receive gateway information."))))
+  (if-not intents
+    (ex-info "Intents are required as of v8 of the API")
+    (let [token (bot-token token)
+          {:keys [url shard-count session-start-limit]} gateway]
+      (if (and url shard-count session-start-limit)
+        (do (when (< (:remaining session-start-limit) (count shard-ids))
+              (throw (ex-info "Not enough remaining identify packets for number of shards."
+                              {:token token
+                               :shard-count (count shard-ids)
+                               :shard-ids shard-ids
+                               :remaining-starts (:remaining session-start-limit)
+                               :reset-after (:reset-after session-start-limit)})))
+            (let [communication-chan (a/chan 100)]
+              (binding [impl/*handle-re-shard* false
+                        impl/*identify-when* identify-when
+                        impl/*identify-limiter* (agent nil)]
+                (impl/connect-shards! out-ch communication-chan url token intents shard-count shard-ids
+                                      (not disable-compression)))
+              communication-chan))
+        (log/debug "Unable to receive gateway information.")))))
 (s/fdef connect-shards!
   :args (s/cat :token ::ds/token :out-ch ::ds/channel
                :gateway ::cs/gateway :shard-ids (s/coll-of nat-int?)

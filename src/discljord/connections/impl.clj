@@ -42,7 +42,8 @@
   "Returns if a shard should try to resume."
   [shard]
   (log/trace "Testing if shard" (:id shard) "should resume:" shard)
-  (when (:stop-code shard)
+  (when (and (:session-id shard)
+             (:seq shard))
     (and (not (new-session-stop-code? (:stop-code shard)))
          (:seq shard)
          (:session-id shard)

@@ -835,9 +835,11 @@
 
 (defmethod handle-communication! :get-shard-state
   [shards shard-chs [_ to-fetch prom]]
-  (a/put! prom (sequence (comp (filter (comp to-fetch :id))
-                               (map #(select-keys % #{:session-id :id :count :seq})))
-                         shards))
+  (a/put! prom (if to-fetch
+                 (sequence (comp (filter (comp to-fetch :id))
+                                 (map #(select-keys % #{:session-id :id :count :seq})))
+                           shards)
+                 (map #(select-keys % #{:session-id :id :count :seq}) shards)))
   [shards shard-chs])
 
 (defmethod handle-communication! :connect-shards

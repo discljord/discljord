@@ -155,6 +155,18 @@
                :shards (s/? (s/coll-of ::cs/shard :kind set?)))
   :ret ::ds/promise)
 
+(defn add-shards!
+  "Adds new shard connections using state fetched with `get-shard-state!`."
+  [connection-ch new-shards intents & {:keys [disable-compression]}]
+  (a/put! connection-ch [:connect-shards new-shards intents disable-compression])
+  nil)
+(s/fdef add-shards!
+  :args (s/cat :connection-ch ::ds/channel
+               :new-shards ::cs/shard
+               :intents ::cs/intents
+               :keyword-args (s/keys* :opt-un [::cs/disable-compression]))
+  :ret nil?)
+
 (defn guild-request-members!
   "Takes the channel returned by connect-bot!, the snowflake guild id, and optional arguments
   about the members you want to get information about, and signals Discord to send you

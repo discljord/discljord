@@ -693,7 +693,7 @@
                                                  [shards shard-chs]
                                                  effects)]
                   (recur shards shard-chs)))))
-        (do (log/trace "Exiting the shard loop")
+        (do (log/info "Exiting the shard loop")
             (a/put! output-ch [:disconnect]))))
     (doseq [[idx shard] (map-indexed vector shards)]
       (a/put! (:connections-ch shard) [:connect]))

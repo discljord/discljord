@@ -779,14 +779,25 @@
                [[] []]
                (map vector shards shard-chs))))
 
+(defn shard-matches?
+  "Returns true if all keys in `match` are equal to the ones in `shard`."
+  [shard match]
+  (= (select-keys shard (keys match)) match))
+
+(defn shard-matches-any?
+  "Returns true if the shard matches against any of the passed matchers."
+  [match-any shard]
+  (some (partial shard-matches? shard) match-any))
+
 (defmethod handle-bot-fx! :disconnect-shards
   [output-ch url token shards shard-chs shard-idx [_ to-disconnect]]
-  (let [[shards shard-chs] (remove-shards (comp not to-disconnect :id) shards shard-chs)]
-    (run! #(a/put! (:connections-ch %) [:disconnect :stop-code 4000 :reason "Migrating Shard"])
-          shards)
-    (run! #(a/<!! (step-shard! % url token))
-          (keep (comp :shard a/<!!) shard-chs)))
-  (remove-shards (comp to-disconnect :id) shards shard-chs))
+  (let [matches-any? (partial shard-matches-any? to-disconnect)]
+    (let [[shards shard-chs] (remove-shards (comp not matches-any?) shards shard-chs)]
+      (run! #(a/put! (:connections-ch %) [:disconnect :stop-code 4000 :reason "Migrating Shard"])
+            shards)
+      (run! #(a/<!! (step-shard! % url token))
+            (keep (comp :shard a/<!!) shard-chs)))
+    (remove-shards matches-any? shards shard-chs)))
 
 (defmethod handle-communication! :disconnect
   [shards shard-chs _]
@@ -835,11 +846,10 @@
 
 (defmethod handle-communication! :get-shard-state
   [shards shard-chs [_ to-fetch prom]]
-  (a/put! prom (if to-fetch
-                 (sequence (comp (filter (comp to-fetch :id))
-                                 (map #(select-keys % #{:session-id :id :count :seq})))
-                           shards)
-                 (map #(select-keys % #{:session-id :id :count :seq}) shards)))
+  (a/put! prom (let [shards (map #(select-keys % #{:session-id :id :count :seq}) shards)]
+                 (if to-fetch
+                   (filter (partial shard-matches-any? to-fetch) shards)
+                   shards)))
   [shards shard-chs])
 
 (defmethod handle-communication! :connect-shards

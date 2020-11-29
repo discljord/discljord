@@ -2,7 +2,6 @@
   "Implementation namespace for `discljord.messaging`."
   (:require
    [clojure.core.async :as a]
-   [clojure.core.async.impl.protocols :as a.proto]
    [clojure.data.json :as json]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
@@ -13,7 +12,7 @@
    [org.httpkit.client :as http]
    [clojure.tools.logging :as log])
   (:import
-   (java.io File Writer)
+   (java.io File)
    (java.net URLEncoder)
    (java.util Date)))
 
@@ -881,63 +880,3 @@
 (s/fdef stop!
   :args (s/cat :channel ::ds/channel)
   :ret nil?)
-
-(deftype DerefablePromiseChannel [ch ^:unsynchronized-mutable realized?]
-  clojure.lang.IDeref
-  (deref [_]
-    (let [res (a/<!! ch)]
-      (set! realized? true)
-      res))
-
-  clojure.lang.IBlockingDeref
-  (deref [_ timeout timeout-val]
-    (let [res (a/alt!!
-                ch ([v] v)
-                (a/timeout timeout) timeout-val)]
-      (set! realized? true)
-      res))
-
-  clojure.lang.IPending
-  (isRealized [_] realized?)
-
-  a.proto/Channel
-  (closed? [_] (a.proto/closed? ch))
-  (close! [_]
-    (set! realized? true)
-    (a/close! ch))
-
-  a.proto/ReadPort
-  (take! [_ handler]
-    (a.proto/take! ch handler))
-
-  a.proto/WritePort
-  (put! [_ val handler]
-    (a.proto/put! ch val handler)))
-
-(defmethod print-method DerefablePromiseChannel
-  [v w]
-  (.write ^Writer w "#object[")
-  (.write ^Writer w (str (str/replace-first (str v) #"@" " ") " \""))
-  (.write ^Writer w (str v))
-  (.write ^Writer w "\"]"))
-
-(defmethod print-dup DerefablePromiseChannel
-  [o w]
-  (print-ctor o (fn [o w] (print-dup (.-ch ^DerefablePromiseChannel o) w)) w))
-
-(prefer-method print-method DerefablePromiseChannel clojure.lang.IPersistentMap)
-(prefer-method print-method DerefablePromiseChannel clojure.lang.IDeref)
-(prefer-method print-method DerefablePromiseChannel clojure.lang.IBlockingDeref)
-
-(prefer-method print-dup DerefablePromiseChannel clojure.lang.IPersistentMap)
-(prefer-method print-dup DerefablePromiseChannel clojure.lang.IDeref)
-(prefer-method print-dup DerefablePromiseChannel clojure.lang.IBlockingDeref)
-
-(defn derefable-promise-chan
-  "Creates an implementation of [[clojure.lang.IDeref]] which is also a core.async chan."
-  ([]
-   (derefable-promise-chan nil))
-  ([xform]
-   (derefable-promise-chan xform nil))
-  ([xform ex-handler]
-   (DerefablePromiseChannel. (a/promise-chan xform ex-handler) false)))

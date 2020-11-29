@@ -13,7 +13,8 @@
    [discljord.http :refer [api-url]]
    [discljord.messaging.impl :as impl]
    [discljord.messaging.specs :as ms]
-   [discljord.specs :as ds]))
+   [discljord.specs :as ds]
+   [discljord.util :as util]))
 
 (defn start-connection!
   "Takes a token for a bot, and returns a channel which is passed
@@ -53,7 +54,7 @@
          [~'conn ~@(when major-var-type [major-var]) ~@params ~'& {:keys ~opts :as ~'opts}]
          (let [user-agent# (:user-agent ~'opts)
                audit-reason# (:audit-reason ~'opts)
-               p# (impl/derefable-promise-chan)
+               p# (util/derefable-promise-chan)
                action# {::ms/action ~action}]
            (a/put! ~'conn (into [(if ~major-var-type
                                    (assoc action#

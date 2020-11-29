@@ -755,6 +755,17 @@
                 (map (comp :shard a/<!!) shard-chs)))
   [nil nil])
 
+(defmethod handle-bot-fx! :connect-shards
+  [output-ch url token shards shard-chs shard-idx [_ new-shards intents disable-compression :as event]]
+  (let [new-shards (map #(merge (make-shard intents (:id %) (:count %)
+                                            (not disable-compression))
+                                %)
+                        new-shards)
+        new-shard-chs (map #(step-shard! % url token) new-shards)]
+    (doseq [[idx shard] (map-indexed vector new-shards)]
+      (after-timeout! #(a/put! (:connections-ch shard) [:connect]) (* idx 5100)))
+    [(vec (concat shards new-shards)) (vec (concat shard-chs new-shard-chs))]))
+
 (defmethod handle-communication! :disconnect
   [shards shard-chs _]
   (run! #(a/put! (:connections-ch %) [:disconnect]) shards)
@@ -806,3 +817,7 @@
                                (map #(select-keys % #{:session-id :id :count :seq})))
                          shards))
   [shards shard-chs])
+
+(defmethod handle-communication! :connect-shards
+  [shards shard-chs [_ new-shards intents disable-compression :as event]]
+  [shards shard-chs [event]])

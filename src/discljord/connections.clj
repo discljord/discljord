@@ -10,7 +10,7 @@
    [discljord.connections.specs :as cs]
    [discljord.http :refer [gateway-url]]
    [discljord.specs :as ds]
-   [discljord.util :refer [bot-token]]
+   [discljord.util :refer [bot-token derefable-promise-chan]]
    [clojure.tools.logging :as log]))
 
 (def gateway-intents #{:guilds :guild-members :guild-bans :guild-emojis
@@ -134,6 +134,26 @@
 (s/fdef disconnect-bot!
   :args (s/cat :channel ::ds/channel)
   :ret nil?)
+
+(defn get-shard-state!
+  "Fetches the current shard session state.
+
+  `shards` is an optional set of shard state values. If it is not included, all
+  shards will be fetched. Any shard which matches with the given keys will be
+  included.
+
+  Returns a promise which can be derefed or taken off of like a channel."
+  ([connection-ch] (get-shard-state! connection-ch nil))
+  ([connection-ch shards]
+   (let [prom (derefable-promise-chan)]
+     (a/put! connection-ch [:get-shard-state
+                            (when shards
+                              (set (map #(dissoc % :seq) shards))) prom])
+     prom)))
+(s/fdef get-shard-state!
+  :args (s/cat :connection-ch ::ds/channel
+               :shards (s/? (s/coll-of ::cs/shard :kind set?)))
+  :ret ::ds/promise)
 
 (defn guild-request-members!
   "Takes the channel returned by connect-bot!, the snowflake guild id, and optional arguments

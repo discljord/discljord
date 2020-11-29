@@ -167,6 +167,19 @@
                :keyword-args (s/keys* :opt-un [::cs/disable-compression]))
   :ret nil?)
 
+(defn remove-shards!
+  "Removes shards matching any of the passed shards.
+
+  This will ignore the `:seq` keyword on any passed shard, but otherwise is as
+  one of the shards returned from `get-shard-state!`."
+  [connection-ch shards]
+  (a/put! connection-ch [:disconnect-shards (set (map #(dissoc % :seq) shards))])
+  nil)
+(s/fdef remove-shards!
+  :args (s/cat :connection-ch ::ds/channel
+               :shards (s/coll-of ::cs/shard :kind set?))
+  :ret nil?)
+
 (defn guild-request-members!
   "Takes the channel returned by connect-bot!, the snowflake guild id, and optional arguments
   about the members you want to get information about, and signals Discord to send you

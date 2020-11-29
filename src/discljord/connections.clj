@@ -10,7 +10,7 @@
    [discljord.connections.specs :as cs]
    [discljord.http :refer [gateway-url]]
    [discljord.specs :as ds]
-   [discljord.util :refer [bot-token]]
+   [discljord.util :refer [bot-token derefable-promise-chan]]
    [clojure.tools.logging :as log]))
 
 (def gateway-intents #{:guilds :guild-members :guild-bans :guild-emojis
@@ -133,6 +133,51 @@
   nil)
 (s/fdef disconnect-bot!
   :args (s/cat :channel ::ds/channel)
+  :ret nil?)
+
+(defn get-shard-state!
+  "Fetches the current shard session state.
+
+  `shards` is an optional set of shard state values. If it is not included, all
+  shards will be fetched. Any shard which matches with the given keys will be
+  included.
+
+  Returns a promise which can be derefed or taken off of like a channel."
+  ([connection-ch] (get-shard-state! connection-ch nil))
+  ([connection-ch shards]
+   (let [prom (derefable-promise-chan)]
+     (a/put! connection-ch [:get-shard-state
+                            (when shards
+                              (set (map #(dissoc % :seq) shards))) prom])
+     prom)))
+(s/fdef get-shard-state!
+  :args (s/cat :connection-ch ::ds/channel
+               :shards (s/? (s/coll-of ::cs/shard :kind set?)))
+  :ret ::ds/promise)
+
+(defn add-shards!
+  "Adds new shard connections using state fetched with `get-shard-state!`."
+  [connection-ch new-shards intents & {:keys [disable-compression]}]
+  (a/put! connection-ch [:connect-shards new-shards intents disable-compression])
+  nil)
+(s/fdef add-shards!
+  :args (s/cat :connection-ch ::ds/channel
+               :new-shards ::cs/shard
+               :intents ::cs/intents
+               :keyword-args (s/keys* :opt-un [::cs/disable-compression]))
+  :ret nil?)
+
+(defn remove-shards!
+  "Removes shards matching any of the passed shards.
+
+  This will ignore the `:seq` keyword on any passed shard, but otherwise is as
+  one of the shards returned from `get-shard-state!`."
+  [connection-ch shards]
+  (a/put! connection-ch [:disconnect-shards (set (map #(dissoc % :seq) shards))])
+  nil)
+(s/fdef remove-shards!
+  :args (s/cat :connection-ch ::ds/channel
+               :shards (s/coll-of ::cs/shard :kind set?))
   :ret nil?)
 
 (defn guild-request-members!

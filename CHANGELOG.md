@@ -4,6 +4,7 @@ Discljord follows semantic versioning.
 
 ## [Unreleased]
 ### Added
+ - `get-shard-state!`, `add-shards!`, and `remove-shards!` to the `discljord.connections` namespace to allow transferring shards
  - `discljord.messaging/get-guild-widget!` to fetch the full guild widget json
  - Support for creating replies
  - Updated to API v8
@@ -16,6 +17,8 @@ Discljord follows semantic versioning.
  - Connection functions return an `ex-info` when `intents` are not specified, in compliance with API v8
 
 ### Fixed
+ - Failure to resume on several types of connection loss
+ - Inconsistent handling of releasing of the websocket client
  - `ex-info` values are sent on 429s from HTTP endpoints even if they are later retried
  - Errors occur when tokens have whitespace at the beginning and ends
 

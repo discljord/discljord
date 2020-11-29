@@ -42,3 +42,9 @@
 
 (s/def ::identify-when ifn?)
 (s/def ::disable-compression boolean?)
+
+(s/def :shard/id nat-int?)
+(s/def :shard/session string?)
+(s/def :shard/count pos-int?)
+(s/def :shard/seq nat-int?)
+(s/def ::shard (s/keys :req-un [:shard/id :shard/session :shard/count :shard/seq]))

@@ -42,7 +42,8 @@
   "Returns if a shard should try to resume."
   [shard]
   (log/trace "Testing if shard" (:id shard) "should resume:" shard)
-  (when (:stop-code shard)
+  (when (and (:session-id shard)
+             (:seq shard))
     (and (not (new-session-stop-code? (:stop-code shard)))
          (:seq shard)
          (:session-id shard)
@@ -74,24 +75,21 @@
 (defmethod handle-websocket-event :disconnect
   [{:keys [websocket] :as shard} [_ stop-code msg]]
   (if shard
-    (do
-      (when websocket
-        (.stop ^WebSocketClient (:client websocket)))
-      {:shard (if stop-code
-                (assoc (dissoc shard :websocket)
-                       :stop-code stop-code
-                       :disconnect-msg msg)
-                shard)
-       :effects [(cond
-                   (re-shard-stop-code? stop-code) [:re-shard]
-                   (and *stop-on-fatal-code*
-                        (fatal-code? stop-code))   [:disconnect-all]
-                   (user-error-code? stop-code)  (do
-                                                   (log/fatal (str "Received stop code " stop-code
-                                                                   " which can only occur on user error."
-                                                                   " Disconecting bot."))
-                                                   [:disconnect-all])
-                   :otherwise                      [:reconnect])]})
+    {:shard (if stop-code
+              (assoc (dissoc shard :websocket)
+                     :stop-code stop-code
+                     :disconnect-msg msg)
+              shard)
+     :effects [(cond
+                 (re-shard-stop-code? stop-code) [:re-shard]
+                 (and *stop-on-fatal-code*
+                      (fatal-code? stop-code))   [:disconnect-all]
+                 (user-error-code? stop-code)  (do
+                                                 (log/fatal (str "Received stop code " stop-code
+                                                                 " which can only occur on user error."
+                                                                 " Disconecting bot."))
+                                                 [:disconnect-all])
+                 :otherwise                      [:reconnect])]}
     {:shard nil
      :effects []}))
 
@@ -219,38 +217,38 @@
       (.setMaxBinaryMessageSize buffer-size))
     (doto client
       (.start))
-    (try {:ws (ws/connect
-                  url
-                :client client
-                :on-connect (fn [_]
-                              (log/trace "Websocket connected")
-                              (a/put! event-ch [:connect]))
-                :on-close (fn [stop-code msg]
-                            (log/debug "Websocket closed with code:" stop-code "and message:" msg)
-                            (a/put! event-ch [:disconnect stop-code msg]))
-                :on-error (fn [err]
-                            (log/warn "Websocket errored" err)
-                            (a/put! event-ch [:error err]))
-                :on-receive (fn [msg]
-                              (log/trace "Websocket received message:" msg)
-                              (a/put! event-ch [:message msg]))
-                :on-binary (fn [buf start len]
-                             (.setInput inflater buf start len)
-                             (let [acc (ByteArrayOutputStream.)
-                                   msg (loop [off start
-                                              rem len]
-                                         (if (pos? rem)
-                                           (let [bytes-read (.inflate inflater out-buffer 0 byte-array-buffer-size)]
-                                             (.write acc out-buffer 0 bytes-read)
-                                             (recur (mod (+ off bytes-read)
-                                                         (count buf))
-                                                    (- rem bytes-read)))
-                                           (String. (.toByteArray acc) "UTF-8")))]
-                               (log/trace "Websocket received binary message:" msg)
-                               (a/put! event-ch [:message msg]))))
-          :client client}
+    (try (ws/connect
+          url
+          :client client
+          ::ws/cleanup #(.stop client)
+          :on-connect (fn [_]
+                        (log/trace "Websocket connected")
+                        (a/put! event-ch [:connect]))
+          :on-close (fn [stop-code msg]
+                      (log/debug "Websocket closed with code:" stop-code "and message:" msg)
+                      (a/put! event-ch [:disconnect stop-code msg]))
+          :on-error (fn [err]
+                      (log/warn "Websocket errored" err)
+                      (a/put! event-ch [:error err]))
+          :on-receive (fn [msg]
+                        (log/trace "Websocket received message:" msg)
+                        (a/put! event-ch [:message msg]))
+          :on-binary (fn [buf start len]
+                       (.setInput inflater buf start len)
+                       (let [acc (ByteArrayOutputStream.)
+                             msg (loop [off start
+                                        rem len]
+                                   (if (pos? rem)
+                                     (let [bytes-read (.inflate inflater out-buffer 0 byte-array-buffer-size)]
+                                       (.write acc out-buffer 0 bytes-read)
+                                       (recur (mod (+ off bytes-read)
+                                                   (count buf))
+                                              (- rem bytes-read)))
+                                     (String. (.toByteArray acc) "UTF-8")))]
+                         (log/trace "Websocket received binary message:" msg)
+                         (a/put! event-ch [:message msg]))))
          (catch Exception e
-           (throw (ex-info "Failed to connect a websocket" {:client client} e))))))
+            (throw (ex-info "Failed to connect a websocket" {:client client} e))))))
 
 (defmulti handle-shard-fx!
   "Processes an `event` on a given `shard` for side effects.
@@ -283,7 +281,7 @@
           (log/trace "Sending message to retrieve guild members from guild"
                      guild-id "over shard" (:id shard)
                      "with query" query)
-          (ws/send-msg (:ws (:websocket shard))
+          (ws/send-msg (:websocket shard)
                        msg))
         (log/error "Message for guild-request-members was too large on shard" (:id shard)
                    "Check to make sure that your query is of a reasonable size."))))
@@ -303,7 +301,7 @@
     (if-not (> (count msg) 4096)
       (do
         (log/trace "Sending status update over shard" (:id shard))
-        (ws/send-msg (:ws (:websocket shard))
+        (ws/send-msg (:websocket shard)
                      msg))
       (log/error "Message for status-update was too large."
                  "Use create-activity to create a valid activity"
@@ -324,7 +322,7 @@
     (if-not (> (count msg) 4096)
       (do
         (log/trace "Sending voice-state-update over shard" (:id shard))
-        (ws/send-msg (:ws (:websocket shard))
+        (ws/send-msg (:websocket shard)
                      msg))
       (log/error "Message for voice-state-update was too large."
                  "This should not occur if you are using valid types for the keys.")))
@@ -337,12 +335,13 @@
     event-type))
 
 (defmethod handle-connection-event! :disconnect
-  [{:keys [heartbeat-ch communication-ch websocket id]} _ _]
+  [{:keys [heartbeat-ch communication-ch websocket id]} _ [_ & {:keys [stop-code reason]}]]
   (when heartbeat-ch
     (a/close! heartbeat-ch))
   (a/close! communication-ch)
-  (ws/close (:ws websocket))
-  (.stop ^WebSocketClient (:client websocket))
+  (if stop-code
+    (ws/close websocket stop-code reason)
+    (ws/close websocket))
   (log/info "Disconnecting shard"
             id
             "and closing connection")
@@ -385,7 +384,7 @@
         heartbeat-fn (fn []
                        (if (:ack shard)
                          (try (log/trace "Sending heartbeat payload on shard" (:id shard))
-                              (ws/send-msg (:ws websocket)
+                              (ws/send-msg websocket
                                            (json/write-str {:op 1
                                                             :d (:seq shard)}))
                               {:shard (dissoc shard :ack)
@@ -398,13 +397,14 @@
                                      :effects []})
                                   (throw e))))
                          (do
-                           (ws/close (:ws websocket))
+                           (ws/close websocket 4000 "Zombie Heartbeat")
                            (log/info "Reconnecting due to zombie heartbeat on shard" (:id shard))
                            (a/close! heartbeat-ch)
                            (a/put! connections-ch [:connect])
                            {:shard (dissoc shard
                                            :heartbeat-ch
-                                           :ready)
+                                           :ready
+                                           :websocket)
                             :effects []})))
         event-fn (fn [event]
                    (let [{:keys [shard effects]} (handle-websocket-event shard event)
@@ -554,7 +554,7 @@
                     (assoc payload "intents" (intents->intent-int intents))
                     payload)]
       (log/trace "Identify payload:" payload)
-      (ws/send-msg (:ws (:websocket shard))
+      (ws/send-msg (:websocket shard)
                    (json/write-str {:op 2
                                     :d payload})))))
 
@@ -577,7 +577,7 @@
   [heartbeat-ch url token shard event]
   (log/debug "Sending resume payload for shard" (:id shard)
              "with session" (:session-id shard) "and seq" (:seq shard))
-  (ws/send-msg (:ws (:websocket shard))
+  (ws/send-msg (:websocket shard)
                (json/write-str {:op 6
                                 :d {"token" token
                                     "session_id" (:session-id shard)
@@ -631,8 +631,8 @@
 
 (defmethod handle-shard-fx! :disconnect
   [heartbeat-ch url token {:keys [websocket] :as shard} _]
-  (ws/close (:ws websocket))
-  {:shard shard
+  (ws/close websocket)
+  {:shard (dissoc shard :websocket)
    :effects []})
 
 (defmulti handle-bot-fx!
@@ -695,7 +695,7 @@
                                                  [shards shard-chs]
                                                  effects)]
                   (recur shards shard-chs)))))
-        (do (log/trace "Exiting the shard loop")
+        (do (log/info "Exiting the shard loop")
             (a/put! output-ch [:disconnect]))))
     (doseq [[idx shard] (map-indexed vector shards)]
       (a/put! (:connections-ch shard) [:connect]))
@@ -757,6 +757,48 @@
                 (map (comp :shard a/<!!) shard-chs)))
   [nil nil])
 
+(defmethod handle-bot-fx! :connect-shards
+  [output-ch url token shards shard-chs shard-idx [_ new-shards intents disable-compression :as event]]
+  (let [new-shards (map #(merge (make-shard intents (:id %) (:count %)
+                                            (not disable-compression))
+                                %)
+                        new-shards)
+        new-shard-chs (map #(step-shard! % url token) new-shards)]
+    (doseq [[idx shard] (map-indexed vector new-shards)]
+      (after-timeout! #(a/put! (:connections-ch shard) [:connect]) (* idx 5100)))
+    [(vec (concat shards new-shards)) (vec (concat shard-chs new-shard-chs))]))
+
+(defn remove-shards
+  "Removes shards fitting a predicate from the vector of shards and channels."
+  [pred shards shard-chs]
+  (vec (reduce (fn [acc [s c]]
+                 (if-not (pred s)
+                   [(conj (first acc) s)
+                    (conj (last acc) c)]
+                   acc))
+               [[] []]
+               (map vector shards shard-chs))))
+
+(defn shard-matches?
+  "Returns true if all keys in `match` are equal to the ones in `shard`."
+  [shard match]
+  (= (select-keys shard (keys match)) match))
+
+(defn shard-matches-any?
+  "Returns true if the shard matches against any of the passed matchers."
+  [match-any shard]
+  (some (partial shard-matches? shard) match-any))
+
+(defmethod handle-bot-fx! :disconnect-shards
+  [output-ch url token shards shard-chs shard-idx [_ to-disconnect]]
+  (let [matches-any? (partial shard-matches-any? to-disconnect)]
+    (let [[shards shard-chs] (remove-shards (comp not matches-any?) shards shard-chs)]
+      (run! #(a/put! (:connections-ch %) [:disconnect :stop-code 4000 :reason "Migrating Shard"])
+            shards)
+      (run! #(a/<!! (step-shard! % url token))
+            (keep (comp :shard a/<!!) shard-chs)))
+    (remove-shards matches-any? shards shard-chs)))
+
 (defmethod handle-communication! :disconnect
   [shards shard-chs _]
   (run! #(a/put! (:connections-ch %) [:disconnect]) shards)
@@ -801,3 +843,19 @@
           (log/error "Attempted to send voice-state-update for a guild with no"
                      "matching shard in this process.")))))
   [shards shard-chs])
+
+(defmethod handle-communication! :get-shard-state
+  [shards shard-chs [_ to-fetch prom]]
+  (a/put! prom (let [shards (map #(select-keys % #{:session-id :id :count :seq}) shards)]
+                 (if to-fetch
+                   (filter (partial shard-matches-any? to-fetch) shards)
+                   shards)))
+  [shards shard-chs])
+
+(defmethod handle-communication! :connect-shards
+  [shards shard-chs [_ new-shards intents disable-compression :as event]]
+  [shards shard-chs [event]])
+
+(defmethod handle-communication! :disconnect-shards
+  [shards shard-chs [_ to-disconnect]]
+  [shards shard-chs [[:disconnect-shards  to-disconnect]]])

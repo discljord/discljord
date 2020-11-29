@@ -335,11 +335,13 @@
     event-type))
 
 (defmethod handle-connection-event! :disconnect
-  [{:keys [heartbeat-ch communication-ch websocket id]} _ _]
+  [{:keys [heartbeat-ch communication-ch websocket id]} _ [_ & {:keys [stop-code reason]}]]
   (when heartbeat-ch
     (a/close! heartbeat-ch))
   (a/close! communication-ch)
-  (ws/close websocket)
+  (if stop-code
+    (ws/close websocket stop-code reason)
+    (ws/close websocket))
   (log/info "Disconnecting shard"
             id
             "and closing connection")

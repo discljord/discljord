@@ -395,7 +395,7 @@
                                      :effects []})
                                   (throw e))))
                          (do
-                           (ws/close websocket)
+                           (ws/close websocket 4000 "Zombie Heartbeat")
                            (log/info "Reconnecting due to zombie heartbeat on shard" (:id shard))
                            (a/close! heartbeat-ch)
                            (a/put! connections-ch [:connect])

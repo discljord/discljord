@@ -768,6 +768,26 @@
       (after-timeout! #(a/put! (:connections-ch shard) [:connect]) (* idx 5100)))
     [(vec (concat shards new-shards)) (vec (concat shard-chs new-shard-chs))]))
 
+(defn remove-shards
+  "Removes shards fitting a predicate from the vector of shards and channels."
+  [pred shards shard-chs]
+  (vec (reduce (fn [acc [s c]]
+                 (if-not (pred s)
+                   [(conj (first acc) s)
+                    (conj (last acc) c)]
+                   acc))
+               [[] []]
+               (map vector shards shard-chs))))
+
+(defmethod handle-bot-fx! :disconnect-shards
+  [output-ch url token shards shard-chs shard-idx [_ to-disconnect]]
+  (let [[shards shard-chs] (remove-shards (comp not to-disconnect :id) shards shard-chs)]
+    (run! #(a/put! (:connections-ch %) [:disconnect :stop-code 4000 :reason "Migrating Shard"])
+          shards)
+    (run! #(a/<!! (step-shard! % url token))
+          (keep (comp :shard a/<!!) shard-chs)))
+  (remove-shards (comp to-disconnect :id) shards shard-chs))
+
 (defmethod handle-communication! :disconnect
   [shards shard-chs _]
   (run! #(a/put! (:connections-ch %) [:disconnect]) shards)
@@ -823,3 +843,7 @@
 (defmethod handle-communication! :connect-shards
   [shards shard-chs [_ new-shards intents disable-compression :as event]]
   [shards shard-chs [event]])
+
+(defmethod handle-communication! :disconnect-shards
+  [shards shard-chs [_ to-disconnect]]
+  [shards shard-chs [[:disconnect-shards  to-disconnect]]])

@@ -261,7 +261,7 @@ Discljord follows semantic versioning.
  - Project name from `discljord-functional` to `discljord` 
 
 [Unreleased]: https://github.com/IGJoshua/discljord/compare/1.2.0..develop
-[1.2.0]: https://github.com/IGJoshua/discljord/compare/1.1.0..1.2.0
+[1.2.0]: https://github.com/IGJoshua/discljord/compare/1.1.1..1.2.0
 [1.1.1]: https://github.com/IGJoshua/discljord/compare/1.1.0..1.1.1
 [1.1.0]: https://github.com/IGJoshua/discljord/compare/1.0.0..1.1.0
 [1.0.1]: https://github.com/IGJoshua/discljord/compare/1.0.0..1.0.1

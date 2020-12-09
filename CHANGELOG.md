@@ -4,6 +4,9 @@ Discljord follows semantic versioning.
 
 ## [Unreleased]
 
+### Fixed
+ - Double checking for sequence numbers on resume
+
 ## [1.2.0] - 2020-12-09
 ### Added
  - `get-shard-state!`, `add-shards!`, and `remove-shards!` to the `discljord.connections` namespace to allow transferring shards

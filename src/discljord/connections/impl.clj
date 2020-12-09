@@ -42,12 +42,10 @@
   "Returns if a shard should try to resume."
   [shard]
   (log/trace "Testing if shard" (:id shard) "should resume:" shard)
-  (when (and (:session-id shard)
-             (:seq shard))
-    (and (not (new-session-stop-code? (:stop-code shard)))
-         (:seq shard)
-         (:session-id shard)
-         (not (:unresumable shard)))))
+  (and (not (new-session-stop-code? (:stop-code shard)))
+       (:seq shard)
+       (:session-id shard)
+       (not (:unresumable shard))))
 
 (defmethod handle-websocket-event :connect
   [shard [_]]

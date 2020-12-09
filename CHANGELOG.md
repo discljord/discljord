@@ -3,6 +3,8 @@ All notable changes to this project will be documented in this file. This change
 Discljord follows semantic versioning.
 
 ## [Unreleased]
+
+## [1.2.0] - 2020-12-09
 ### Added
  - `get-shard-state!`, `add-shards!`, and `remove-shards!` to the `discljord.connections` namespace to allow transferring shards
  - `discljord.messaging/get-guild-widget!` to fetch the full guild widget json
@@ -255,7 +257,8 @@ Discljord follows semantic versioning.
  - README follows new API
  - Project name from `discljord-functional` to `discljord` 
 
-[Unreleased]: https://github.com/IGJoshua/discljord/compare/1.1.1..develop
+[Unreleased]: https://github.com/IGJoshua/discljord/compare/1.2.0..develop
+[1.2.0]: https://github.com/IGJoshua/discljord/compare/1.1.0..1.2.0
 [1.1.1]: https://github.com/IGJoshua/discljord/compare/1.1.0..1.1.1
 [1.1.0]: https://github.com/IGJoshua/discljord/compare/1.0.0..1.1.0
 [1.0.1]: https://github.com/IGJoshua/discljord/compare/1.0.0..1.0.1

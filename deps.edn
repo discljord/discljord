@@ -4,7 +4,7 @@
   org.clojure/data.json {:mvn/version "1.0.0"}
   org.clojure/tools.logging {:mvn/version "1.1.0"}
   http-kit {:mvn/version "2.4.0-alpha6"}
-  stylefruits/gniazdo {:mvn/version "1.1.4"}}
+  stylefruits/gniazdo {:mvn/version "1.2.0"}}
 
  :aliases {:dev {:extra-paths ["dev"]
                  :extra-deps {ch.qos.logback/logback-classic {:mvn/version "1.2.3"}}

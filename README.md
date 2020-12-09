@@ -33,13 +33,13 @@ The `start-bot!` and `stop-bot!` functions help you connect/disconnect to/from t
 Add the following to your project.clj in leiningen:
 
 ```clojure
-[org.suskalo/discljord "1.1.1"]
+[org.suskalo/discljord "1.2.0"]
 ```
 
 If you use tools.deps, then add the following to your `:dependencies` key in your `deps.edn`:
 
 ```clojure
-{org.suskalo/discljord {:mvn/version "1.1.1"}}
+{org.suskalo/discljord {:mvn/version "1.2.0"}}
 ```
 
 ## Usage
@@ -129,9 +129,9 @@ This example responds with "Hello, World" to every message a human user posts in
     (loop []
       (let [[event-type event-data] (a/<!! event-ch)]
         (when (and (= :message-create event-type)
-                   (= (:channel-id event-data) channel)
+                   (= (:channel-id event-data) channel-id)
                    (not (:bot (:author event-data))))
-          (m/create-message! message-ch channel :content "Hello, World!"))
+          (m/create-message! message-ch channel-id :content "Hello, World!"))
         (when (= :channel-pins-update event-type)
           (c/disconnect-bot! connection-ch))
         (when-not (= :disconnect event-type)

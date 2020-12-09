@@ -13,7 +13,8 @@
    [discljord.http :refer [api-url]]
    [discljord.messaging.impl :as impl]
    [discljord.messaging.specs :as ms]
-   [discljord.specs :as ds]))
+   [discljord.specs :as ds]
+   [discljord.util :as util]))
 
 (defn start-connection!
   "Takes a token for a bot, and returns a channel which is passed
@@ -53,7 +54,7 @@
          [~'conn ~@(when major-var-type [major-var]) ~@params ~'& {:keys ~opts :as ~'opts}]
          (let [user-agent# (:user-agent ~'opts)
                audit-reason# (:audit-reason ~'opts)
-               p# (impl/derefable-promise-chan)
+               p# (util/derefable-promise-chan)
                action# {::ms/action ~action}]
            (a/put! ~'conn (into [(if ~major-var-type
                                    (assoc action#
@@ -124,29 +125,29 @@
   :stream is a map that has a :content of a java.io.InputStream and a :filename of the filename to attach to the message.
   :embed is a map specifying the embed format for the message (See Discord API)"
   []
-  [content tts nonce embed file allowed-mentions attachments stream])
+  [content tts nonce embed file allowed-mentions attachments stream message-reference])
 
 (defn ^:deprecated send-message!
   [conn channel-id msg & {:keys [tts none embed file] :as opts}]
   (apply create-message! conn channel-id :content msg (into [] cat opts)))
 
 (defendpoint create-reaction! ::ds/channel-id
-  "Creates a new reaction on the message with the given emoji (either unicode or the id of a custom emoji). Returns a promise containing a boolean, telling you if it succeeded."
+  "Creates a new reaction on the message with the given emoji (either unicode or \"name:id\" for a custom emoji). Returns a promise containing a boolean, telling you if it succeeded."
   [message-id emoji]
   [])
 
 (defendpoint delete-own-reaction! ::ds/channel-id
-  "Deletes your reaction on the messasge with the given emoji (either unicode or the id of a custom emoji). Returns a promise containing a boolean, telling you if it succeeded."
+  "Deletes your reaction on the messasge with the given emoji (either unicode or \"name:id\" for a custom emoji). Returns a promise containing a boolean, telling you if it succeeded."
   [message-id emoji]
   [])
 
 (defendpoint delete-user-reaction! ::ds/channel-id
-  "Deletes a given user's reaction to a message with the given emoji (either unicode or the id of a custom emoji). Returns a promise containing a boolean, telling you if it succeeded."
+  "Deletes a given user's reaction to a message with the given emoji (either unicode or \"name:id\" for a custom emoji). Returns a promise containing a boolean, telling you if it succeeded."
   [message-id emoji user-id]
   [])
 
 (defendpoint get-reactions! ::ds/channel-id
-  "Returns a promise containing a list of all users who reacted to the message with the emoji (either unicode or the id of a custom emoji), based on the provided limits."
+  "Returns a promise containing a list of all users who reacted to the message with the emoji (either unicode or \"name:id\" for a custom emoji), based on the provided limits."
   [message-id emoji]
   [before after limit])
 
@@ -426,14 +427,46 @@
   [integration-id]
   [])
 
-(defendpoint get-guild-embed! ::ds/guild-id
-  "Returns a promise containing the guild embed object."
+(defendpoint get-guild-widget-settings! ::ds/guild-id
+  "Returns a promise containing the guild widget settings object."
   []
   [])
 
-(defendpoint modify-guild-embed! ::ds/guild-id
-  "Modifies the guild embed object. Returns a promise containing the modified guild embed object."
+(defn ^:deprecated get-guild-embed!
+  "Returns a promise containing the guild embed object.
+
+  DEPRECATED: Prefer using [[get-guild-widget-settings!]]"
+  {:arglists '([conn guild-id & {:keys [user-agent audit-reason]}])}
+  [& args]
+  (apply get-guild-widget-settings! args))
+(s/fdef get-guild-embed!
+  :args (s/cat :conn ::ds/channel
+               :guild-id ::ds/guild-id
+               :keyword-args (s/keys* :opt-un [::ds/user-agent ::ds/audit-reason]))
+  :ret ::ds/promise)
+
+(defendpoint modify-guild-widget! ::ds/guild-id
+  "Modifies a guild widget object. Returns a promise containing the modified guild widget."
   [embed]
+  [])
+
+(defn ^:deprecated modify-guild-embed!
+  "Modifies the guild embed object. Returns a promise containing the modified guild embed object.
+
+  DEPRECATED: Prefer using [[get-guild-widget-settings!]]"
+  {:arglists '([conn guild-id embed & {:keys [user-agent audit-reason]}])}
+  [& args]
+  (apply modify-guild-widget! args))
+(s/fdef modify-guild-embed!
+  :args (s/cat :conn ::ds/channel
+               :guild-id ::ds/guild-id
+               :embed ::ms/widget
+               :keyword-args (s/keys* :opt-un [::ds/user-agent ::ds/audit-reason]))
+  :ret ::ds/promise)
+
+(defendpoint get-guild-widget! ::ds/guild-id
+  "Returns a promise containing the guild widget object."
+  []
   [])
 
 (defendpoint get-guild-vanity-url! ::ds/guild-id

@@ -4,6 +4,30 @@ Discljord follows semantic versioning.
 
 ## [Unreleased]
 
+## [1.2.0] - 2020-12-09
+### Added
+ - `get-shard-state!`, `add-shards!`, and `remove-shards!` to the `discljord.connections` namespace to allow transferring shards
+ - `discljord.messaging/get-guild-widget!` to fetch the full guild widget json
+ - Support for creating replies
+ - Updated to API v8
+ - `discljord.permissions/permission-flags` as a counterpart to `permission-int`
+ - `discljord.permissions/permission-int` arity to construct custom permission integers
+ - Option to disable transport compression on the gateway api
+ - Namespace with functions to extract information from Discord's snowflake ids
+
+### Changed
+ - Connection functions return an `ex-info` when `intents` are not specified, in compliance with API v8
+
+### Fixed
+ - Failure to resume on several types of connection loss
+ - Inconsistent handling of releasing of the websocket client
+ - `ex-info` values are sent on 429s from HTTP endpoints even if they are later retried
+ - Errors occur when tokens have whitespace at the beginning and ends
+
+### Deprecated
+ - `discljord.messaging/get-guild-embed!`, prefer `get-guild-widget-settings!`
+ - `discljord.messaging/modify-guild-embed!`, prefer `modify-guild-widget!`
+
 ## [1.1.1] - 2020-07-15
 ### Fixed
  - Gateway disconnects when a heartbeat is sent on a closed websocket (for real this time)
@@ -27,6 +51,10 @@ Discljord follows semantic versioning.
  - If the promise returned by `message-create!` contains a body but the response code was not a success, it will be wrapped as the body of an `ex-info`
  - Gateway connections now use zlib transport compression
 
+### Fixed
+ - Gateway disconnects when a heartbeat is sent on a closed websocket
+
+## [1.0.1] - 2020-07-15
 ### Fixed
  - Gateway disconnects when a heartbeat is sent on a closed websocket
 
@@ -229,9 +257,11 @@ Discljord follows semantic versioning.
  - README follows new API
  - Project name from `discljord-functional` to `discljord` 
 
-[Unreleased]: https://github.com/IGJoshua/discljord/compare/1.1.0..develop
+[Unreleased]: https://github.com/IGJoshua/discljord/compare/1.2.0..develop
+[1.2.0]: https://github.com/IGJoshua/discljord/compare/1.1.0..1.2.0
 [1.1.1]: https://github.com/IGJoshua/discljord/compare/1.1.0..1.1.1
 [1.1.0]: https://github.com/IGJoshua/discljord/compare/1.0.0..1.1.0
+[1.0.1]: https://github.com/IGJoshua/discljord/compare/1.0.0..1.0.1
 [1.0.0]: https://github.com/IGJoshua/discljord/compare/0.2.9..1.0.0
 [0.2.9]: https://github.com/IGJoshua/discljord/compare/0.2.8..0.2.9
 [0.2.8]: https://github.com/IGJoshua/discljord/compare/0.2.7..0.2.8

@@ -2,7 +2,6 @@
   "Implementation namespace for `discljord.messaging`."
   (:require
    [clojure.core.async :as a]
-   [clojure.core.async.impl.protocols :as a.proto]
    [clojure.data.json :as json]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
@@ -13,7 +12,7 @@
    [org.httpkit.client :as http]
    [clojure.tools.logging :as log])
   (:import
-   (java.io File Writer)
+   (java.io File)
    (java.net URLEncoder)
    (java.util Date)))
 
@@ -33,12 +32,12 @@
 
 (defn auth-headers
   [token user-agent]
-  {"Authorization" (bot-token token)
+  {"Authorization" token
    "User-Agent"
    (str "DiscordBot ("
         "https://github.com/IGJoshua/discljord"
         ", "
-        "1.1.1"
+        "1.2.0"
         ") "
         user-agent)
    "Content-Type" "application/json"})
@@ -69,10 +68,11 @@
            ~'_ (log/trace "Response:" response#)
            ~status-sym (:status response#)
            ~body-sym (:body response#)]
-       (let [prom-val# ~promise-val]
-         (if (some? prom-val#)
-           (a/>!! prom# prom-val#)
-           (a/close! prom#)))
+       (when-not (= ~status-sym 429)
+         (let [prom-val# ~promise-val]
+           (if (some? prom-val#)
+             (a/>!! prom# prom-val#)
+             (a/close! prom#))))
        response#)))
 
 (defn ^:private json-body
@@ -124,7 +124,7 @@
   (json-body body))
 
 (defmethod dispatch-http :create-message
-  [token endpoint [prom & {:keys [^File file user-agent attachments allowed-mentions stream] :as opts}]]
+  [token endpoint [prom & {:keys [^File file user-agent attachments allowed-mentions stream message-reference] :as opts}]]
   (let [channel-id (-> endpoint
                        ::ms/major-variable
                        ::ms/major-variable-value)
@@ -151,9 +151,10 @@
           body (if (= 2 (int (/ (:status response) 100)))
                  body
                  (ex-info "" body))]
-      (if (some? body)
-        (a/>!! prom body)
-        (a/close! prom)))
+      (when-not (= (:status response) 429)
+        (if (some? body)
+          (a/>!! prom body)
+          (a/close! prom))))
     response))
 
 (defdispatch :create-reaction
@@ -524,16 +525,22 @@
   {}
   (= status 204))
 
-(defdispatch :get-guild-embed
+(defdispatch :get-guild-widget-settings
   [guild-id] [] _ :get _ body
-  (str "/guilds/" guild-id "/embed")
+  (str "/guilds/" guild-id "/widget")
   {}
   (json-body body))
 
-(defdispatch :modify-guild-embed
-  [guild-id embed] [] _ :patch _ body
-  (str "/guilds/" guild-id "/embed")
-  {:body (json/write-str embed)}
+(defdispatch :modify-guild-widget
+  [guild-id widget] [] _ :patch _ body
+  (str "/guilds/" guild-id "/widget")
+  {:body (json/write-str widget)}
+  (json-body body))
+
+(defdispatch :get-guild-widget
+  [guild-id] [] _ :get _ body
+  (str "/guilds/" guild-id "/widget.json")
+  {}
   (json-body body))
 
 (defdispatch :get-guild-vanity-url
@@ -697,9 +704,10 @@
     (let [body (if (= (:status response) 200)
                  (json-body (:body response))
                  (= (:status response) 204))]
-      (if (some? body)
-        (a/>!! prom body)
-        (a/close! prom)))
+      (when-not (= (:status response) 429)
+        (if (some? body)
+          (a/>!! prom body)
+          (a/close! prom))))
     response))
 
 (defdispatch :get-current-application-information
@@ -737,7 +745,7 @@
                    5))
         reset (:x-ratelimit-reset headers)
         reset (if reset
-                (* (Long. ^String reset) 1000)
+                (long (* (Double. ^String reset) 1000))
                 (or (::ms/reset rate-limit)
                     0))
         reset (if (> (or (::ms/reset rate-limit) 0) reset)
@@ -812,8 +820,8 @@
               ;; If we got a 429, wait for the retry time and go again
               (let [retry-after (:retry-after (json-body (:body response)))]
                 (log/warn "Got a 429 response to request" endpoint event-data "with response" response)
-                (log/trace "Retrying after" retry-after "milliseconds")
-                (a/<!! (a/timeout retry-after))
+                (log/trace "Retrying after" retry-after "seconds")
+                (a/<!! (a/timeout (long (* 1000 retry-after))))
                 (recur (make-request endpoint event-data new-bucket)
                        new-bucket))))
           bucket))
@@ -853,7 +861,7 @@
   (let [process {::ms/rate-limits (atom {})
                  ::ms/endpoint-agents {}
                  ::ds/channel (a/chan 1000)
-                 ::ds/token token
+                 ::ds/token (bot-token token)
                  ::ms/global-limit (atom nil)}]
     (a/go-loop [process process]
       (let [[action :as event] (a/<! (::ds/channel process))]
@@ -872,63 +880,3 @@
 (s/fdef stop!
   :args (s/cat :channel ::ds/channel)
   :ret nil?)
-
-(deftype DerefablePromiseChannel [ch ^:unsynchronized-mutable realized?]
-  clojure.lang.IDeref
-  (deref [_]
-    (let [res (a/<!! ch)]
-      (set! realized? true)
-      res))
-
-  clojure.lang.IBlockingDeref
-  (deref [_ timeout timeout-val]
-    (let [res (a/alt!!
-                ch ([v] v)
-                (a/timeout timeout) timeout-val)]
-      (set! realized? true)
-      res))
-
-  clojure.lang.IPending
-  (isRealized [_] realized?)
-
-  a.proto/Channel
-  (closed? [_] (a.proto/closed? ch))
-  (close! [_]
-    (set! realized? true)
-    (a/close! ch))
-
-  a.proto/ReadPort
-  (take! [_ handler]
-    (a.proto/take! ch handler))
-
-  a.proto/WritePort
-  (put! [_ val handler]
-    (a.proto/put! ch val handler)))
-
-(defmethod print-method DerefablePromiseChannel
-  [v w]
-  (.write ^Writer w "#object[")
-  (.write ^Writer w (str (str/replace-first (str v) #"@" " ") " \""))
-  (.write ^Writer w (str v))
-  (.write ^Writer w "\"]"))
-
-(defmethod print-dup DerefablePromiseChannel
-  [o w]
-  (print-ctor o (fn [o w] (print-dup (.-ch ^DerefablePromiseChannel o) w)) w))
-
-(prefer-method print-method DerefablePromiseChannel clojure.lang.IPersistentMap)
-(prefer-method print-method DerefablePromiseChannel clojure.lang.IDeref)
-(prefer-method print-method DerefablePromiseChannel clojure.lang.IBlockingDeref)
-
-(prefer-method print-dup DerefablePromiseChannel clojure.lang.IPersistentMap)
-(prefer-method print-dup DerefablePromiseChannel clojure.lang.IDeref)
-(prefer-method print-dup DerefablePromiseChannel clojure.lang.IBlockingDeref)
-
-(defn derefable-promise-chan
-  "Creates an implementation of [[clojure.lang.IDeref]] which is also a core.async chan."
-  ([]
-   (derefable-promise-chan nil))
-  ([xform]
-   (derefable-promise-chan xform nil))
-  ([xform ex-handler]
-   (DerefablePromiseChannel. (a/promise-chan xform ex-handler) false)))

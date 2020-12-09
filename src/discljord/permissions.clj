@@ -1,5 +1,6 @@
 (ns discljord.permissions
-  "Functions for determining users' permissions.")
+  "Functions for determining users' permissions."
+  (:require [clojure.set :refer [map-invert]]))
 
 (def permissions-bit
   "Map from permission names to the binary flag representation of it."
@@ -35,10 +36,22 @@
    :manage-webooks 0x20000000
    :manage-emojis 0x40000000})
 
+(def permissions-key
+  "Map from binary flag representation to permission name."
+  (map-invert permissions-bit))
+
+(defn permission-flags
+  "Returns a set of all permissions included in a given permission integer."
+  [perms-int]
+  (->> (vals permissions-bit)
+       (filter (comp (complement zero?) (partial bit-and perms-int)))
+       (map permissions-key)
+       (set)))
+
 (defn has-permission-flag?
   "Returns if the given permission integer includes a permission flag.
 
-  `perm` is a keyword from the keys of [[permissions-int]]."
+  `perm` is a keyword from the keys of [[permissions-bit]]."
   [perm perms-int]
   (when perms-int
     (when-let [bit (or (permissions-bit perm)
@@ -48,7 +61,7 @@
 (defn has-permission-flags?
   "Returns if the given permission integer includes all the given permission flags.
 
-  `perm` is a keyword from the keys of [[permissions-int]]."
+  `perm` is a keyword from the keys of [[permissions-bit]]."
   [perms perms-int]
   (every? #(has-permission-flag? % perms-int) perms))
 
@@ -68,7 +81,9 @@
      allow)))
 
 (defn permission-int
-  "Constructs a permissions integer from role permissions integers and overrides.
+  "Constructs a permissions integer from role permissions integers and overrides or a sequence of permissions.
+
+  `perms` is a sequence or collection of permission names (keywords as defined in [[permissions-bit]]).
 
   `everyone` is a permissions integer.
   `roles` is a sequence of permissions integers.
@@ -77,6 +92,8 @@
   from their respective items (everyone, roles, and member overrides).
 
   `roles-overrides` is a sequence of these objects."
+  ([perms]
+   (reduce bit-or 0 (map permissions-bit perms)))
   ([everyone roles]
    (let [perms-int (reduce bit-or 0 (conj roles everyone))]
      (if (has-permission-flag? :administrator perms-int)
@@ -113,7 +130,7 @@
   (let [everyone (:permissions ((:roles guild) (:id guild)))
         roles (user-roles guild user-id-or-member)
         {:keys [permission-overwrites]} ((:channels guild) channel-id)
-        {role-overrides "role" member-overrides "member"} (group-by :type permission-overwrites)
+        {role-overrides 0 member-overrides 1} (group-by :type permission-overwrites)
         member (if (map? user-id-or-member)
                  user-id-or-member
                  ((:members guild) user-id-or-member))

@@ -8,11 +8,11 @@
 
   For example: (api-url (str \"/channels/\" channel-id))"
   [endpoint]
-  (str "https://discordapp.com/api/v6" endpoint))
+  (str "https://discord.com/api/v8" endpoint))
 (s/fdef api-url
   :args (s/cat :url ::ds/url)
   :ret ::ds/url)
 
 (def gateway-url
   "URL used to retrieve the gateway for the bot."
-  "https://discordapp.com/api/gateway/bot?v=6&encoding=json")
+  "https://discord.com/api/gateway/bot?v=8&encoding=json")

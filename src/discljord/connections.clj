@@ -10,7 +10,7 @@
    [discljord.connections.specs :as cs]
    [discljord.http :refer [gateway-url]]
    [discljord.specs :as ds]
-   [discljord.util :refer [bot-token]]
+   [discljord.util :refer [bot-token derefable-promise-chan]]
    [clojure.tools.logging :as log]))
 
 (def gateway-intents #{:guilds :guild-members :guild-bans :guild-emojis
@@ -31,30 +31,35 @@
   Discord.
 
   Keep in mind that Discord sets a limit to how many shards can connect in a
-  given period. This means that communication to Discord may be bounded based
-  on which shard you use to talk to the server immediately after starting the bot.
+  given period. This means that communication to Discord may be bounded based on
+  which shard you use to talk to the server immediately after starting the bot.
 
   `intents` is a set containing keywords representing which events will be sent
-  to the bot by Discord. Valid values for the set are in [[gateway-intents]]."
-  [token out-ch & {:keys [intents]}]
-  (let [token (bot-token token)
-        {:keys [url shard-count session-start-limit]}
-        (impl/get-websocket-gateway gateway-url token)]
-    (if (and url shard-count session-start-limit)
-      (do (when (< (:remaining session-start-limit) shard-count)
-            (throw (ex-info "Not enough remaining identify packets for number of shards."
-                            {:token token
-                             :shard-count shard-count
-                             :remaining-starts (:remaining session-start-limit)
-                             :reset-after (:reset-after session-start-limit)})))
-          (let [communication-chan (a/chan 100)]
-            (binding [impl/*identify-limiter* (agent nil)]
-              (impl/connect-shards! out-ch communication-chan url token intents shard-count (range shard-count)))
-            communication-chan))
-      (log/debug "Unable to recieve gateway information."))))
+  to the bot by Discord. Valid values for the set are in [[gateway-intents]]. If
+  `intents` is unspecified, a [[clojure.core/ex-info]] is returned with a
+  relevant message."
+  [token out-ch & {:keys [intents disable-compression]}]
+  (if-not intents
+    (ex-info "Intents are required as of v8 of the API")
+    (let [token (bot-token token)
+          {:keys [url shard-count session-start-limit]}
+          (impl/get-websocket-gateway gateway-url token)]
+      (if (and url shard-count session-start-limit)
+        (do (when (< (:remaining session-start-limit) shard-count)
+              (throw (ex-info "Not enough remaining identify packets for number of shards."
+                              {:token token
+                               :shard-count shard-count
+                               :remaining-starts (:remaining session-start-limit)
+                               :reset-after (:reset-after session-start-limit)})))
+            (let [communication-chan (a/chan 100)]
+              (binding [impl/*identify-limiter* (agent nil)]
+                (impl/connect-shards! out-ch communication-chan url token intents shard-count (range shard-count)
+                                      (not disable-compression)))
+              communication-chan))
+        (log/debug "Unable to recieve gateway information.")))))
 (s/fdef connect-bot!
   :args (s/cat :token ::ds/token :out-ch ::ds/channel
-               :keyword-args (s/keys* :opt-un [::cs/intents]))
+               :keyword-args (s/keys* :opt-un [::cs/intents ::cs/disable-compression]))
   :ret ::ds/channel)
 
 (defn get-websocket-gateway
@@ -94,28 +99,31 @@
   amount of synchronization between calls to [[connect-shards!]] must be had.
   Additional calls should only be made five seconds after the
   `:connected-all-shards` event has been received."
-  [token out-ch gateway shard-ids & {:keys [intents identify-when]}]
-  (let [token (bot-token token)
-        {:keys [url shard-count session-start-limit]} gateway]
-    (if (and url shard-count session-start-limit)
-      (do (when (< (:remaining session-start-limit) (count shard-ids))
-            (throw (ex-info "Not enough remaining identify packets for number of shards."
-                            {:token token
-                             :shard-count (count shard-ids)
-                             :shard-ids shard-ids
-                             :remaining-starts (:remaining session-start-limit)
-                             :reset-after (:reset-after session-start-limit)})))
-          (let [communication-chan (a/chan 100)]
-            (binding [impl/*handle-re-shard* false
-                      impl/*identify-when* identify-when
-                      impl/*identify-limiter* (agent nil)]
-              (impl/connect-shards! out-ch communication-chan url token intents shard-count shard-ids))
-            communication-chan))
-      (log/debug "Unable to receive gateway information."))))
+  [token out-ch gateway shard-ids & {:keys [intents identify-when disable-compression]}]
+  (if-not intents
+    (ex-info "Intents are required as of v8 of the API")
+    (let [token (bot-token token)
+          {:keys [url shard-count session-start-limit]} gateway]
+      (if (and url shard-count session-start-limit)
+        (do (when (< (:remaining session-start-limit) (count shard-ids))
+              (throw (ex-info "Not enough remaining identify packets for number of shards."
+                              {:token token
+                               :shard-count (count shard-ids)
+                               :shard-ids shard-ids
+                               :remaining-starts (:remaining session-start-limit)
+                               :reset-after (:reset-after session-start-limit)})))
+            (let [communication-chan (a/chan 100)]
+              (binding [impl/*handle-re-shard* false
+                        impl/*identify-when* identify-when
+                        impl/*identify-limiter* (agent nil)]
+                (impl/connect-shards! out-ch communication-chan url token intents shard-count shard-ids
+                                      (not disable-compression)))
+              communication-chan))
+        (log/debug "Unable to receive gateway information.")))))
 (s/fdef connect-shards!
   :args (s/cat :token ::ds/token :out-ch ::ds/channel
                :gateway ::cs/gateway :shard-ids (s/coll-of nat-int?)
-               :keyword-args (s/keys* :opt-un [::cs/intents ::cs/identify-when]))
+               :keyword-args (s/keys* :opt-un [::cs/intents ::cs/identify-when ::cs/disable-compression]))
   :ret ::ds/channel)
 
 (defn disconnect-bot!
@@ -125,6 +133,51 @@
   nil)
 (s/fdef disconnect-bot!
   :args (s/cat :channel ::ds/channel)
+  :ret nil?)
+
+(defn get-shard-state!
+  "Fetches the current shard session state.
+
+  `shards` is an optional set of shard state values. If it is not included, all
+  shards will be fetched. Any shard which matches with the given keys will be
+  included.
+
+  Returns a promise which can be derefed or taken off of like a channel."
+  ([connection-ch] (get-shard-state! connection-ch nil))
+  ([connection-ch shards]
+   (let [prom (derefable-promise-chan)]
+     (a/put! connection-ch [:get-shard-state
+                            (when shards
+                              (set (map #(dissoc % :seq) shards))) prom])
+     prom)))
+(s/fdef get-shard-state!
+  :args (s/cat :connection-ch ::ds/channel
+               :shards (s/? (s/coll-of ::cs/shard :kind set?)))
+  :ret ::ds/promise)
+
+(defn add-shards!
+  "Adds new shard connections using state fetched with `get-shard-state!`."
+  [connection-ch new-shards intents & {:keys [disable-compression]}]
+  (a/put! connection-ch [:connect-shards new-shards intents disable-compression])
+  nil)
+(s/fdef add-shards!
+  :args (s/cat :connection-ch ::ds/channel
+               :new-shards ::cs/shard
+               :intents ::cs/intents
+               :keyword-args (s/keys* :opt-un [::cs/disable-compression]))
+  :ret nil?)
+
+(defn remove-shards!
+  "Removes shards matching any of the passed shards.
+
+  This will ignore the `:seq` keyword on any passed shard, but otherwise is as
+  one of the shards returned from `get-shard-state!`."
+  [connection-ch shards]
+  (a/put! connection-ch [:disconnect-shards (set (map #(dissoc % :seq) shards))])
+  nil)
+(s/fdef remove-shards!
+  :args (s/cat :connection-ch ::ds/channel
+               :shards (s/coll-of ::cs/shard :kind set?))
   :ret nil?)
 
 (defn guild-request-members!

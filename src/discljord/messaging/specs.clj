@@ -205,6 +205,8 @@
                                             :message-reference/channel_id
                                             :message-reference/guild_id]))
 
+;; TODO spec https://discord.com/developers/docs/interactions/slash-commands#data-models-and-types
+
 (s/def :widget/enabled boolean?)
 (s/def :widget/channel_id ::ds/snowflake)
 (s/def ::widget (s/keys :req-un [:widget/enabled :widget/channel_id]))

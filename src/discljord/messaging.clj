@@ -551,6 +551,8 @@
 ;; --------------------------------------------------
 ;; Slash Commands
 
+;; TODO major variable application id?
+
 (defendpoint get-global-application-commands! nil
   "Returns a promise containing a vector of application command objects."
   [application-id]
@@ -578,8 +580,6 @@
   [application-id command-id]
   [])
 
-;; TODO major variable for guild commands?
-
 (defendpoint get-guild-application-commands! nil
   "Returns a promise containing a vector of application command objects."
   [application-id guild-id]
@@ -604,6 +604,52 @@
   
   Returns a promise containing a boolean of if it succeeded."
   [application-id guild-id command-id]
+  [])
+
+
+;; -------------------------------------------------
+;; Interactions
+
+(defendpoint create-interaction-response! nil
+  "Sends a response to an interaction event.
+  
+  Returns ???" ;; TODO
+  [interaction-id interaction-token]
+  [type data])
+
+(defendpoint edit-original-interaction-response! nil
+  "Edits the inital response to the given interaction.
+  
+  Returns ???" ;; TODO
+  [application-id interaction-token]
+  [content embeds allowed-mentions])
+
+(defendpoint delete-original-interaction-response! nil
+  "Deletes the initial response to the given interaction.
+  
+  Returns a promise containing a boolean of if it succeeded."
+  [application-id interaction-token]
+  [])
+
+(defendpoint create-followup-message! nil
+  "Creates a followup message for the given interaction.
+  
+  Returns ???" ;; TODO
+  [application-id interaction-token]
+  [content embeds allowed-mentions]) ;; TODO unclear if other execute-webhook fields are allowed
+
+(defendpoint edit-followup-message! nil
+  "Edits a followup message to an interaction by its id.
+  
+  Returns ???" ;; TODO
+  [application-id interaction-token message-id]
+  [content embeds allowed-mentions])
+
+(defendpoint delete-followup-message! nil
+  "Deletes a followup message to an interaction by its id.
+  
+  Returns a promise containing a boolean of if it succeeded."
+  [application-id interaction-token message-id]
   [])
 
 ;; --------------------------------------------------

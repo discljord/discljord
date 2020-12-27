@@ -629,6 +629,8 @@
   {}
   (json-body body))
 
+;; TODO slash commands & interactions implementation
+
 (defdispatch :create-webhook
   [channel-id name] [avatar] _ :post _ body
   (str "/channels/" channel-id "/webhooks")

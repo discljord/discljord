@@ -553,7 +553,7 @@
 
 (defendpoint get-global-application-commands! nil
   "Returns a promise containing a vector of application command objects."
-  [app-id]
+  [application-id]
   [])
 
 (defendpoint create-global-application-command! nil
@@ -561,49 +561,49 @@
   
   New global commands will be available in all guilds after 1 hour.
   Returns a promise containing the new application command object."
-  [app-id]
+  [application-id]
   [name description options])
 
 (defendpoint edit-global-application-command! nil
   "Updates an existing global slash command by its id.
   
   Returns a promise containing the updated application command object."
-  [app-id cmd-id]
+  [application-id command-id]
   [name description options])
 
 (defendpoint delete-global-application-command! nil
   "Deletes an existing global slash command by its id.
   
   Returns a promise containing a boolean of if it succeeded."
-  [app-id cmd-id]
+  [application-id command-id]
   [])
 
 ;; TODO major variable for guild commands?
 
 (defendpoint get-guild-application-commands! nil
   "Returns a promise containing a vector of application command objects."
-  [app-id guild-id]
+  [application-id guild-id]
   [])
 
 (defendpoint create-guild-application-command! nil
   "Creates or updates a guild slash command. 
   
   Returns a promise containing the new application command object."
-  [app-id guild-id]
+  [application-id guild-id]
   [name description options])
 
 (defendpoint edit-guild-application-command! nil
   "Updates an existing guild slash command by its id.
   
   Returns a promise containing the updated application command object."
-  [app-id guild-id cmd-id]
+  [application-id guild-id command-id]
   [name description options])
 
 (defendpoint delete-guild-application-command! nil
   "Deletes an existing guild slash command by its id.
   
   Returns a promise containing a boolean of if it succeeded."
-  [app-id guild-id cmd-id]
+  [application-id guild-id command-id]
   [])
 
 ;; --------------------------------------------------

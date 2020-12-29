@@ -706,6 +706,20 @@
   [webhook-token]
   [content file embeds wait username avatar-url tts allowed-mentions])
 
+(defendpoint edit-webhook-message! ::ds/webhook-id
+  "Edits a previously-sent webhook message from the same token.
+  
+  Returns ???"
+  [webhook-token message-id]
+  [content embeds allowed-mentions])
+
+(defendpoint delete-webhook-message! ::ds/webhook-id
+  "Deletes a messages that was sent from the given webhook.
+  
+  Returns a promise containing a boolean of if it succeeded."
+  [webhook-token message-id]
+  [])
+
 #_(defendpoint execute-slack-compatible-webhook! ::ds/webhook-id
    ""
    [webhook-token]

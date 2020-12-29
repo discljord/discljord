@@ -631,6 +631,69 @@
 
 ;; TODO slash commands & interactions implementation
 
+(defn- command-params [name description options]
+  {:body (json/write-str (cond-> {:name name
+                                  :description description}
+                                 options (assoc :options options)))})
+
+(defn- global-cmd-url 
+  ([application-id] (str "/applications/" application-id "/commands"))
+  ([application-id command-id] (str (global-cmd-url application-id) \/ command-id)))
+  
+
+(defdispatch :get-global-application-commands
+  [_ application-id] [] _ :get _ body
+  (global-cmd-url application-id)
+  {}
+  (json-body body))
+
+
+(defdispatch :create-global-application-command
+  [_ application-id name description] [options] _ :post _ body
+  (global-cmd-url application-id)
+  (command-params name description options)
+  (json-body body))
+
+(defdispatch :edit-global-application-command 
+  [_ application-id command-id name description] [options] _ :patch _ body
+  (global-cmd-url application-id command-id)
+  (command-params name description options)
+  (json-body body))
+
+(defdispatch :delete-global-application-command
+  [_ application-id command-id] [] _ :delete status _
+  (global-cmd-url application-id command-id)
+  {}
+  (= status 204))
+
+(defn- guild-cmd-url
+  ([application-id guild-id] (str "/applications/" application-id "/guilds/" guild-id))
+  ([application-id guild-id command-id] (str (guild-cmd-url application-id guild-id) \/ command-id)))
+
+(defdispatch :get-guild-application-commands
+  [_ application-id guild-id] [] _ :get _ body
+  (guild-cmd-url application-id guild-id)
+  {}
+  (json-body body))
+
+(defdispatch :create-guild-application-command
+  [_ application-id guild-id name description] [options] _ :post _ body
+  (guild-cmd-url application-id guild-id)
+  (command-params name description options)
+  (json-body body))
+
+(defdispatch :edit-guild-application-command
+  [_ application-id guild-id command-id name description] [options] _ :patch _ body
+  (guild-cmd-url application-id guild-id command-id)
+  (command-params name description options)
+  (json-body body))
+
+(defdispatch :delete-guild-application-command
+  [_ application-id guild-id command-id] [] _ :delete status _
+  (guild-cmd-url application-id guild-id command-id)
+  {}
+  (= status 204))
+
 (defdispatch :create-webhook
   [channel-id name] [avatar] _ :post _ body
   (str "/channels/" channel-id "/webhooks")

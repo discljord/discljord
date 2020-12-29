@@ -552,6 +552,7 @@
 ;; Slash Commands
 
 ;; TODO major variable application id?
+;; TODO required params positional?
 
 (defendpoint get-global-application-commands! nil
   "Returns a promise containing a vector of application command objects."
@@ -563,15 +564,15 @@
   
   New global commands will be available in all guilds after 1 hour.
   Returns a promise containing the new application command object."
-  [application-id]
-  [name description options])
+  [application-id name description]
+  [options])
 
 (defendpoint edit-global-application-command! nil
   "Updates an existing global slash command by its id.
   
   Returns a promise containing the updated application command object."
-  [application-id command-id]
-  [name description options])
+  [application-id command-id name description]
+  [options])
 
 (defendpoint delete-global-application-command! nil
   "Deletes an existing global slash command by its id.
@@ -589,15 +590,15 @@
   "Creates or updates a guild slash command. 
   
   Returns a promise containing the new application command object."
-  [application-id guild-id]
-  [name description options])
+  [application-id guild-id name description]
+  [options])
 
 (defendpoint edit-guild-application-command! nil
   "Updates an existing guild slash command by its id.
   
   Returns a promise containing the updated application command object."
-  [application-id guild-id command-id]
-  [name description options])
+  [application-id guild-id command-id name description]
+  [options])
 
 (defendpoint delete-guild-application-command! nil
   "Deletes an existing guild slash command by its id.
@@ -614,8 +615,8 @@
   "Sends a response to an interaction event.
   
   Returns ???" ;; TODO
-  [interaction-id interaction-token]
-  [type data])
+  [interaction-id interaction-token type]
+  [data])
 
 (defendpoint edit-original-interaction-response! nil
   "Edits the inital response to the given interaction.

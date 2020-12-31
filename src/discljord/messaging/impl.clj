@@ -694,6 +694,50 @@
   {}
   (= status 204))
 
+(defdispatch :create-interaction-response
+  [_ interaction-id interaction-token type] [data] _ :post _ body
+  (str "/interactions/" interaction-id \/ interaction-token "/callback")
+  {:body (cond-> {:type type} data (assoc :data data))}
+  (json-body body))
+
+;; TODO also use for other applicable implementations
+(defmacro ^:private def-message-dispatch [name params method url]
+  (let [[opts status body] (repeatedly gensym)
+        delete (= method :delete)]
+    `(defdispatch ~name  
+       ~params [] ~opts ~method ~status ~body
+       ~url
+       ~(if delete `{} `{:body (json/write-str ~opts)})
+       ~(if delete `(= ~status 204) `(json-body ~body)))))
+
+(defn- interaction-resp-url 
+  ([application-id interaction-token]
+   (str "/webhooks/" application-id \/ interaction-token))
+  ([application-id interaction-token message] 
+   (str (interaction-resp-url application-id interaction-token) "/messages/" message)))
+  
+
+(def-message-dispatch :edit-original-interaction-response
+  [_ application-id interaction-token] :patch
+  (interaction-resp-url application-id interaction-token "@original"))
+
+(def-message-dispatch :delete-original-interaction-response
+  [_ application-id interaction-token] :delete
+  (interaction-resp-url application-id interaction-token "@original"))
+
+(def-message-dispatch :create-followup-message
+  [_ application-id interaction-token] :post
+  (interaction-resp-url application-id interaction-token))
+
+(def-message-dispatch :edit-followup-message
+  [_ application-id interaction-token message-id] :patch
+  (interaction-resp-url application-id interaction-token message-id))
+
+(def-message-dispatch :delete-followup-message
+  [_ application-id interaction-token message-id] :delete
+  (interaction-resp-url application-id interaction-token message-id))
+  
+
 (defdispatch :create-webhook
   [channel-id name] [avatar] _ :post _ body
   (str "/channels/" channel-id "/webhooks")

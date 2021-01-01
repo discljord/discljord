@@ -130,19 +130,13 @@
                        ::ms/major-variable-value)
         payload (conform-to-json (dissoc opts :user-agent :file :attachments :stream))
         payload-json (json/write-str payload)
-        multipart [{:name "payload_json" :content payload-json}]
-        multipart (if file
-                    (conj multipart {:name "file" :content file :filename (.getName file)})
-                    multipart)
-        multipart (if attachments
-                    (into multipart (for [attachment attachments]
-                                      {:name "attachment"
-                                       :content attachment
-                                       :filename (.getName ^File attachment)}))
-                    multipart)
-        multipart (if stream
-                    (conj multipart (assoc stream :name "file"))
-                    multipart)
+        multipart (cond-> [{:name "payload_json" :content payload-json}]
+                          file (conj {:name "file" :content file :filename (.getName file)})
+                          attachments (into (for [attachment attachments]
+                                              {:name "attachment"
+                                               :content attachment
+                                               :filename (.getName ^File attachment)}))
+                          stream (conj (assoc stream :name "file")))
         response @(http/post (api-url (str "/channels/" channel-id "/messages"))
                              {:headers (assoc (auth-headers token user-agent)
                                               "Content-Type" "multipart/form-data")

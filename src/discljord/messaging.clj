@@ -549,111 +549,6 @@
   [])
 
 ;; --------------------------------------------------
-;; Slash Commands
-
-;; TODO major variable application id?
-;; TODO required params positional?
-
-(defendpoint get-global-application-commands! nil
-  "Returns a promise containing a vector of application command objects."
-  [application-id]
-  [])
-
-(defendpoint create-global-application-command! nil
-  "Creates or updates a global slash command. 
-  
-  New global commands will be available in all guilds after 1 hour.
-  Returns a promise containing the new application command object."
-  [application-id name description]
-  [options])
-
-(defendpoint edit-global-application-command! nil
-  "Updates an existing global slash command by its id.
-  
-  Returns a promise containing the updated application command object."
-  [application-id command-id name description]
-  [options])
-
-(defendpoint delete-global-application-command! nil
-  "Deletes an existing global slash command by its id.
-  
-  Returns a promise containing a boolean of if it succeeded."
-  [application-id command-id]
-  [])
-
-(defendpoint get-guild-application-commands! nil
-  "Returns a promise containing a vector of application command objects."
-  [application-id guild-id]
-  [])
-
-(defendpoint create-guild-application-command! nil
-  "Creates or updates a guild slash command. 
-  
-  Returns a promise containing the new application command object."
-  [application-id guild-id name description]
-  [options])
-
-(defendpoint edit-guild-application-command! nil
-  "Updates an existing guild slash command by its id.
-  
-  Returns a promise containing the updated application command object."
-  [application-id guild-id command-id name description]
-  [options])
-
-(defendpoint delete-guild-application-command! nil
-  "Deletes an existing guild slash command by its id.
-  
-  Returns a promise containing a boolean of if it succeeded."
-  [application-id guild-id command-id]
-  [])
-
-
-;; -------------------------------------------------
-;; Interactions
-
-(defendpoint create-interaction-response! nil
-  "Sends a response to an interaction event.
-  
-  Returns ???" ;; TODO
-  [interaction-id interaction-token type]
-  [data])
-
-(defendpoint edit-original-interaction-response! nil
-  "Edits the inital response to the given interaction.
-  
-  Returns ???" ;; TODO
-  [application-id interaction-token]
-  [content embeds allowed-mentions])
-
-(defendpoint delete-original-interaction-response! nil
-  "Deletes the initial response to the given interaction.
-  
-  Returns a promise containing a boolean of if it succeeded."
-  [application-id interaction-token]
-  [])
-
-(defendpoint create-followup-message! nil
-  "Creates a followup message for the given interaction.
-  
-  Returns ???" ;; TODO
-  [application-id interaction-token]
-  [content embeds allowed-mentions]) ;; TODO unclear if other execute-webhook fields are allowed
-
-(defendpoint edit-followup-message! nil
-  "Edits a followup message to an interaction by its id.
-  
-  Returns ???" ;; TODO
-  [application-id interaction-token message-id]
-  [content embeds allowed-mentions])
-
-(defendpoint delete-followup-message! nil
-  "Deletes a followup message to an interaction by its id.
-  
-  Returns a promise containing a boolean of if it succeeded."
-  [application-id interaction-token message-id]
-  [])
-
-;; --------------------------------------------------
 ;; Webhook
 
 (defendpoint create-webhook! ::ds/channel-id
@@ -729,6 +624,108 @@
    ""
    [webhook-token]
    [wait])
+
+;; --------------------------------------------------
+;; Slash Commands
+
+(defendpoint get-global-application-commands! ::ds/application-id
+  "Returns a promise containing a vector of application command objects."
+  []
+  [])
+
+(defendpoint create-global-application-command! ::ds/application-id
+  "Creates or updates a global slash command. 
+  
+  New global commands will be available in all guilds after 1 hour.
+  Returns a promise containing the new application command object."
+  [name description]
+  [options])
+
+(defendpoint edit-global-application-command! ::ds/application-id
+  "Updates an existing global slash command by its id.
+  
+  Returns a promise containing the updated application command object."
+  [command-id name description]
+  [options])
+
+(defendpoint delete-global-application-command! ::ds/application-id
+  "Deletes an existing global slash command by its id.
+  
+  Returns a promise containing a boolean of if it succeeded."
+  [command-id]
+  [])
+
+(defendpoint get-guild-application-commands! ::ds/application-id
+  "Returns a promise containing a vector of application command objects."
+  [guild-id]
+  [])
+
+(defendpoint create-guild-application-command! ::ds/application-id
+  "Creates or updates a guild slash command. 
+  
+  Returns a promise containing the new application command object."
+  [guild-id name description]
+  [options])
+
+(defendpoint edit-guild-application-command! ::ds/application-id
+  "Updates an existing guild slash command by its id.
+  
+  Returns a promise containing the updated application command object."
+  [guild-id command-id name description]
+  [options])
+
+(defendpoint delete-guild-application-command! ::ds/application-id
+  "Deletes an existing guild slash command by its id.
+  
+  Returns a promise containing a boolean of if it succeeded."
+  [guild-id command-id]
+  [])
+
+
+;; -------------------------------------------------
+;; Interactions
+
+(defendpoint create-interaction-response! nil
+  "Sends a response to an interaction event.
+  
+  Returns ???" ;; TODO
+  [interaction-id interaction-token type]
+  [data])
+
+(defendpoint edit-original-interaction-response! ::ds/application-id
+  "Edits the inital response to the given interaction.
+  
+  Returns ???" ;; TODO
+  [interaction-token]
+  [content embeds allowed-mentions])
+
+(defendpoint delete-original-interaction-response! ::ds/application-id
+  "Deletes the initial response to the given interaction.
+  
+  Returns a promise containing a boolean of if it succeeded."
+  [interaction-token]
+  [])
+
+(defendpoint create-followup-message! ::ds/application-id
+  "Creates a followup message for the given interaction.
+  
+  Returns ???" ;; TODO
+  [interaction-token]
+  [content file embeds wait username avatar-url tts allowed-mentions]) 
+
+(defendpoint edit-followup-message! ::ds/application-id
+  "Edits a followup message to an interaction by its id.
+  
+  Returns ???" ;; TODO
+  [interaction-token message-id]
+  [content embeds allowed-mentions])
+
+(defendpoint delete-followup-message! ::ds/application-id
+  "Deletes a followup message to an interaction by its id.
+  
+  Returns a promise containing a boolean of if it succeeded."
+  [interaction-token message-id]
+  [])
 
 (defendpoint get-current-application-information! nil
   "Returns  a promise containing the bot's OAuth2 application info."

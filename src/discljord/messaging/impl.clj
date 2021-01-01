@@ -751,26 +751,26 @@
   
 
 (defdispatch :get-global-application-commands
-  [_ application-id] [] _ :get _ body
+  [application-id] [] _ :get _ body
   (global-cmd-url application-id)
   {}
   (json-body body))
 
 
 (defdispatch :create-global-application-command
-  [_ application-id name description] [options] _ :post _ body
+  [application-id name description] [options] _ :post _ body
   (global-cmd-url application-id)
   (command-params name description options)
   (json-body body))
 
 (defdispatch :edit-global-application-command 
-  [_ application-id command-id name description] [options] _ :patch _ body
+  [application-id command-id name description] [options] _ :patch _ body
   (global-cmd-url application-id command-id)
   (command-params name description options)
   (json-body body))
 
 (defdispatch :delete-global-application-command
-  [_ application-id command-id] [] _ :delete status _
+  [application-id command-id] [] _ :delete status _
   (global-cmd-url application-id command-id)
   {}
   (= status 204))
@@ -780,25 +780,25 @@
   ([application-id guild-id command-id] (str (guild-cmd-url application-id guild-id) \/ command-id)))
 
 (defdispatch :get-guild-application-commands
-  [_ application-id guild-id] [] _ :get _ body
+  [application-id guild-id] [] _ :get _ body
   (guild-cmd-url application-id guild-id)
   {}
   (json-body body))
 
 (defdispatch :create-guild-application-command
-  [_ application-id guild-id name description] [options] _ :post _ body
+  [application-id guild-id name description] [options] _ :post _ body
   (guild-cmd-url application-id guild-id)
   (command-params name description options)
   (json-body body))
 
 (defdispatch :edit-guild-application-command
-  [_ application-id guild-id command-id name description] [options] _ :patch _ body
+  [application-id guild-id command-id name description] [options] _ :patch _ body
   (guild-cmd-url application-id guild-id command-id)
   (command-params name description options)
   (json-body body))
 
 (defdispatch :delete-guild-application-command
-  [_ application-id guild-id command-id] [] _ :delete status _
+  [application-id guild-id command-id] [] _ :delete status _
   (guild-cmd-url application-id guild-id command-id)
   {}
   (= status 204))
@@ -810,11 +810,11 @@
   (json-body body))
 
 (def-message-dispatch :edit-original-interaction-response
-  [_ application-id interaction-token] :patch
+  [application-id interaction-token] :patch
   (webhook-url application-id interaction-token "@original"))
 
 (def-message-dispatch :delete-original-interaction-response
-  [_ application-id interaction-token] :delete
+  [application-id interaction-token] :delete
   (webhook-url application-id interaction-token "@original"))
 
 (defmethod dispatch-http :create-followup-message
@@ -822,11 +822,11 @@
   (execute-webhook token endpoint data))
 
 (def-message-dispatch :edit-followup-message
-  [_ application-id interaction-token message-id] :patch
+  [application-id interaction-token message-id] :patch
   (webhook-url application-id interaction-token message-id))
 
 (def-message-dispatch :delete-followup-message
-  [_ application-id interaction-token message-id] :delete
+  [application-id interaction-token message-id] :delete
   (webhook-url application-id interaction-token message-id))
 
 

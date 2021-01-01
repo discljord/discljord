@@ -2,7 +2,7 @@
   (:require [clojure.spec.alpha :as s]
             [discljord.specs :as ds]))
 
-(s/def ::major-variable-type #{::ds/guild-id ::ds/channel-id ::ds/webhook-id})
+(s/def ::major-variable-type #{::ds/guild-id ::ds/channel-id ::ds/webhook-id ::ds/application-id})
 (s/def ::major-variable-value ::ds/snowflake)
 (s/def ::major-variable (s/keys :req [::major-variable-type
                                       ::major-variable-value]))

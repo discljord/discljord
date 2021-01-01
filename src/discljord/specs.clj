@@ -34,4 +34,5 @@
 (s/def ::channel-id ::snowflake)
 (s/def ::guild-id ::snowflake)
 (s/def ::user-id ::snowflake)
+(s/def ::application-id ::snowflake)
 

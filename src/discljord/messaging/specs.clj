@@ -236,7 +236,7 @@
                                                :command.option.choice/value]))
 
 (s/def :command.option/choices (s/coll-of :command.option/choice))
-(s/def :command.option/options (s/coll-of :command/option)) ;; FIXME forward declaration
+(s/def :command.option/options ::command-options) 
 
 (s/def :command/option (s/keys :req-un [:command.option/type
                                         :command.option/name

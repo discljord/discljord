@@ -629,7 +629,116 @@
   {}
   (json-body body))
 
-;; TODO slash commands & interactions implementation
+
+
+;; TODO also use for other applicable implementations
+(defmacro ^:private def-message-dispatch [name params method url]
+  (let [[opts status body] (repeatedly gensym)
+        delete (= method :delete)]
+    `(defdispatch ~name  
+       ~params [] ~opts ~method ~status ~body
+       ~url
+       ~(if delete `{} `{:body (json/write-str ~opts)})
+       ~(if delete `(= ~status 204) `(json-body ~body)))))
+
+(defn- webhook-url 
+  ([id token]
+   (str "/webhooks/" id \/ token))
+  ([id token message-id] 
+   (str (webhook-msg-url id token) "/messages/" message-id)))
+  
+(defdispatch :create-webhook
+  [channel-id name] [avatar] _ :post _ body
+  (str "/channels/" channel-id "/webhooks")
+  {:body (json/write-str {:name name
+                          :avatar avatar})}
+  (json-body body))
+
+(defdispatch :get-channel-webhooks
+  [channel-id] [] _ :get _ body
+  (str "/channels/" channel-id "/webhooks")
+  {}
+  (json-body body))
+
+(defdispatch :get-guild-webhooks
+  [guild-id] [] _ :get _ body
+  (str "/guilds/" guild-id "/webhooks")
+  {}
+  (json-body body))
+
+(defdispatch :get-webhook
+  [webhook-id] [] _ :get _ body
+  (str "/webhooks/" webhook-id)
+  {}
+  (json-body body))
+
+(defdispatch :get-webhook-with-token
+  [webhook-id webhook-token] [] _ :get _ body
+  (webhook-url webhook-id webhook-token)
+  {}
+  (json-body body))
+
+(defdispatch :modify-webhook
+  [webhook-id] [] opts :patch _ body
+  (str "/webhooks/" webhook-id)
+  {:body (json/write-str (conform-to-json opts))}
+  (json-body body))
+
+(defdispatch :modify-webhook-with-token
+  [webhook-id webhook-token] [] opts :patch _ body
+  (webhook-url webhook-id webhook-token)
+  {:body (json/write-str opts)}
+  (json-body body))
+
+(defdispatch :delete-webhook
+  [webhook-id] [] _ :delete status _
+  (str "/webhooks/" webhook-id)
+  {}
+  (= status 204))
+
+(defdispatch :delete-webhook-with-token
+  [webhook-id webhook-token] [] _ :delete status _
+  (webhook-url webhook-id webhook-token)
+  {}
+  (= status 204))
+
+(defn- execute-webhook 
+  [token endpoint [prom webhook-token & {:keys [^java.io.File file user-agent wait] :as opts
+                                           :or {wait false}}]]
+  (let [webhook-id (-> endpoint
+                       ::ms/major-variable
+                       ::ms/major-variable-value)
+        payload (conform-to-json (dissoc opts :user-agent :file))
+        payload-json (json/write-str payload)
+        multipart (cond-> [{:name "payload_json" :content payload-json}]
+                          file (conj  {:name "file" :content file :filename (.getName file)}))
+        response @(http/post (api-url (webhook-url webhook-id webhook-token))
+                             {:query-params {:wait wait}
+                              :headers (assoc (auth-headers token user-agent)
+                                              "Content-Type" "multipart/form-data")
+                              :multipart multipart})]
+    (let [body (if (= (:status response) 200)
+                 (json-body (:body response))
+                 (= (:status response) 204))]
+      (when-not (= (:status response) 429)
+        (if (some? body)
+          (a/>!! prom body)
+          (a/close! prom))))
+    response))
+
+
+(defmethod dispatch-http :execute-webhook
+  [token endpoint data]
+  (execute-webhook token endpoint data))
+
+(def-message-dispatch :edit-webhook-message
+  [webhook-id webhook-token message-id] :patch
+  (webhook-url webhook-id webhook-token message-id))
+
+(def-message-dispatch :delete-webhook-message
+  [webhook-id webhook-token message-id] :delete
+  (webhook-url webhook-id webhook-token message-id))
+
 
 (defn- command-params [name description options]
   {:body (json/write-str (cond-> {:name name
@@ -700,124 +809,26 @@
   {:body (cond-> {:type type} data (assoc :data data))}
   (json-body body))
 
-;; TODO also use for other applicable implementations
-(defmacro ^:private def-message-dispatch [name params method url]
-  (let [[opts status body] (repeatedly gensym)
-        delete (= method :delete)]
-    `(defdispatch ~name  
-       ~params [] ~opts ~method ~status ~body
-       ~url
-       ~(if delete `{} `{:body (json/write-str ~opts)})
-       ~(if delete `(= ~status 204) `(json-body ~body)))))
-
-(defn- interaction-resp-url 
-  ([application-id interaction-token]
-   (str "/webhooks/" application-id \/ interaction-token))
-  ([application-id interaction-token message] 
-   (str (interaction-resp-url application-id interaction-token) "/messages/" message)))
-  
-
 (def-message-dispatch :edit-original-interaction-response
   [_ application-id interaction-token] :patch
-  (interaction-resp-url application-id interaction-token "@original"))
+  (webhook-url application-id interaction-token "@original"))
 
 (def-message-dispatch :delete-original-interaction-response
   [_ application-id interaction-token] :delete
-  (interaction-resp-url application-id interaction-token "@original"))
+  (webhook-url application-id interaction-token "@original"))
 
-(def-message-dispatch :create-followup-message
-  [_ application-id interaction-token] :post
-  (interaction-resp-url application-id interaction-token))
+(defmethod dispatch-http :create-followup-message
+  [token endpoint data]
+  (execute-webhook token endpoint data))
 
 (def-message-dispatch :edit-followup-message
   [_ application-id interaction-token message-id] :patch
-  (interaction-resp-url application-id interaction-token message-id))
+  (webhook-url application-id interaction-token message-id))
 
 (def-message-dispatch :delete-followup-message
   [_ application-id interaction-token message-id] :delete
-  (interaction-resp-url application-id interaction-token message-id))
-  
+  (webhook-url application-id interaction-token message-id))
 
-(defdispatch :create-webhook
-  [channel-id name] [avatar] _ :post _ body
-  (str "/channels/" channel-id "/webhooks")
-  {:body (json/write-str {:name name
-                          :avatar avatar})}
-  (json-body body))
-
-(defdispatch :get-channel-webhooks
-  [channel-id] [] _ :get _ body
-  (str "/channels/" channel-id "/webhooks")
-  {}
-  (json-body body))
-
-(defdispatch :get-guild-webhooks
-  [guild-id] [] _ :get _ body
-  (str "/guilds/" guild-id "/webhooks")
-  {}
-  (json-body body))
-
-(defdispatch :get-webhook
-  [webhook-id] [] _ :get _ body
-  (str "/webhooks/" webhook-id)
-  {}
-  (json-body body))
-
-(defdispatch :get-webhook-with-token
-  [webhook-id webhook-token] [] _ :get _ body
-  (str "/webhooks/" webhook-id "/" webhook-token)
-  {}
-  (json-body body))
-
-(defdispatch :modify-webhook
-  [webhook-id] [] opts :patch _ body
-  (str "/webhooks/" webhook-id)
-  {:body (json/write-str (conform-to-json opts))}
-  (json-body body))
-
-(defdispatch :modify-webhook-with-token
-  [webhook-id webhook-token] [] opts :patch _ body
-  (str "/webhooks/" webhook-id "/" webhook-token)
-  {:body (json/write-str opts)}
-  (json-body body))
-
-(defdispatch :delete-webhook
-  [webhook-id] [] _ :delete status _
-  (str "/webhooks/" webhook-id)
-  {}
-  (= status 204))
-
-(defdispatch :delete-webhook-with-token
-  [webhook-id webhook-token] [] _ :delete status _
-  (str "/webhooks/" webhook-id "/" webhook-token)
-  {}
-  (= status 204))
-
-(defmethod dispatch-http :execute-webhook
-  [token endpoint [prom webhook-token & {:keys [^java.io.File file user-agent wait] :as opts
-                                           :or {wait false}}]]
-  (let [webhook-id (-> endpoint
-                       ::ms/major-variable
-                       ::ms/major-variable-value)
-        payload (conform-to-json (dissoc opts :user-agent :file))
-        payload-json (json/write-str payload)
-        multipart [{:name "payload_json" :content payload-json}]
-        multipart (if file
-                    (conj multipart {:name "file" :content file :filename (.getName file)})
-                    multipart)
-        response @(http/post (api-url (str "/webhooks/" webhook-id "/" webhook-token))
-                             {:query-params {:wait wait}
-                              :headers (assoc (auth-headers token user-agent)
-                                              "Content-Type" "multipart/form-data")
-                              :multipart multipart})]
-    (let [body (if (= (:status response) 200)
-                 (json-body (:body response))
-                 (= (:status response) 204))]
-      (when-not (= (:status response) 429)
-        (if (some? body)
-          (a/>!! prom body)
-          (a/close! prom))))
-    response))
 
 (defdispatch :get-current-application-information
   [_] [] _ :get _ body

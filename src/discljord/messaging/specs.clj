@@ -2,6 +2,12 @@
   (:require [clojure.spec.alpha :as s]
             [discljord.specs :as ds]))
 
+(defn- string-spec 
+  ([min-length max-length] 
+   (s/and string? #(<= min-length (count %) max-length)))
+  ([pattern] 
+   (s/and string? (partial re-matches pattern))))
+
 (s/def ::major-variable-type #{::ds/guild-id ::ds/channel-id ::ds/webhook-id ::ds/application-id})
 (s/def ::major-variable-value ::ds/snowflake)
 (s/def ::major-variable (s/keys :req [::major-variable-type
@@ -37,13 +43,9 @@
 
 (s/def ::user-agent string?)
 
-(s/def ::name (s/and string?
-                     #(>= (count %) 2)
-                     #(<= (count %) 100)))
+(s/def ::name (string-spec 2 100))
 (s/def ::position integer?)
-(s/def ::topic (s/and string?
-                      #(>= (count %) 0)
-                      #(<= (count %) 1024)))
+(s/def ::topic (string-spec 0 1024))
 (s/def ::nsfw boolean?)
 (s/def ::rate-limit-per-user (s/and integer?
                                     #(>= % 0)
@@ -66,8 +68,7 @@
 
 (s/def ::message-id ::ds/snowflake)
 
-(s/def ::message (s/and string?
-                        #(< (count %) 2000)))
+(s/def ::message (string-spec 0 1999))
 (s/def ::tts boolean?)
 (s/def ::nonce ::ds/snowflake)
 (s/def ::file (partial instance? java.io.File))
@@ -206,6 +207,52 @@
                                             :message-reference/guild_id]))
 
 ;; TODO spec https://discord.com/developers/docs/interactions/slash-commands#data-models-and-types
+
+(def command-option-types
+  {:sub-command 1
+   :sub-command-group 2
+   :string 3
+   :integer 4
+   :boolean 5
+   :user 6
+   :channel 7
+   :role 8})
+
+(s/def :command.option/type (set (vals command-option-types)))
+
+(s/def :command.option/name (string-spec #"[\w-]{1,32}"))
+(s/def :command.option/description (string-spec 1 100))
+(s/def :command.option/default boolean?)
+(s/def :command.option/required boolean?)
+
+(s/def :command.option.choice/name (string-spec 1 100))
+
+(s/def :command.option.choice/value
+  (s/or string? int?))
+
+(s/def :command.option/choice (s/keys :req-un [:command.option.choice/name 
+                                               :command.option.choice/value]))
+
+(s/def :command.option/choices (s/coll-of :command.option/choice))
+(s/def :command.option/options (s/coll-of :command/option)) ;; FIXME forward declaration
+
+(s/def :command/option (s/keys :req-un [:command.option/type
+                                        :command.option/name
+                                        :command.option/description]
+                               :opt-un [:command.option/default
+                                        :command.option/required
+                                        :command.option/choices
+                                        :command.option/options]))
+
+(s/def ::command-options (s/coll-of :command/option))
+
+(s/def ::command-name (string-spec #"[\w-]{3,32}"))
+
+(s/def ::command-description (string-spec 1 100))
+
+(s/def ::command-id ::ds/snowflake)
+
+
 
 (s/def :widget/enabled boolean?)
 (s/def :widget/channel_id ::ds/snowflake)

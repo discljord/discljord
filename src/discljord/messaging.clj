@@ -681,7 +681,6 @@
   [guild-id command-id]
   [])
 
-
 ;; -------------------------------------------------
 ;; Interactions
 
@@ -689,8 +688,8 @@
   "Sends a response to an interaction event.
   
   Returns ???" ;; TODO
-  [interaction-id interaction-token type]
-  [data])
+  [interaction-id interaction-token interaction-response-type]
+  [interaction-application-command-callback-data])
 
 (defendpoint edit-original-interaction-response! ::ds/application-id
   "Edits the inital response to the given interaction.

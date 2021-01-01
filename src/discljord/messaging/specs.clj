@@ -208,6 +208,8 @@
 
 ;; TODO spec https://discord.com/developers/docs/interactions/slash-commands#data-models-and-types
 
+(s/def ::application-id ::ds/application-id)
+
 (def command-option-types
   {:sub-command 1
    :sub-command-group 2
@@ -252,6 +254,24 @@
 
 (s/def ::command-id ::ds/snowflake)
 
+
+(s/def ::interaction-id ::ds/snowflake)
+(s/def ::interaction-token string?)
+
+(def interaction-response-types
+  {:pong 1
+   :acknowledge 2
+   :channel-message 3
+   :channel-message-with-source 4
+   :acknowledge-with-source 5})
+
+(s/def ::interaction-response-type (set (vals interaction-response-types)))
+
+(s/def ::interaction-application-command-callback-data 
+  (s/keys :req-un [::content]
+          :opt-un [::embeds
+                   ::tts
+                   ::allowed-mentions]))
 
 
 (s/def :widget/enabled boolean?)

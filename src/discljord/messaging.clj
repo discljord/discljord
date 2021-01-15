@@ -687,14 +687,14 @@
 (defendpoint create-interaction-response! nil
   "Sends a response to an interaction event.
   
-  Returns ???" ;; TODO
+  Returns a promise containing a boolean of if it succeeded."
   [interaction-id interaction-token interaction-response-type]
   [interaction-application-command-callback-data])
 
 (defendpoint edit-original-interaction-response! ::ds/application-id
   "Edits the inital response to the given interaction.
   
-  Returns ???" ;; TODO
+  Returns a promise containing the updated message object"
   [interaction-token]
   [content embeds allowed-mentions])
 
@@ -708,14 +708,14 @@
 (defendpoint create-followup-message! ::ds/application-id
   "Creates a followup message for the given interaction.
   
-  Returns ???" ;; TODO
+  Returns a promise containing the message that was created."
   [interaction-token]
   [content file embeds wait username avatar-url tts allowed-mentions]) 
 
 (defendpoint edit-followup-message! ::ds/application-id
   "Edits a followup message to an interaction by its id.
   
-  Returns ???" ;; TODO
+  Returns a promise containing the updated message object."
   [interaction-token message-id]
   [content embeds allowed-mentions])
 

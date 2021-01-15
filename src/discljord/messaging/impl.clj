@@ -623,10 +623,11 @@
   {}
   (json-body body))
 
-
-
-;; TODO also use for other applicable implementations
-(defmacro ^:private def-message-dispatch [name params method url]
+;; TODO consider using for other applicable implementations as well
+(defmacro ^:private def-message-dispatch
+  "Creates a dispatch definition based on the common pattern of creating,
+  editing and updating some sort of message"
+  [name params method url]
   (let [[opts status body] (repeatedly gensym)
         delete (= method :delete)]
     `(defdispatch ~name  
@@ -733,6 +734,7 @@
   [webhook-id webhook-token message-id] :delete
   (webhook-url webhook-id webhook-token message-id))
 
+;; FIXME consistent argument names with spec and endpoint definition
 
 (defn- command-params [name description options]
   {:body (json/write-str (cond-> {:name name
@@ -798,10 +800,10 @@
   (= status 204))
 
 (defdispatch :create-interaction-response
-  [_ interaction-id interaction-token type] [data] _ :post _ body
+  [_ interaction-id interaction-token type] [data] _ :post status _
   (str "/interactions/" interaction-id \/ interaction-token "/callback")
-  {:body (cond-> {:type type} data (assoc :data data))}
-  (json-body body))
+  {:body (json/write-str (cond-> {:type type} data (assoc :data data)))}
+  (= status 204))
 
 (def-message-dispatch :edit-original-interaction-response
   [application-id interaction-token] :patch

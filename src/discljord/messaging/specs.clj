@@ -206,8 +206,6 @@
                                             :message-reference/channel_id
                                             :message-reference/guild_id]))
 
-;; TODO spec https://discord.com/developers/docs/interactions/slash-commands#data-models-and-types
-
 (s/def ::application-id ::ds/application-id)
 
 (def command-option-types

@@ -639,7 +639,7 @@
   ([id token]
    (str "/webhooks/" id \/ token))
   ([id token message-id] 
-   (str (webhook-msg-url id token) "/messages/" message-id)))
+   (str (webhook-url id token) "/messages/" message-id)))
   
 (defdispatch :create-webhook
   [channel-id name] [avatar] _ :post _ body

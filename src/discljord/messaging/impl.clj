@@ -770,7 +770,7 @@
   (= status 204))
 
 (defn- guild-cmd-url
-  ([application-id guild-id] (str "/applications/" application-id "/guilds/" guild-id))
+  ([application-id guild-id] (str "/applications/" application-id "/guilds/" guild-id "/commands"))
   ([application-id guild-id command-id] (str (guild-cmd-url application-id guild-id) \/ command-id)))
 
 (defdispatch :get-guild-application-commands

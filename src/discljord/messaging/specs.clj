@@ -230,13 +230,13 @@
 (s/def :command.option.choice/name (string-spec 1 100))
 
 (s/def :command.option.choice/value
-  (s/or string? int?))
+  (s/or :string string? :int int?))
 
 (s/def :command.option/choice (s/keys :req-un [:command.option.choice/name 
                                                :command.option.choice/value]))
 
 (s/def :command.option/choices (s/coll-of :command.option/choice))
-(s/def :command.option/options ::command-options) 
+
 
 (s/def :command/option (s/keys :req-un [:command.option/type
                                         :command.option/name
@@ -248,12 +248,13 @@
 
 (s/def ::command-options (s/coll-of :command/option))
 
+(s/def :command.option/options ::command-options)
+
 (s/def ::command-name (string-spec #"[\w-]{3,32}"))
 
 (s/def ::command-description (string-spec 1 100))
 
 (s/def ::command-id ::ds/snowflake)
-
 
 (s/def ::interaction-id ::ds/snowflake)
 (s/def ::interaction-token string?)

@@ -12,6 +12,7 @@ Discljord follows semantic versioning.
     - `create-guild-ban`
     - `edit-channel-permissions`
  - Double checking for sequence numbers on resume
+ - `ex-info` called with an incorrect arity when missing intents
 
 ## [1.2.1] - 2021-01-19
 ### Added

@@ -3,7 +3,12 @@ All notable changes to this project will be documented in this file. This change
 Discljord follows semantic versioning.
 
 ## [Unreleased]
-
+### Fixed
+- Fix wrong uses of body/query-params in
+    - `get-guild`
+    - `group-dm-add-recipient`
+    - `create-guild-ban`
+    - `edit-channel-permissions`
 
 ## [1.2.1] - 2021-01-19
 ### Added

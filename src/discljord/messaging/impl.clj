@@ -265,7 +265,7 @@
 (defdispatch :group-dm-add-recipient
   [channel-id user-id] [] opts :put _ _
   (str "/channels/" channel-id "/recipients/" user-id)
-  {:query-params (conform-to-json opts)}
+  {:body (json/write-str (conform-to-json opts))}
   nil)
 
 (defdispatch :group-dm-remove-recipient

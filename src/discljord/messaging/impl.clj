@@ -429,7 +429,7 @@
 (defdispatch :create-guild-ban
   [guild-id user-id] [delete-message-days reason] opts :put status _
   (str "/guilds/" guild-id "/bans/" user-id)
-  {:query-params (conform-to-json opts)}
+  {:body (json/write-str (conform-to-json opts))}
   (= status 204))
 
 (defdispatch :remove-guild-ban

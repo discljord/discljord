@@ -267,7 +267,7 @@
 (defendpoint get-guild! ::ds/guild-id
   "Returns a promise containing the guild object."
   []
-  [with-counts])
+  [with-counts?])
 
 (defendpoint modify-guild! ::ds/guild-id
   "Modifies an existing guild. Returns a promise containing the modified guild object."
@@ -602,14 +602,14 @@
   [content file embeds wait username avatar-url tts allowed-mentions])
 
 #_(defendpoint execute-slack-compatible-webhook! ::ds/webhook-id
-  ""
-  [webhook-token]
-  [wait])
+    ""
+    [webhook-token]
+    [wait])
 
 #_(defendpoint execute-github-compatible-webhook! ::ds/webhook-id
-  ""
-  [webhook-token]
-  [wait])
+    ""
+    [webhook-token]
+    [wait])
 
 (defendpoint get-current-application-information! nil
   "Returns  a promise containing the bot's OAuth2 application info."

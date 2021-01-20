@@ -211,6 +211,7 @@
   {:body (json/write-str {:messages messages})}
   (= status 204))
 
+
 (defdispatch :edit-channel-permissions
   [channel-id overwrite-id allow deny type] [] _ :put status _
   (str "/channels/" channel-id "/permissions/" overwrite-id)
@@ -325,7 +326,7 @@
 (defdispatch :get-guild
   [guild-id] [] opts :get _ body
   (str "/guilds/" guild-id)
-  {:body (json/write-str (conform-to-json opts))}
+  {:query-params (conform-to-json opts)}
   (json-body body))
 
 (defdispatch :modify-guild

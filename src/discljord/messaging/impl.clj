@@ -215,9 +215,9 @@
 (defdispatch :edit-channel-permissions
   [channel-id overwrite-id allow deny type] [] _ :put status _
   (str "/channels/" channel-id "/permissions/" overwrite-id)
-  {:query-params {:allow allow
-                  :deny deny
-                  :type type}}
+  {:body (json/write-str {:allow allow
+                          :deny deny
+                          :type type})}
   (= status 204))
 
 (defdispatch :get-channel-invites

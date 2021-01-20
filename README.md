@@ -293,6 +293,7 @@ Logging levels in discljord follow a basic pattern that anything at a `warn` lev
 ## Known Issues
 
  - Compression may fail on very large payloads, appearing as an EOF while parsing JSON exception. This can be mitigated by setting the `disable-compression` flag on `connect-bot!`
+ - Failing to specify intents on `connect-bot!` gives an arity exception. This doesn't cause any bots to fail that would otherwise succeed, as specifying intents is required by Discord.
 
 If you find any other issues, please report them, and I'll attempt to fix them as soon as possible!
 

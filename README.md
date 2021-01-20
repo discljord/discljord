@@ -33,13 +33,13 @@ The `start-bot!` and `stop-bot!` functions help you connect/disconnect to/from t
 Add the following to your project.clj in leiningen:
 
 ```clojure
-[org.suskalo/discljord "1.2.0"]
+[org.suskalo/discljord "1.2.1"]
 ```
 
 If you use tools.deps, then add the following to your `:dependencies` key in your `deps.edn`:
 
 ```clojure
-{org.suskalo/discljord {:mvn/version "1.2.0"}}
+{org.suskalo/discljord {:mvn/version "1.2.1"}}
 ```
 
 ## Usage
@@ -292,7 +292,7 @@ Logging levels in discljord follow a basic pattern that anything at a `warn` lev
 
 ## Known Issues
 
-None at the moment
+ - Compression may fail on very large payloads, appearing as an EOF while parsing JSON exception. This can be mitigated by setting the `disable-compression` flag on `connect-bot!`
 
 If you find any other issues, please report them, and I'll attempt to fix them as soon as possible!
 

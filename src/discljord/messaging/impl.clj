@@ -323,9 +323,9 @@
   (json-body body))
 
 (defdispatch :get-guild
-  [guild-id] [] _ :get _ body
+  [guild-id] [] opts :get _ body
   (str "/guilds/" guild-id)
-  {}
+  {:body (json/write-str (conform-to-json opts))}
   (json-body body))
 
 (defdispatch :modify-guild

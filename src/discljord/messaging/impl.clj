@@ -214,9 +214,9 @@
 (defdispatch :edit-channel-permissions
   [channel-id overwrite-id allow deny type] [] _ :put status _
   (str "/channels/" channel-id "/permissions/" overwrite-id)
-  {:query-params {:allow allow
-                  :deny deny
-                  :type type}}
+  {:body (json/write-str {:allow allow
+                          :deny deny
+                          :type type})}
   (= status 204))
 
 (defdispatch :get-channel-invites
@@ -264,7 +264,7 @@
 (defdispatch :group-dm-add-recipient
   [channel-id user-id] [] opts :put _ _
   (str "/channels/" channel-id "/recipients/" user-id)
-  {:query-params (conform-to-json opts)}
+  {:body (json/write-str (conform-to-json opts))}
   nil)
 
 (defdispatch :group-dm-remove-recipient
@@ -325,7 +325,7 @@
 (defdispatch :get-guild
   [guild-id] [] opts :get _ body
   (str "/guilds/" guild-id)
-  {:body (json/write-str (conform-to-json opts))}
+  {:query-params (conform-to-json opts)}
   (json-body body))
 
 (defdispatch :modify-guild
@@ -428,7 +428,7 @@
 (defdispatch :create-guild-ban
   [guild-id user-id] [delete-message-days reason] opts :put status _
   (str "/guilds/" guild-id "/bans/" user-id)
-  {:query-params (conform-to-json opts)}
+  {:body (json/write-str (conform-to-json opts))}
   (= status 204))
 
 (defdispatch :remove-guild-ban

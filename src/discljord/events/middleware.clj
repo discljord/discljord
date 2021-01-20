@@ -87,7 +87,7 @@
     (fn [handler]
       (fn [event-type event-data & more]
         (when-not @reduced
-          (let [res (reducer handler (into [event-type event-data] more))]
+          (let [res (reducer handler (vec (concat [event-type event-data] more)))]
             (when (reduced? res)
               (vreset! reduced true))
             res))))))

@@ -292,7 +292,7 @@ Logging levels in discljord follow a basic pattern that anything at a `warn` lev
 
 ## Known Issues
 
-None at the moment
+ - Compression may fail on very large payloads, appearing as an EOF while parsing JSON exception. This can be mitigated by setting the `disable-compression` flag on `connect-bot!`
 
 If you find any other issues, please report them, and I'll attempt to fix them as soon as possible!
 

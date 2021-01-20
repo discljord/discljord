@@ -37,7 +37,7 @@
    (str "DiscordBot ("
         "https://github.com/IGJoshua/discljord"
         ", "
-        "1.2.0"
+        "1.2.1"
         ") "
         user-agent)
    "Content-Type" "application/json"})
@@ -323,9 +323,9 @@
   (json-body body))
 
 (defdispatch :get-guild
-  [guild-id] [] _ :get _ body
+  [guild-id] [] opts :get _ body
   (str "/guilds/" guild-id)
-  {}
+  {:body (json/write-str (conform-to-json opts))}
   (json-body body))
 
 (defdispatch :modify-guild

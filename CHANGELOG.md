@@ -4,8 +4,10 @@ Discljord follows semantic versioning.
 
 ## [Unreleased]
 
-### Fixed
- - Double checking for sequence numbers on resume
+
+## [1.2.1] - 2021-01-19
+### Added
+ - Add field for `with_counts` to be passed on `get-guild!`
 
 ## [1.2.0] - 2020-12-09
 ### Added
@@ -260,7 +262,12 @@ Discljord follows semantic versioning.
  - README follows new API
  - Project name from `discljord-functional` to `discljord` 
 
+<<<<<<< HEAD
 [Unreleased]: https://github.com/IGJoshua/discljord/compare/1.2.0..develop
+=======
+[Unreleased]: https://github.com/IGJoshua/discljord/compare/1.2.1..develop
+[1.2.0]: https://github.com/IGJoshua/discljord/compare/1.2.0..1.2.1
+>>>>>>> 575ff839382ec7c5eec26fbd1adf49f0ec6be1a0
 [1.2.0]: https://github.com/IGJoshua/discljord/compare/1.1.1..1.2.0
 [1.1.1]: https://github.com/IGJoshua/discljord/compare/1.1.0..1.1.1
 [1.1.0]: https://github.com/IGJoshua/discljord/compare/1.0.0..1.1.0

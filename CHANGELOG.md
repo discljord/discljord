@@ -3,6 +3,8 @@ All notable changes to this project will be documented in this file. This change
 Discljord follows semantic versioning.
 
 ## [Unreleased]
+
+## [1.2.2] - 2021-01-20
 ### Fixed
  - Fix wrong uses of body/query-params in
     - `get-guild`
@@ -10,7 +12,7 @@ Discljord follows semantic versioning.
     - `create-guild-ban`
     - `edit-channel-permissions`
  - Double checking for sequence numbers on resume
-
+ - `ex-info` called with an incorrect arity when missing intents
 
 ## [1.2.1] - 2021-01-19
 ### Added
@@ -269,7 +271,8 @@ Discljord follows semantic versioning.
  - README follows new API
  - Project name from `discljord-functional` to `discljord`
 
-[Unreleased]: https://github.com/IGJoshua/discljord/compare/1.2.1..develop
+[Unreleased]: https://github.com/IGJoshua/discljord/compare/1.2.2..develop
+[1.2.2]: https://github.com/IGJoshua/discljord/compare/1.2.1..1.2.2
 [1.2.1]: https://github.com/IGJoshua/discljord/compare/1.2.0..1.2.1
 [1.2.0]: https://github.com/IGJoshua/discljord/compare/1.1.1..1.2.0
 [1.1.1]: https://github.com/IGJoshua/discljord/compare/1.1.0..1.1.1

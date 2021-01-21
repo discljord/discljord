@@ -3,6 +3,8 @@ All notable changes to this project will be documented in this file. This change
 Discljord follows semantic versioning.
 
 ## [Unreleased]
+### Changed
+ - Removed questionmark from argument for `get-guild`'s `with-counts` for being redundant
 
 ## [1.2.2] - 2021-01-20
 ### Fixed

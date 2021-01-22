@@ -297,6 +297,12 @@ Logging levels in discljord follow a basic pattern that anything at a `warn` lev
 
 If you find any other issues, please report them, and I'll attempt to fix them as soon as possible!
 
+## Supporting the Project
+If you would like to contribute financially to the creation of Discljord, a [Patreon page](https://www.patreon.com/discljord) is available to support me. There's absolutely no obligation to donate if you use this software, but if you do, I'll add your username to this document to thank you for your support!
+
+## Current Patrons
+You could have your name added here if you support the project!
+
 ## License
 
 Copyright © 2017-2021 Joshua Suskalo

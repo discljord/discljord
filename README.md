@@ -305,6 +305,7 @@ You could have your name added here if you support the project!
 
 - Jonathan Walch
 - Johnny JayJay
+- Peter Monks
 
 ## License
 

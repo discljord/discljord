@@ -304,6 +304,7 @@ If you would like to contribute financially to the creation of Discljord, a [Pat
 You could have your name added here if you support the project!
 
 - Jonathan Walch
+- Johnny JayJay
 
 ## License
 

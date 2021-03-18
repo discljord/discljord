@@ -1,6 +1,8 @@
 (ns discljord.permissions
   "Functions for determining users' permissions."
-  (:require [clojure.set :refer [map-invert]]))
+  (:require
+   [clojure.set :refer [map-invert]]
+   [discljord.util :refer [parse-if-str]]))
 
 (def permissions-bit
   "Map from permission names to the binary flag representation of it."
@@ -119,30 +121,31 @@
 
   This is primarily used to construct calls to [[permission-int]]."
   [guild user-id-or-member]
-  (map :permissions (vals (select-keys (:roles guild)
-                                       (:roles (if (map? user-id-or-member)
-                                                 user-id-or-member
-                                                 ((:members guild) user-id-or-member)))))))
+  (map (comp parse-if-str :permissions)
+       (vals (select-keys (:roles guild)
+                          (:roles (if (map? user-id-or-member)
+                                    user-id-or-member
+                                    ((:members guild) user-id-or-member)))))))
 
 (defn- permissions-and-overrides
   "Constructs a vector with the arguments needed for a call to [[permission-int]]."
   [guild user-id-or-member channel-id]
-  (let [everyone (:permissions ((:roles guild) (:id guild)))
+  (let [everyone (parse-if-str (:permissions ((:roles guild) (:id guild))))
         roles (user-roles guild user-id-or-member)
         {:keys [permission-overwrites]} ((:channels guild) channel-id)
         {role-overrides 0 member-overrides 1} (group-by :type permission-overwrites)
         member (if (map? user-id-or-member)
                  user-id-or-member
                  ((:members guild) user-id-or-member))
-        everyone-override (first (filter (comp #{(:id guild)} :id) role-overrides))
-        role-overrides (filter (comp (set (:roles member)) :id) role-overrides)
+        everyone-override (parse-if-str (first (filter (comp #{(:id guild)} :id) role-overrides)))
+        role-overrides (map parse-if-str (filter (comp (set (:roles member)) :id) role-overrides))
         user-id (if (map? user-id-or-member)
                   (let [user (:user user-id-or-member)]
                     (if (map? user)
                       (:id user)
                       user))
                   user-id-or-member)
-        member-override (first (filter (comp #{user-id} :id) member-overrides))]
+        member-override (parse-if-str (first (filter (comp #{user-id} :id) member-overrides)))]
     [everyone roles everyone-override role-overrides member-override]))
 
 (defn has-permission?
@@ -160,8 +163,10 @@
                [perm everyone roles everyone-overrides roles-overrides user-overrides])}
   ([perm everyone-or-guild roles-or-user-id-or-member]
    (if (map? everyone-or-guild)
-     (has-permission-flag? perm (permission-int (:permissions ((:roles everyone-or-guild) (:id everyone-or-guild)))
-                                                (user-roles everyone-or-guild roles-or-user-id-or-member)))
+     (has-permission-flag? perm (permission-int
+                                 (parse-if-str
+                                  (:permissions ((:roles everyone-or-guild) (:id everyone-or-guild))))
+                                 (user-roles everyone-or-guild roles-or-user-id-or-member)))
      (has-permission-flag? perm (permission-int everyone-or-guild roles-or-user-id-or-member))))
   ([perm guild user-id-or-member channel-id]
    (has-permission-flag?
@@ -189,7 +194,7 @@
    (if (map? everyone-or-guild)
      (has-permission-flags?
       perms
-      (permission-int (:permissions ((:roles everyone-or-guild) (:id everyone-or-guild)))
+      (permission-int (parse-if-str (:permissions ((:roles everyone-or-guild) (:id everyone-or-guild))))
                       (user-roles everyone-or-guild roles-or-user-id-or-member)))
      (has-permission-flags? perms (permission-int everyone-or-guild roles-or-user-id-or-member))))
   ([perms guild user-id-or-member channel-id]

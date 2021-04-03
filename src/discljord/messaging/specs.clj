@@ -244,6 +244,22 @@
                                         :command.option/choices
                                         :command.option/options]))
 
+(def command-permission-types
+  {:role 1 
+   :user 2})
+
+(s/def :command.permission/id ::ds/snowflake)
+
+(s/def :command.permission/type (set (vals command-permission-types)))
+
+(s/def :command.permission/permission boolean?)
+
+(s/def :command/permission (s/keys :req-un [:command.permission/id
+                                            :command.permission/type
+                                            :command.permission/permission]))
+
+(s/def :discljord.messaging.specs.command/permissions (s/coll-of :command/permission))
+
 (s/def :discljord.messaging.specs.command/options (s/coll-of :command/option)) 
 
 (s/def :discljord.messaging.specs.command/default_permission boolean?)

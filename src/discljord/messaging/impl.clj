@@ -812,6 +812,8 @@
   {:body (json/write-str commands)}
   (json-body body))
 
+;; TODO implement permission endpoints
+
 (defdispatch :create-interaction-response
   [_ interaction-id interaction-token type] [data] _ :post status _
   (str "/interactions/" interaction-id \/ interaction-token "/callback")

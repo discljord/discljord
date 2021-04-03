@@ -704,6 +704,23 @@
   [guild-id commands]
   [])
 
+(defendpoint get-guild-guild-application-command-permissions! ::ds/application-id
+  "Returns a promise containing the permission settings for all application commands accessible from the guild."
+  [guild-id]
+  [])
+
+(defendpoint get-application-command-permissions! ::ds/application-id
+  "Returns a promose containing the permission settings for a specific application command accessible from the guild."
+  [guild-id command-id]
+  [])
+
+(defendpoint edit-application-command-permissions! ::ds/application-id
+  "Sets the permission settings for the given command in the guild.
+  
+  Returns a ???"
+  [guild-id command-id ms.command/permissions]
+  [])
+
 ;; -------------------------------------------------
 ;; Interactions
 

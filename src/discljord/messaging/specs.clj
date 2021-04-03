@@ -246,6 +246,8 @@
 
 (s/def :discljord.messaging.specs.command/options (s/coll-of :command/option)) 
 
+(s/def :discljord.messaging.specs.command/default_permission boolean?)
+
 (s/def :command.option/options :discljord.messaging.specs.command/options)
 
 (s/def :discljord.messaging.specs.command/name (string-spec #"[\w-]{3,32}"))
@@ -254,7 +256,8 @@
 
 (s/def ::command (s/keys :req-un [:discljord.messaging.specs.command/name
                                   :discljord.messaging.specs.command/description]
-                         :opt-un [:discljord.messaging.specs.command/options]))
+                         :opt-un [:discljord.messaging.specs.command/options
+                                  :discljord.messaging.specs.command/default_permission]))
 
 (s/def ::commands (s/coll-of ::command))
 

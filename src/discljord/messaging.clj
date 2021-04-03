@@ -633,7 +633,6 @@
 ;; --------------------------------------------------
 ;; Slash Commands
 
-;; TODO add bulk overwrite endpoints
 ;; TODO fix erroneous major param declarations
 
 (defendpoint get-global-application-commands! ::ds/application-id
@@ -647,14 +646,14 @@
   New global commands will be available in all guilds after 1 hour.
   Returns a promise containing the new application command object."
   [ms.command/name ms.command/description]
-  [ms.command/options])
+  [ms.command/options ms.command/default_permission])
 
 (defendpoint edit-global-application-command! ::ds/application-id
   "Updates an existing global slash command by its id.
   
   Returns a promise containing the updated application command object."
   [command-id ms.command/name ms.command/description]
-  [ms.command/options])
+  [ms.command/options ms.command/default_permission])
 
 (defendpoint delete-global-application-command! ::ds/application-id
   "Deletes an existing global slash command by its id.
@@ -681,14 +680,14 @@
   
   Returns a promise containing the new application command object."
   [guild-id ms.command/name ms.command/description]
-  [ms.command/options])
+  [ms.command/options ms.command/default_permission])
 
 (defendpoint edit-guild-application-command! ::ds/application-id
   "Updates an existing guild slash command by its id.
   
   Returns a promise containing the updated application command object."
   [guild-id command-id ms.command/name ms.command/description]
-  [ms.command/options])
+  [ms.command/options ms.command/default_permission])
 
 (defendpoint delete-guild-application-command! ::ds/application-id
   "Deletes an existing guild slash command by its id.

@@ -736,10 +736,11 @@
 
 ;; FIXME consistent argument names with spec and endpoint definition
 
-(defn- command-params [name description options]
+(defn- command-params [name description options default-perm]
   {:body (json/write-str (cond-> {:name name
                                   :description description}
-                                 options (assoc :options options)))})
+                                 options (assoc :options options)
+                                 default-perm (assoc :default_permission default_perm)))})
 
 (defn- global-cmd-url 
   ([application-id] (str "/applications/" application-id "/commands"))
@@ -754,15 +755,15 @@
 
 
 (defdispatch :create-global-application-command
-  [application-id name description] [options] _ :post _ body
+  [application-id name description] [options default_permission] _ :post _ body
   (global-cmd-url application-id)
-  (command-params name description options)
+  (command-params name description options default_permission)
   (json-body body))
 
 (defdispatch :edit-global-application-command 
-  [application-id command-id name description] [options] _ :patch _ body
+  [application-id command-id name description] [options default_permission] _ :patch _ body
   (global-cmd-url application-id command-id)
-  (command-params name description options)
+  (command-params name description options default_permission)
   (json-body body))
 
 (defdispatch :delete-global-application-command
@@ -788,15 +789,15 @@
   (json-body body))
 
 (defdispatch :create-guild-application-command
-  [application-id guild-id name description] [options] _ :post _ body
+  [application-id guild-id name description] [options default_permission] _ :post _ body
   (guild-cmd-url application-id guild-id)
-  (command-params name description options)
+  (command-params name description options default_permission)
   (json-body body))
 
 (defdispatch :edit-guild-application-command
-  [application-id guild-id command-id name description] [options] _ :patch _ body
+  [application-id guild-id command-id name description] [options default_permission] _ :patch _ body
   (guild-cmd-url application-id guild-id command-id)
-  (command-params name description options)
+  (command-params name description options default_permission)
   (json-body body))
 
 (defdispatch :delete-guild-application-command

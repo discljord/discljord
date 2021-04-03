@@ -693,8 +693,8 @@
   "Sends a response to an interaction event.
   
   Returns a promise containing a boolean of if it succeeded."
-  [interaction-id interaction-token interaction-response-type]
-  [interaction-application-command-callback-data])
+  [interaction-id interaction-token ms.create-interaction-response/type]
+  [ms.create-interaction-response/data])
 
 (defendpoint edit-original-interaction-response! ::ds/application-id
   "Edits the inital response to the given interaction.

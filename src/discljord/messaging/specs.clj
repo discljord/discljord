@@ -244,7 +244,8 @@
                                         :command.option/choices
                                         :command.option/options]))
 
-(s/def ::command-options (s/coll-of :command/option))
+; TODO remove "command-" prefix and put in own namespace instead
+(s/def ::command-options (s/coll-of :command/option)) 
 
 (s/def :command.option/options ::command-options)
 
@@ -264,9 +265,10 @@
    :channel-message-with-source 4
    :acknowledge-with-source 5})
 
-(s/def ::interaction-response-type (set (vals interaction-response-types)))
+(s/def :discljord.messaging.specs.create-interaction-response/type  
+  (set (vals interaction-response-types)))
 
-(s/def ::interaction-application-command-callback-data 
+(s/def :discljord.messaging.specs.create-interaction-response/data 
   (s/keys :req-un [::content]
           :opt-un [::embeds
                    ::tts

@@ -33,6 +33,13 @@
 (s/fdef stop-connection!
   :args (s/cat :conn ::ds/channel))
 
+(def ^:const spec-ns "discljord.messaging.specs")
+
+(defn- spec-for [sym]
+  (if-let [ns (namespace sym)]
+    (keyword sym)
+    (keyword spec-ns (name sym))))
+
 (defmacro defendpoint
   "Creates a new non-blocking function for a discord endpoint. `endpoint-name` must end with an '!'"
   [endpoint-name major-var-type doc-str params opts]
@@ -41,17 +48,13 @@
         sym-name (name endpoint-name)
         action (keyword (subs sym-name 0 (dec (count sym-name))))
         opts (conj opts 'user-agent 'audit-reason)
-        spec-args (into []
-                        (mapcat (fn [param]
-                                  [(keyword (name param)) (keyword "discljord.messaging.specs" (name param))]))
-                        params)
-        spec-keys (into []
-                        (map #(keyword "discljord.messaging.specs" (name %)))
-                        opts)]
+        spec-args (vec (mapcat (juxt (comp keyword name) spec-for) params))
+        spec-keys (vec (map spec-for opts))
+        unqualified-params (map (comp symbol name) args)]
     `(do
        (defn ~endpoint-name
          ~doc-str
-         [~'conn ~@(when major-var-type [major-var]) ~@params ~'& {:keys ~opts :as ~'opts}]
+         [~'conn ~@(when major-var-type [major-var]) ~@unqualified-params ~'& {:keys ~opts :as ~'opts}]
          (let [user-agent# (:user-agent ~'opts)
                audit-reason# (:audit-reason ~'opts)
                p# (util/derefable-promise-chan)
@@ -62,7 +65,7 @@
                                                                ::ms/major-variable-value ~major-var})
                                    action#)
                                  p#
-                                 ~@params
+                                 ~@unqualified-params
                                  :user-agent user-agent#
                                  :audit-reason audit-reason#]
                                 cat

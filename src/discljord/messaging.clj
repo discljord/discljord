@@ -38,7 +38,7 @@
 (defn- spec-for [sym]
   (if-let [ns (namespace sym)]
     (keyword (->> (str/split ns #"\.") 
-                  (map #(or (some-> (ns-aliases *ns*) (get %) ns-name) %))
+                  (map #(or (some-> (ns-aliases *ns*) (get (symbol %)) ns-name) %))
                   (str/join "."))
              (name sym)) 
     (keyword spec-ns (name sym))))

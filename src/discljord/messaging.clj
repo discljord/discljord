@@ -59,11 +59,10 @@
                audit-reason# (:audit-reason ~'opts)
                p# (util/derefable-promise-chan)
                action# {::ms/action ~action}]
-           (a/put! ~'conn (into [(if ~major-var-type
-                                   (assoc action#
-                                          ::ms/major-variable {::ms/major-variable-type ~major-var-type
-                                                               ::ms/major-variable-value ~major-var})
-                                   action#)
+           (a/put! ~'conn (into [(cond-> action# 
+                                         ~major-var-type (assoc ::ms/major-variable 
+                                                           {::ms/major-variable-type ~major-var-type 
+                                                            ::ms/major-variable-value ~major-var}))
                                  p#
                                  ~@unqualified-params
                                  :user-agent user-agent#

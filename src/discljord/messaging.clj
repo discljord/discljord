@@ -633,6 +633,8 @@
 ;; --------------------------------------------------
 ;; Slash Commands
 
+;; TODO add bulk overwrite endpoints
+
 (defendpoint get-global-application-commands! ::ds/application-id
   "Returns a promise containing a vector of application command objects."
   []

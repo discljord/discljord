@@ -266,7 +266,7 @@
 
 (s/def :command.option/options :discljord.messaging.specs.command/options)
 
-(s/def :discljord.messaging.specs.command/name (string-spec #"[\w-]{3,32}"))
+(s/def :discljord.messaging.specs.command/name (string-spec #"[\w-]{1,32}"))
 
 (s/def :discljord.messaging.specs.command/description (string-spec 1 100))
 

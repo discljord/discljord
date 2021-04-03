@@ -634,6 +634,7 @@
 ;; Slash Commands
 
 ;; TODO add bulk overwrite endpoints
+;; TODO fix erroneous major param declarations
 
 (defendpoint get-global-application-commands! ::ds/application-id
   "Returns a promise containing a vector of application command objects."
@@ -662,6 +663,13 @@
   [command-id]
   [])
 
+(defendpoint bulk-overwrite-global-application-commands! ::ds/application-id
+  "Overwrites/Creates multiple global slash commands at once. 
+  
+  Returns a promise containing the updated application command objects."
+  [commands]
+  [])
+
 (defendpoint get-guild-application-commands! ::ds/application-id
   "Returns a promise containing a vector of application command objects."
   [guild-id]
@@ -686,6 +694,13 @@
   
   Returns a promise containing a boolean of if it succeeded."
   [guild-id command-id]
+  [])
+
+(defendpoint bulk-overwrite-guild-application-commands! ::ds/application-id
+  "Overwrites/Creates multiple guild slash commands at once. 
+  
+  Returns a promise containing the updated application command objects."
+  [guild-id commands]
   [])
 
 ;; -------------------------------------------------

@@ -244,7 +244,6 @@
                                         :command.option/choices
                                         :command.option/options]))
 
-; TODO remove "command-" prefix and put in own namespace instead
 (s/def :discljord.messaging.specs.command/options (s/coll-of :command/option)) 
 
 (s/def :command.option/options :discljord.messaging.specs.command/options)
@@ -252,6 +251,13 @@
 (s/def :discljord.messaging.specs.command/name (string-spec #"[\w-]{3,32}"))
 
 (s/def :discljord.messaging.specs.command/description (string-spec 1 100))
+
+; TODO Add option to pass id instead of name (if possible), validate that either name or id is present
+(s/def ::command (s/keys :req-un [:discljord.messaging.specs.command/name
+                                  :discljord.messaging.specs.command/description]
+                         :opt-un [:discljord.messaging.specs.command/options]))
+
+(s/def ::commands (s/coll-of ::command))
 
 (s/def ::command-id ::ds/snowflake)
 

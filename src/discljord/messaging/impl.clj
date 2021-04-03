@@ -771,6 +771,12 @@
   {}
   (= status 204))
 
+(defdispatch :bulk-overwrite-global-application-commands 
+  [application-id commands] [] _ :put _ body
+  (global-cmd-url application-id)
+  {:body (json/write-str commands)}
+  (json-body body))
+
 (defn- guild-cmd-url
   ([application-id guild-id] (str "/applications/" application-id "/guilds/" guild-id "/commands"))
   ([application-id guild-id command-id] (str (guild-cmd-url application-id guild-id) \/ command-id)))
@@ -798,6 +804,12 @@
   (guild-cmd-url application-id guild-id command-id)
   {}
   (= status 204))
+
+(defdispatch :bulk-overwrite-guild-application-commands 
+  [application-id guild-id commands] [] _ :put _ body
+  (guild-cmd-url application-id)
+  {:body (json/write-str commands)}
+  (json-body body))
 
 (defdispatch :create-interaction-response
   [_ interaction-id interaction-token type] [data] _ :post status _

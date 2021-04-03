@@ -37,7 +37,10 @@
 
 (defn- spec-for [sym]
   (if-let [ns (namespace sym)]
-    (keyword (or (some-> (ns-aliases *ns*) (get ns) ns-name) ns) (name sym)) 
+    (keyword (->> (str/split ns #"\.") 
+                  (map #(or (some-> (ns-aliases *ns*) (get %) ns-name) %))
+                  (str/join "."))
+             (name sym)) 
     (keyword spec-ns (name sym))))
 
 (defmacro defendpoint

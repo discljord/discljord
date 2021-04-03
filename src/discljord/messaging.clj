@@ -53,7 +53,7 @@
         opts (conj opts 'user-agent 'audit-reason)
         spec-args (vec (mapcat (juxt (comp keyword name) spec-for) params))
         spec-keys (vec (map spec-for opts))
-        unqualified-params (map (comp symbol name) args)]
+        unqualified-params (map (comp symbol name) params)]
     `(do
        (defn ~endpoint-name
          ~doc-str

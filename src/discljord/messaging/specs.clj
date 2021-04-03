@@ -245,13 +245,13 @@
                                         :command.option/options]))
 
 ; TODO remove "command-" prefix and put in own namespace instead
-(s/def ::command-options (s/coll-of :command/option)) 
+(s/def :discljord.messaging.specs.commands/options (s/coll-of :command/option)) 
 
-(s/def :command.option/options ::command-options)
+(s/def :command.option/options :discljord.messaging.specs.commands/options)
 
-(s/def ::command-name (string-spec #"[\w-]{3,32}"))
+(s/def :discljord.messaging.specs.commands/name (string-spec #"[\w-]{3,32}"))
 
-(s/def ::command-description (string-spec 1 100))
+(s/def :discljord.messaging.specs.commands/description (string-spec 1 100))
 
 (s/def ::command-id ::ds/snowflake)
 

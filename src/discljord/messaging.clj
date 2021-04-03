@@ -643,15 +643,15 @@
   
   New global commands will be available in all guilds after 1 hour.
   Returns a promise containing the new application command object."
-  [command-name command-description]
-  [command-options])
+  [ms.commands/name ms.commands/description]
+  [ms.commands/options])
 
 (defendpoint edit-global-application-command! ::ds/application-id
   "Updates an existing global slash command by its id.
   
   Returns a promise containing the updated application command object."
-  [command-id command-name command-description]
-  [command-options])
+  [command-id ms.commands/name ms.commands/description]
+  [ms.commands/options])
 
 (defendpoint delete-global-application-command! ::ds/application-id
   "Deletes an existing global slash command by its id.
@@ -669,15 +669,15 @@
   "Creates or updates a guild slash command. 
   
   Returns a promise containing the new application command object."
-  [guild-id command-name command-description]
-  [command-options])
+  [guild-id ms.commands/name ms.commands/description]
+  [ms.commands/options])
 
 (defendpoint edit-guild-application-command! ::ds/application-id
   "Updates an existing guild slash command by its id.
   
   Returns a promise containing the updated application command object."
-  [guild-id command-id command-name command-description]
-  [command-options])
+  [guild-id command-id ms.commands/name ms.commands/description]
+  [ms.commands/options])
 
 (defendpoint delete-guild-application-command! ::ds/application-id
   "Deletes an existing guild slash command by its id.

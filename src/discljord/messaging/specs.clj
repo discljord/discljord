@@ -265,10 +265,10 @@
    :channel-message-with-source 4
    :acknowledge-with-source 5})
 
-(s/def :discljord.messaging.specs.create-interaction-response/type  
+(s/def :discljord.messaging.specs.interaction-response/type  
   (set (vals interaction-response-types)))
 
-(s/def :discljord.messaging.specs.create-interaction-response/data 
+(s/def :discljord.messaging.specs.interaction-response/data 
   (s/keys :req-un [::content]
           :opt-un [::embeds
                    ::tts

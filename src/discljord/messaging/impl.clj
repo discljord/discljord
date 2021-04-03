@@ -807,7 +807,7 @@
 
 (defdispatch :bulk-overwrite-guild-application-commands 
   [application-id guild-id commands] [] _ :put _ body
-  (guild-cmd-url application-id)
+  (guild-cmd-url application-id guild-id)
   {:body (json/write-str commands)}
   (json-body body))
 

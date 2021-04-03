@@ -252,7 +252,6 @@
 
 (s/def :discljord.messaging.specs.command/description (string-spec 1 100))
 
-; TODO Add option to pass id instead of name (if possible), validate that either name or id is present
 (s/def ::command (s/keys :req-un [:discljord.messaging.specs.command/name
                                   :discljord.messaging.specs.command/description]
                          :opt-un [:discljord.messaging.specs.command/options]))

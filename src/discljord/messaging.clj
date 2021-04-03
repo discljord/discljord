@@ -664,8 +664,9 @@
   [])
 
 (defendpoint bulk-overwrite-global-application-commands! ::ds/application-id
-  "Overwrites/Creates multiple global slash commands at once. 
+  "Overwrites all global slash commands with the provided ones. 
   
+  If a command with a given name doesn't exist, creates that command.
   Returns a promise containing the updated application command objects."
   [commands]
   [])
@@ -697,8 +698,9 @@
   [])
 
 (defendpoint bulk-overwrite-guild-application-commands! ::ds/application-id
-  "Overwrites/Creates multiple guild slash commands at once. 
+  "Overwrites all guild slash commands with the provided ones. 
   
+  If a command with a given name doesn't exist, creates that command.
   Returns a promise containing the updated application command objects."
   [guild-id commands]
   [])

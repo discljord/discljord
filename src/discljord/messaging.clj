@@ -53,11 +53,12 @@
         opts (conj opts 'user-agent 'audit-reason)
         spec-args (vec (mapcat (juxt (comp keyword name) spec-for) params))
         spec-keys (vec (map spec-for opts))
-        unqualified-params (map (comp symbol name) params)]
+        prepend-major-var? (and major-var (not (contains? (set params) major-var)))
+        unqualified-params (cond->> (map (comp symbol name) params) prepend-major-var? (cons major-var))] 
     `(do
        (defn ~endpoint-name
          ~doc-str
-         [~'conn ~@(when major-var-type [major-var]) ~@unqualified-params ~'& {:keys ~opts :as ~'opts}]
+         [~'conn ~@unqualified-params ~'& {:keys ~opts :as ~'opts}]
          (let [user-agent# (:user-agent ~'opts)
                audit-reason# (:audit-reason ~'opts)
                p# (util/derefable-promise-chan)
@@ -67,7 +68,7 @@
                                                            {::ms/major-variable-type ~major-var-type 
                                                             ::ms/major-variable-value ~major-var}))
                                  p#
-                                 ~@unqualified-params
+                                 ~@(remove #{major-var} unqualified-params)
                                  :user-agent user-agent#
                                  :audit-reason audit-reason#]
                                 cat
@@ -634,6 +635,8 @@
 ;; Slash Commands
 
 ;; TODO fix erroneous major param declarations
+
+;; TODO major params for command management endpoints unclear - perhaps there are none
 
 (defendpoint get-global-application-commands! ::ds/application-id
   "Returns a promise containing a vector of application command objects."

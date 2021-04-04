@@ -610,7 +610,7 @@
 (defendpoint edit-webhook-message! ::ds/webhook-id
   "Edits a previously-sent webhook message from the same token.
   
-  Returns ???"
+  Returns ???" ; TODO
   [webhook-token message-id]
   [content embeds allowed-mentions])
 
@@ -734,39 +734,39 @@
   [interaction-id interaction-token ms.interaction-response/type]
   [ms.interaction-response/data])
 
-(defendpoint edit-original-interaction-response! ::ds/application-id
+(defendpoint edit-original-interaction-response! ::ms/interaction-token
   "Edits the inital response to the given interaction.
   
   Returns a promise containing the updated message object"
-  [interaction-token]
+  [application-id interaction-token]
   [content embeds allowed-mentions])
 
-(defendpoint delete-original-interaction-response! ::ds/application-id
+(defendpoint delete-original-interaction-response! nil
   "Deletes the initial response to the given interaction.
   
   Returns a promise containing a boolean of if it succeeded."
-  [interaction-token]
+  [application-id interaction-token]
   [])
 
-(defendpoint create-followup-message! ::ds/application-id
+(defendpoint create-followup-message! ::ms/interaction-token
   "Creates a followup message for the given interaction.
   
   Returns a promise containing the message that was created."
-  [interaction-token]
+  [application-id interaction-token]
   [content file embeds wait username avatar-url tts allowed-mentions]) 
 
-(defendpoint edit-followup-message! ::ds/application-id
+(defendpoint edit-followup-message! ::ms/interaction-token
   "Edits a followup message to an interaction by its id.
   
   Returns a promise containing the updated message object."
-  [interaction-token message-id]
+  [application-id interaction-token message-id]
   [content embeds allowed-mentions])
 
-(defendpoint delete-followup-message! ::ds/application-id
+(defendpoint delete-followup-message! ::ms/interation-token
   "Deletes a followup message to an interaction by its id.
   
   Returns a promise containing a boolean of if it succeeded."
-  [interaction-token message-id]
+  [application-id interaction-token message-id]
   [])
 
 (defendpoint get-current-application-information! nil

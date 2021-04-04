@@ -634,10 +634,6 @@
 ;; --------------------------------------------------
 ;; Slash Commands
 
-;; TODO fix erroneous major param declarations
-
-;; TODO major params for command management endpoints unclear - perhaps there are none
-
 (defendpoint get-global-application-commands! nil
   "Returns a promise containing a vector of application command objects."
   [application-id]

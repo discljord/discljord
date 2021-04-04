@@ -37,10 +37,10 @@
 
 (defn- spec-for [sym]
   (if-let [ns (namespace sym)]
-    (keyword (->> (str/split ns #"\.") 
+    (keyword (->> (str/split ns #"\.")
                   (map #(or (some-> (ns-aliases *ns*) (get (symbol %)) ns-name) %))
                   (str/join "."))
-             (name sym)) 
+             (name sym))
     (keyword spec-ns (name sym))))
 
 (defmacro defendpoint
@@ -51,9 +51,11 @@
         sym-name (name endpoint-name)
         action (keyword (subs sym-name 0 (dec (count sym-name))))
         opts (conj opts 'user-agent 'audit-reason)
-        spec-args (vec (mapcat (juxt (comp keyword name) spec-for) params))
-        spec-keys (vec (map spec-for opts))
         prepend-major-var? (and major-var (not (contains? (set params) major-var)))
+        spec-args (cond->> (map (juxt (comp keyword name) spec-for) params) 
+                           prepend-major-var? (cons [(keyword major-var) major-var-type])
+                           true vec)
+        spec-keys (vec (map spec-for opts))
         unqualified-params (cond->> (map (comp symbol name) params) prepend-major-var? (cons major-var))] 
     `(do
        (defn ~endpoint-name
@@ -76,9 +78,7 @@
            p#))
        (s/fdef ~endpoint-name
          :args (s/cat :conn ::ds/channel
-                      ~@(when major-var-type
-                          [(keyword (name major-var)) major-var-type])
-                      ~@spec-args
+                      ~@(mapcat identity spec-args)
                       :keyword-args (s/keys* :opt-un ~spec-keys))
          :ret ::ds/promise))))
 

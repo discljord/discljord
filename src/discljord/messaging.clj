@@ -638,90 +638,90 @@
 
 ;; TODO major params for command management endpoints unclear - perhaps there are none
 
-(defendpoint get-global-application-commands! ::ds/application-id
+(defendpoint get-global-application-commands! nil
   "Returns a promise containing a vector of application command objects."
-  []
+  [application-id]
   [])
 
-(defendpoint create-global-application-command! ::ds/application-id
+(defendpoint create-global-application-command! nil
   "Creates or updates a global slash command. 
   
   New global commands will be available in all guilds after 1 hour.
   Returns a promise containing the new application command object."
-  [ms.command/name ms.command/description]
+  [application-id ms.command/name ms.command/description]
   [ms.command/options ms.command/default_permission])
 
-(defendpoint edit-global-application-command! ::ds/application-id
+(defendpoint edit-global-application-command! nil
   "Updates an existing global slash command by its id.
   
   Returns a promise containing the updated application command object."
-  [command-id ms.command/name ms.command/description]
+  [application-id command-id ms.command/name ms.command/description]
   [ms.command/options ms.command/default_permission])
 
-(defendpoint delete-global-application-command! ::ds/application-id
+(defendpoint delete-global-application-command! nil
   "Deletes an existing global slash command by its id.
   
   Returns a promise containing a boolean of if it succeeded."
-  [command-id]
+  [application-id command-id]
   [])
 
-(defendpoint bulk-overwrite-global-application-commands! ::ds/application-id
+(defendpoint bulk-overwrite-global-application-commands! nil
   "Overwrites all global slash commands with the provided ones. 
   
   If a command with a given name doesn't exist, creates that command.
   Returns a promise containing the updated application command objects."
-  [commands]
+  [application-id commands]
   [])
 
-(defendpoint get-guild-application-commands! ::ds/application-id
+(defendpoint get-guild-application-commands! nil
   "Returns a promise containing a vector of application command objects."
-  [guild-id]
+  [application-id guild-id]
   [])
 
-(defendpoint create-guild-application-command! ::ds/application-id
+(defendpoint create-guild-application-command! nil
   "Creates or updates a guild slash command. 
   
   Returns a promise containing the new application command object."
-  [guild-id ms.command/name ms.command/description]
+  [application-id guild-id ms.command/name ms.command/description]
   [ms.command/options ms.command/default_permission])
 
-(defendpoint edit-guild-application-command! ::ds/application-id
+(defendpoint edit-guild-application-command! nil
   "Updates an existing guild slash command by its id.
   
   Returns a promise containing the updated application command object."
-  [guild-id command-id ms.command/name ms.command/description]
+  [application-id guild-id command-id ms.command/name ms.command/description]
   [ms.command/options ms.command/default_permission])
 
-(defendpoint delete-guild-application-command! ::ds/application-id
+(defendpoint delete-guild-application-command! nil
   "Deletes an existing guild slash command by its id.
   
   Returns a promise containing a boolean of if it succeeded."
-  [guild-id command-id]
+  [application-id guild-id command-id]
   [])
 
-(defendpoint bulk-overwrite-guild-application-commands! ::ds/application-id
+(defendpoint bulk-overwrite-guild-application-commands! nil
   "Overwrites all guild slash commands with the provided ones. 
   
   If a command with a given name doesn't exist, creates that command.
   Returns a promise containing the updated application command objects."
-  [guild-id commands]
+  [application-id guild-id commands]
   [])
 
-(defendpoint get-guild-guild-application-command-permissions! ::ds/application-id
+(defendpoint get-guild-guild-application-command-permissions! nil
   "Returns a promise containing the permission settings for all application commands accessible from the guild."
-  [guild-id]
+  [application-id guild-id]
   [])
 
-(defendpoint get-application-command-permissions! ::ds/application-id
+(defendpoint get-application-command-permissions! nil
   "Returns a promose containing the permission settings for a specific application command accessible from the guild."
-  [guild-id command-id]
+  [application-id guild-id command-id]
   [])
 
-(defendpoint edit-application-command-permissions! ::ds/application-id
+(defendpoint edit-application-command-permissions! nil
   "Sets the permission settings for the given command in the guild.
   
   Returns a promise containing the updated permission settings in a map with some additional information."
-  [guild-id command-id ms.command/permissions]
+  [application-id guild-id command-id ms.command/permissions]
   [])
 
 ;; -------------------------------------------------

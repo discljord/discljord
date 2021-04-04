@@ -698,12 +698,9 @@
   (= status 204))
 
 (defn- execute-webhook 
-  [token endpoint [prom webhook-token & {:keys [^java.io.File file user-agent wait] :as opts
-                                           :or {wait false}}]]
-  (let [webhook-id (-> endpoint
-                       ::ms/major-variable
-                       ::ms/major-variable-value)
-        payload (conform-to-json (dissoc opts :user-agent :file))
+  [token webhook-id webhook-token prom [& {:keys [^java.io.File file user-agent wait] :as opts
+                                           :or {wait false}} :as data]]
+  (let [payload (conform-to-json (dissoc opts :user-agent :file))
         payload-json (json/write-str payload)
         multipart (cond-> [{:name "payload_json" :content payload-json}]
                           file (conj  {:name "file" :content file :filename (.getName file)}))
@@ -723,8 +720,8 @@
 
 
 (defmethod dispatch-http :execute-webhook
-  [token endpoint data]
-  (execute-webhook token endpoint data))
+  [token endpoint [prom webhook-token & data]]
+  (execute-webhook token (-> endpoint ::ms/major-variable ::ms/major-variable-value) webhook-token prom [data]))
 
 (def-message-dispatch :edit-webhook-message
   [webhook-id webhook-token message-id] :patch
@@ -746,32 +743,32 @@
   
 
 (defdispatch :get-global-application-commands
-  [application-id] [] _ :get _ body
+  [_ application-id] [] _ :get _ body
   (global-cmd-url application-id)
   {}
   (json-body body))
 
 
 (defdispatch :create-global-application-command
-  [application-id name description] [options default_permission] _ :post _ body
+  [_ application-id name description] [options default_permission] _ :post _ body
   (global-cmd-url application-id)
   (command-params name description options default_permission)
   (json-body body))
 
 (defdispatch :edit-global-application-command 
-  [application-id command-id name description] [options default_permission] _ :patch _ body
+  [_ application-id command-id name description] [options default_permission] _ :patch _ body
   (global-cmd-url application-id command-id)
   (command-params name description options default_permission)
   (json-body body))
 
 (defdispatch :delete-global-application-command
-  [application-id command-id] [] _ :delete status _
+  [_ application-id command-id] [] _ :delete status _
   (global-cmd-url application-id command-id)
   {}
   (= status 204))
 
 (defdispatch :bulk-overwrite-global-application-commands 
-  [application-id commands] [] _ :put _ body
+  [_ application-id commands] [] _ :put _ body
   (global-cmd-url application-id)
   {:body (json/write-str commands)}
   (json-body body))
@@ -781,49 +778,49 @@
   ([application-id guild-id command-id] (str (guild-cmd-url application-id guild-id) \/ command-id)))
 
 (defdispatch :get-guild-application-commands
-  [application-id guild-id] [] _ :get _ body
+  [_ application-id guild-id] [] _ :get _ body
   (guild-cmd-url application-id guild-id)
   {}
   (json-body body))
 
 (defdispatch :create-guild-application-command
-  [application-id guild-id name description] [options default_permission] _ :post _ body
+  [_ application-id guild-id name description] [options default_permission] _ :post _ body
   (guild-cmd-url application-id guild-id)
   (command-params name description options default_permission)
   (json-body body))
 
 (defdispatch :edit-guild-application-command
-  [application-id guild-id command-id name description] [options default_permission] _ :patch _ body
+  [_ application-id guild-id command-id name description] [options default_permission] _ :patch _ body
   (guild-cmd-url application-id guild-id command-id)
   (command-params name description options default_permission)
   (json-body body))
 
 (defdispatch :delete-guild-application-command
-  [application-id guild-id command-id] [] _ :delete status _
+  [_ application-id guild-id command-id] [] _ :delete status _
   (guild-cmd-url application-id guild-id command-id)
   {}
   (= status 204))
 
 (defdispatch :bulk-overwrite-guild-application-commands 
-  [application-id guild-id commands] [] _ :put _ body
+  [_ application-id guild-id commands] [] _ :put _ body
   (guild-cmd-url application-id guild-id)
   {:body (json/write-str commands)}
   (json-body body))
 
 (defdispatch :get-guild-application-command-permissions
-  [application-id guild-id] [] _ :get _ body
+  [_ application-id guild-id] [] _ :get _ body
   (str (guild-cmd-url application-id guild-id) "/permissions")
   {}
   (json-body body))
 
 (defdispatch :get-application-command-permissions
-  [application-id guild-id command-id] [] _ :get _ body
+  [_ application-id guild-id command-id] [] _ :get _ body
   (str (guild-cmd-url application-id guild-id command-id) "/permissions")
   {}
   (json-body body))
 
 (defdispatch :edit-application-command-permissions
-  [application-id guild-id command-id permissions] [] _ :put _ body
+  [_ application-id guild-id command-id permissions] [] _ :put _ body
   (str (guild-cmd-url application-id guild-id command-id) "/permissions")
   {:body (json/write-str {:permissions permissions})}
   (json-body body))
@@ -835,23 +832,23 @@
   (= status 204))
 
 (def-message-dispatch :edit-original-interaction-response
-  [application-id interaction-token] :patch
+  [interaction-token application-id] :patch
   (webhook-url application-id interaction-token "@original"))
 
 (def-message-dispatch :delete-original-interaction-response
-  [application-id interaction-token] :delete
+  [_ application-id interaction-token] :delete
   (webhook-url application-id interaction-token "@original"))
 
 (defmethod dispatch-http :create-followup-message
-  [token endpoint data]
-  (execute-webhook token endpoint data))
+  [token endpoint [prom app-id & data]]
+  (execute-webhook token app-id (-> endpoint ::ms/major-variable ::ms/major-variable-value) prom [data]))
 
 (def-message-dispatch :edit-followup-message
-  [application-id interaction-token message-id] :patch
+  [interaction-token application-id message-id] :patch
   (webhook-url application-id interaction-token message-id))
 
 (def-message-dispatch :delete-followup-message
-  [application-id interaction-token message-id] :delete
+  [interaction-token application-id message-id] :delete
   (webhook-url application-id interaction-token message-id))
 
 

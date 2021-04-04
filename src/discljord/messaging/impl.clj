@@ -734,13 +734,11 @@
   [webhook-id webhook-token message-id] :delete
   (webhook-url webhook-id webhook-token message-id))
 
-;; FIXME consistent argument names with spec and endpoint definition
-
 (defn- command-params [name description options default-perm]
   {:body (json/write-str (cond-> {:name name
                                   :description description}
                                  options (assoc :options options)
-                                 default-perm (assoc :default_permission default_perm)))})
+                                 default-perm (assoc :default_permission default-perm)))})
 
 (defn- global-cmd-url 
   ([application-id] (str "/applications/" application-id "/commands"))

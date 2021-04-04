@@ -43,7 +43,20 @@
    "Content-Type" "application/json"})
 
 (defmacro defdispatch
-  ""
+  "Defines a dispatch method for the the endpoint with `endpoint-name`.
+  
+  In the parameter declarations `[major-var & params]`, the major variable always comes first,
+  no matter at which position it is in the actual endpoint definition.
+  Even if the corresponding endpoint does not have a major variable,
+  a symbol for it needs to be provided in the parameters (typically `_` since it will always be bound to `nil`).
+  
+  `opts` are the optional parameters as specified in the endpoint definition,
+  `method` is the http method used (`:get`, `:post`, ...),
+  `status-sym` is a symbol that will be bound to the response code (http status),
+  `body-sym` is a symbol that will be bound to the response body (as a string),
+  `url-string` is the url of the endpoint (its expression can depend on the arguments),
+  `method-params` is a map describing what to send in the request,
+  `promise-val` is the expression that will be in the promise returned to the user of the endpoint."
   [endpoint-name [major-var & params] [& opts] opts-sym
    method status-sym body-sym url-str
    method-params promise-val]

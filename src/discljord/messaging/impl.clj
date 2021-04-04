@@ -825,7 +825,7 @@
 (defdispatch :edit-application-command-permissions
   [application-id guild-id command-id permissions] [] _ :put _ body
   (str (guild-cmd-url application-id guild-id command-id) "/permissions")
-  {:body (json/write-str permissions)}
+  {:body (json/write-str {:permissions permissions})}
   (json-body body))
 
 (defdispatch :create-interaction-response

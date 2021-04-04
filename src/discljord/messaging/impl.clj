@@ -812,7 +812,23 @@
   {:body (json/write-str commands)}
   (json-body body))
 
-;; TODO implement permission endpoints
+(defdispatch :get-guild-application-command-permissions
+  [application-id guild-id] [] _ :get _ body
+  (str (guild-cmd-url application-id guild-id) "/permissions")
+  {}
+  (json-body body))
+
+(defdispatch :get-application-command-permissions
+  [application-id guild-id command-id] [] _ :get _ body
+  (str (guild-cmd-url application-id guild-id command-id) "/permissions")
+  {}
+  (json-body body))
+
+(defdispatch :edit-application-command-permissions
+  [application-id guild-id command-id permissions] [] _ :put _ body
+  (str (guild-cmd-url application-id guild-id command-id) "/permissions")
+  {:body (json/write-str permissions)}
+  (json-body body))
 
 (defdispatch :create-interaction-response
   [_ interaction-id interaction-token type] [data] _ :post status _

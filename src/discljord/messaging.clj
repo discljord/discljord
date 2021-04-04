@@ -717,7 +717,7 @@
 (defendpoint edit-application-command-permissions! ::ds/application-id
   "Sets the permission settings for the given command in the guild.
   
-  Returns a promise containing the updated permission settings."
+  Returns a promise containing the updated permission settings in a map with some additional information."
   [guild-id command-id ms.command/permissions]
   [])
 

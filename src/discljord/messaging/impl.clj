@@ -719,10 +719,9 @@
                                               "Content-Type" "multipart/form-data")
                               :multipart multipart})
         status (:status response)
-        raw-body (:body response)
-        body (if (empty? raw-body)
-               (= status 204)
-               (json-body raw-body))]
+        body (if (= status 200)
+               (json-body (:body response))
+               (= status 204))]
     (when-not (= status 429)
       (if (some? body)
         (a/>!! prom body)

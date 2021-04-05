@@ -636,7 +636,7 @@
   {}
   (json-body body))
 
-;; TODO consider using for other applicable implementations as well
+;; TODO consider using for other applicable implementations as well (edit-message, delete-message)
 (defmacro ^:private def-message-dispatch
   "Creates a dispatch definition based on the common pattern of creating,
   editing and updating some sort of message"

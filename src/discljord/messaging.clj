@@ -651,8 +651,8 @@
   "Updates an existing global slash command by its id.
 
   Returns a promise containing the updated application command object."
-  [application-id command-id ms.command/name ms.command/description]
-  [ms.command/options ms.command/default_permission])
+  [application-id command-id]
+  [ms.command/name ms.command/description ms.command/options ms.command/default_permission])
 
 (defendpoint delete-global-application-command! nil
   "Deletes an existing global slash command by its id.
@@ -685,8 +685,8 @@
   "Updates an existing guild slash command by its id.
 
   Returns a promise containing the updated application command object."
-  [application-id guild-id command-id ms.command/name ms.command/description]
-  [ms.command/options ms.command/default_permission])
+  [application-id guild-id command-id]
+  [ms.command/name ms.command/description ms.command/options ms.command/default_permission])
 
 (defendpoint delete-guild-application-command! nil
   "Deletes an existing guild slash command by its id.

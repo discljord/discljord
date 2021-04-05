@@ -734,7 +734,7 @@
 
 (defmethod dispatch-http :execute-webhook
   [token endpoint [prom webhook-token & data]]
-  (execute-webhook token (-> endpoint ::ms/major-variable ::ms/major-variable-value) webhook-token prom [data]))
+  (execute-webhook token (-> endpoint ::ms/major-variable ::ms/major-variable-value) webhook-token prom data))
 
 (def-message-dispatch :edit-webhook-message
   [webhook-id webhook-token message-id] :patch
@@ -854,7 +854,7 @@
 
 (defmethod dispatch-http :create-followup-message
   [token endpoint [prom app-id & data]]
-  (execute-webhook token app-id (-> endpoint ::ms/major-variable ::ms/major-variable-value) prom [data]))
+  (execute-webhook token app-id (-> endpoint ::ms/major-variable ::ms/major-variable-value) prom data))
 
 (def-message-dispatch :edit-followup-message
   [interaction-token application-id message-id] :patch

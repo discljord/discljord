@@ -236,13 +236,17 @@
 (s/def :command.option/choices (s/coll-of :command.option/choice))
 
 
-(s/def :command/option (s/keys :req-un [:command.option/type
-                                        :command.option/name
-                                        :command.option/description]
-                               :opt-un [:command.option/default
-                                        :command.option/required
-                                        :command.option/choices
-                                        :command.option/options]))
+(s/def :command/option (s/and (s/keys :req-un [:command.option/type
+                                               :command.option/name
+                                               :command.option/description]
+                                      :opt-un [:command.option/default
+                                               :command.option/required
+                                               :command.option/choices
+                                               :command.option/options])
+                              #(<= (count (:choices %)) 25)
+                              #(not-any? #{(command-option-types :sub-command-group)} (map :type (:options %)))
+                              #(or (= (command-option-types :sub-command-group) (:type %)
+                                      (not-any? #{(command-option-types :sub-command)} (map :type (:options %)))))))
 
 (def command-permission-types
   {:role 1 
@@ -260,7 +264,7 @@
 
 (s/def :discljord.messaging.specs.command/permissions (s/coll-of :command/permission))
 
-(s/def :discljord.messaging.specs.command/options (s/coll-of :command/option)) 
+(s/def :discljord.messaging.specs.command/options (s/and (s/coll-of :command/option) (comp (partial >= 25) count)))
 
 (s/def :discljord.messaging.specs.command/default_permission boolean?)
 
@@ -270,10 +274,19 @@
 
 (s/def :discljord.messaging.specs.command/description (string-spec 1 100))
 
-(s/def ::command (s/keys :req-un [:discljord.messaging.specs.command/name
-                                  :discljord.messaging.specs.command/description]
-                         :opt-un [:discljord.messaging.specs.command/options
-                                  :discljord.messaging.specs.command/default_permission]))
+(s/def ::command (s/and (s/keys :req-un [:discljord.messaging.specs.command/name
+                                         :discljord.messaging.specs.command/description]
+                                :opt-un [:discljord.messaging.specs.command/options
+                                         :discljord.messaging.specs.command/default_permission])
+                        (fn [cmd]
+                          (<= (->> cmd
+                                   (tree-seq :options :options)
+                                   (map (juxt :name :description (comp (partial map (juxt :name :value)) :choices)))
+                                   flatten
+                                   (filter string?)
+                                   (map count)
+                                   (reduce +))
+                              4000))))
 
 (s/def ::commands (s/coll-of ::command))
 

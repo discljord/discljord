@@ -610,7 +610,7 @@
 (defendpoint edit-webhook-message! ::ds/webhook-id
   "Edits a previously-sent webhook message from the same token.
   
-  Returns ???" ; TODO
+  Returns a promise containing the updated message object."
   [webhook-token message-id]
   [content embeds allowed-mentions])
 
@@ -749,7 +749,7 @@
   
   Returns a promise containing the message that was created."
   [application-id interaction-token]
-  [content file embeds wait username avatar-url tts allowed-mentions]) 
+  [content file embeds username avatar-url tts allowed-mentions])
 
 (defendpoint edit-followup-message! ::ms/interaction-token
   "Edits a followup message to an interaction by its id.

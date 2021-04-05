@@ -52,11 +52,11 @@
         action (keyword (subs sym-name 0 (dec (count sym-name))))
         opts (conj opts 'user-agent 'audit-reason)
         prepend-major-var? (and major-var (not (contains? (set params) major-var)))
-        spec-args (cond->> (map (juxt (comp keyword name) spec-for) params) 
+        spec-args (cond->> (map (juxt (comp keyword name) spec-for) params)
                            prepend-major-var? (cons [(keyword major-var) major-var-type])
                            true vec)
         spec-keys (vec (map spec-for opts))
-        unqualified-params (cond->> (map (comp symbol name) params) prepend-major-var? (cons major-var))] 
+        unqualified-params (cond->> (map (comp symbol name) params) prepend-major-var? (cons major-var))]
     `(do
        (defn ~endpoint-name
          ~doc-str
@@ -65,9 +65,9 @@
                audit-reason# (:audit-reason ~'opts)
                p# (util/derefable-promise-chan)
                action# {::ms/action ~action}]
-           (a/put! ~'conn (into [(cond-> action# 
-                                         ~major-var-type (assoc ::ms/major-variable 
-                                                           {::ms/major-variable-type ~major-var-type 
+           (a/put! ~'conn (into [(cond-> action#
+                                         ~major-var-type (assoc ::ms/major-variable
+                                                           {::ms/major-variable-type ~major-var-type
                                                             ::ms/major-variable-value ~major-var}))
                                  p#
                                  ~@(remove #{major-var} unqualified-params)
@@ -609,14 +609,14 @@
 
 (defendpoint edit-webhook-message! ::ds/webhook-id
   "Edits a previously-sent webhook message from the same token.
-  
+
   Returns a promise containing the updated message object."
   [webhook-token message-id]
   [content embeds allowed-mentions])
 
 (defendpoint delete-webhook-message! ::ds/webhook-id
   "Deletes a messages that was sent from the given webhook.
-  
+
   Returns a promise containing a boolean of if it succeeded."
   [webhook-token message-id]
   [])
@@ -640,8 +640,8 @@
   [])
 
 (defendpoint create-global-application-command! nil
-  "Creates or updates a global slash command. 
-  
+  "Creates or updates a global slash command.
+
   New global commands will be available in all guilds after 1 hour.
   Returns a promise containing the new application command object."
   [application-id ms.command/name ms.command/description]
@@ -649,21 +649,21 @@
 
 (defendpoint edit-global-application-command! nil
   "Updates an existing global slash command by its id.
-  
+
   Returns a promise containing the updated application command object."
   [application-id command-id ms.command/name ms.command/description]
   [ms.command/options ms.command/default_permission])
 
 (defendpoint delete-global-application-command! nil
   "Deletes an existing global slash command by its id.
-  
+
   Returns a promise containing a boolean of if it succeeded."
   [application-id command-id]
   [])
 
 (defendpoint bulk-overwrite-global-application-commands! nil
-  "Overwrites all global slash commands with the provided ones. 
-  
+  "Overwrites all global slash commands with the provided ones.
+
   If a command with a given name doesn't exist, creates that command.
   Returns a promise containing the updated application command objects."
   [application-id commands]
@@ -675,29 +675,29 @@
   [])
 
 (defendpoint create-guild-application-command! nil
-  "Creates or updates a guild slash command. 
-  
+  "Creates or updates a guild slash command.
+
   Returns a promise containing the new application command object."
   [application-id guild-id ms.command/name ms.command/description]
   [ms.command/options ms.command/default_permission])
 
 (defendpoint edit-guild-application-command! nil
   "Updates an existing guild slash command by its id.
-  
+
   Returns a promise containing the updated application command object."
   [application-id guild-id command-id ms.command/name ms.command/description]
   [ms.command/options ms.command/default_permission])
 
 (defendpoint delete-guild-application-command! nil
   "Deletes an existing guild slash command by its id.
-  
+
   Returns a promise containing a boolean of if it succeeded."
   [application-id guild-id command-id]
   [])
 
 (defendpoint bulk-overwrite-guild-application-commands! nil
-  "Overwrites all guild slash commands with the provided ones. 
-  
+  "Overwrites all guild slash commands with the provided ones.
+
   If a command with a given name doesn't exist, creates that command.
   Returns a promise containing the updated application command objects."
   [application-id guild-id commands]
@@ -715,7 +715,7 @@
 
 (defendpoint edit-application-command-permissions! nil
   "Sets the permission settings for the given command in the guild.
-  
+
   Returns a promise containing the updated permission settings in a map with some additional information."
   [application-id guild-id command-id ms.command/permissions]
   [])
@@ -725,42 +725,42 @@
 
 (defendpoint create-interaction-response! nil
   "Sends a response to an interaction event.
-  
+
   Returns a promise containing a boolean of if it succeeded."
   [interaction-id interaction-token ms.interaction-response/type]
   [ms.interaction-response/data])
 
 (defendpoint edit-original-interaction-response! ::ms/interaction-token
   "Edits the inital response to the given interaction.
-  
+
   Returns a promise containing the updated message object"
   [application-id interaction-token]
   [content embeds allowed-mentions])
 
 (defendpoint delete-original-interaction-response! nil
   "Deletes the initial response to the given interaction.
-  
+
   Returns a promise containing a boolean of if it succeeded."
   [application-id interaction-token]
   [])
 
 (defendpoint create-followup-message! ::ms/interaction-token
   "Creates a followup message for the given interaction.
-  
+
   Returns a promise containing the message that was created."
   [application-id interaction-token]
   [content file embeds username avatar-url tts allowed-mentions])
 
 (defendpoint edit-followup-message! ::ms/interaction-token
   "Edits a followup message to an interaction by its id.
-  
+
   Returns a promise containing the updated message object."
   [application-id interaction-token message-id]
   [content embeds allowed-mentions])
 
 (defendpoint delete-followup-message! ::ms/interation-token
   "Deletes a followup message to an interaction by its id.
-  
+
   Returns a promise containing a boolean of if it succeeded."
   [application-id interaction-token message-id]
   [])

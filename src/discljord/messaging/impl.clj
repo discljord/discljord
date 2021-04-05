@@ -44,12 +44,12 @@
 
 (defmacro defdispatch
   "Defines a dispatch method for the the endpoint with `endpoint-name`.
-  
+
   In the parameter declarations `[major-var & params]`, the major variable always comes first,
   no matter at which position it is in the actual endpoint definition.
   Even if the corresponding endpoint does not have a major variable,
   a symbol for it needs to be provided in the parameters (typically `_` since it will always be bound to `nil`).
-  
+
   `opts` are the optional parameters as specified in the endpoint definition,
   `method` is the http method used (`:get`, `:post`, ...),
   `status-sym` is a symbol that will be bound to the response code (http status),
@@ -643,18 +643,18 @@
   [name params method url]
   (let [[opts status body] (repeatedly gensym)
         delete (= method :delete)]
-    `(defdispatch ~name  
+    `(defdispatch ~name
        ~params [] ~opts ~method ~status ~body
        ~url
        ~(if delete `{} `{:body (json/write-str ~opts)})
        ~(if delete `(= ~status 204) `(json-body ~body)))))
 
-(defn- webhook-url 
+(defn- webhook-url
   ([id token]
    (str "/webhooks/" id \/ token))
-  ([id token message-id] 
+  ([id token message-id]
    (str (webhook-url id token) "/messages/" message-id)))
-  
+
 (defdispatch :create-webhook
   [channel-id name] [avatar] _ :post _ body
   (str "/channels/" channel-id "/webhooks")
@@ -710,7 +710,7 @@
   {}
   (= status 204))
 
-(defn- execute-webhook 
+(defn- execute-webhook
   [token webhook-id webhook-token prom [& {:keys [^java.io.File file user-agent wait] :as opts
                                            :or {wait false}} :as data]]
   (let [payload (conform-to-json (dissoc opts :user-agent :file))
@@ -752,10 +752,10 @@
                                  options (assoc :options options)
                                  default-perm (assoc :default_permission default-perm)))})
 
-(defn- global-cmd-url 
+(defn- global-cmd-url
   ([application-id] (str "/applications/" application-id "/commands"))
   ([application-id command-id] (str (global-cmd-url application-id) \/ command-id)))
-  
+
 
 (defdispatch :get-global-application-commands
   [_ application-id] [] _ :get _ body
@@ -770,7 +770,7 @@
   (command-params name description options default_permission)
   (json-body body))
 
-(defdispatch :edit-global-application-command 
+(defdispatch :edit-global-application-command
   [_ application-id command-id name description] [options default_permission] _ :patch _ body
   (global-cmd-url application-id command-id)
   (command-params name description options default_permission)
@@ -782,7 +782,7 @@
   {}
   (= status 204))
 
-(defdispatch :bulk-overwrite-global-application-commands 
+(defdispatch :bulk-overwrite-global-application-commands
   [_ application-id commands] [] _ :put _ body
   (global-cmd-url application-id)
   {:body (json/write-str commands)}
@@ -816,7 +816,7 @@
   {}
   (= status 204))
 
-(defdispatch :bulk-overwrite-guild-application-commands 
+(defdispatch :bulk-overwrite-guild-application-commands
   [_ application-id guild-id commands] [] _ :put _ body
   (guild-cmd-url application-id guild-id)
   {:body (json/write-str commands)}

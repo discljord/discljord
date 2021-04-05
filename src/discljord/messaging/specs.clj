@@ -2,10 +2,10 @@
   (:require [clojure.spec.alpha :as s]
             [discljord.specs :as ds]))
 
-(defn- string-spec 
-  ([min-length max-length] 
+(defn- string-spec
+  ([min-length max-length]
    (s/and string? #(<= min-length (count %) max-length)))
-  ([pattern] 
+  ([pattern]
    (s/and string? (partial re-matches pattern))))
 
 (s/def ::major-variable-type #{::ds/guild-id ::ds/channel-id ::ds/webhook-id ::ds/application-id})
@@ -230,7 +230,7 @@
 (s/def :command.option.choice/value
   (s/or :string string? :int int?))
 
-(s/def :command.option/choice (s/keys :req-un [:command.option.choice/name 
+(s/def :command.option/choice (s/keys :req-un [:command.option.choice/name
                                                :command.option.choice/value]))
 
 (s/def :command.option/choices (s/coll-of :command.option/choice))
@@ -249,7 +249,7 @@
                                       (not-any? #{(command-option-types :sub-command)} (map :type (:options %)))))))
 
 (def command-permission-types
-  {:role 1 
+  {:role 1
    :user 2})
 
 (s/def :command.permission/id ::ds/snowflake)
@@ -302,10 +302,10 @@
    :channel-message-with-source 4
    :acknowledge-with-source 5})
 
-(s/def :discljord.messaging.specs.interaction-response/type  
+(s/def :discljord.messaging.specs.interaction-response/type
   (set (vals interaction-response-types)))
 
-(s/def :discljord.messaging.specs.interaction-response/data 
+(s/def :discljord.messaging.specs.interaction-response/data
   (s/keys :req-un [::content]
           :opt-un [::embeds
                    ::tts

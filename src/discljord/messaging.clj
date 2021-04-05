@@ -273,7 +273,7 @@
 (defendpoint get-guild! ::ds/guild-id
   "Returns a promise containing the guild object."
   []
-  [])
+  [with-counts])
 
 (defendpoint modify-guild! ::ds/guild-id
   "Modifies an existing guild. Returns a promise containing the modified guild object."
@@ -622,14 +622,14 @@
   [])
 
 #_(defendpoint execute-slack-compatible-webhook! ::ds/webhook-id
-   ""
-   [webhook-token]
-   [wait])
+    ""
+    [webhook-token]
+    [wait])
 
 #_(defendpoint execute-github-compatible-webhook! ::ds/webhook-id
-   ""
-   [webhook-token]
-   [wait])
+    ""
+    [webhook-token]
+    [wait])
 
 ;; --------------------------------------------------
 ;; Slash Commands

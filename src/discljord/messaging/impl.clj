@@ -100,6 +100,18 @@
                [(keyword (str/replace (name k) #"-" "_")) v]))
         opts))
 
+(defmacro ^:private def-message-dispatch
+  "Creates a dispatch definition based on the common pattern of creating,
+  editing and updating some sort of message"
+  [name params method url]
+  (let [[opts status body] (repeatedly gensym)
+        delete (= method :delete)]
+    `(defdispatch ~name
+       ~params [] ~opts ~method ~status ~body
+       ~url
+       ~(if delete `{} `{:body (json/write-str ~opts)})
+       ~(if delete `(= ~status 204) `(json-body ~body)))))
+
 (defdispatch :get-guild-audit-log
   [guild-id] [] _ :get _ body
   (str "/guilds/" guild-id "/audit-logs")
@@ -200,17 +212,14 @@
   {}
   (= status 204))
 
-(defdispatch :edit-message
-  [channel-id message-id] [] opts :patch _ body
-  (str "/channels/" channel-id "/messages/" message-id)
-  {:body (json/write-str opts)}
-  (json-body body))
 
-(defdispatch :delete-message
-  [channel-id message-id] [] _ :delete status _
-  (str "/channels/" channel-id "/messages/" message-id)
-  {}
-  (= status 204))
+(def-message-dispatch :edit-message
+  [channel-id message-id] :patch
+  (str "/channels/" channel-id "/messages/" message-id))
+
+(def-message-dispatch :delete-message
+  [channel-id message-id] :delete
+  (str "/channels/" channel-id "/messages/" message-id))
 
 (defdispatch :bulk-delete-messages
   [channel-id messages] [] _ :post status _
@@ -635,19 +644,6 @@
   "/voice/regions"
   {}
   (json-body body))
-
-;; TODO consider using for other applicable implementations as well (edit-message, delete-message)
-(defmacro ^:private def-message-dispatch
-  "Creates a dispatch definition based on the common pattern of creating,
-  editing and updating some sort of message"
-  [name params method url]
-  (let [[opts status body] (repeatedly gensym)
-        delete (= method :delete)]
-    `(defdispatch ~name
-       ~params [] ~opts ~method ~status ~body
-       ~url
-       ~(if delete `{} `{:body (json/write-str ~opts)})
-       ~(if delete `(= ~status 204) `(json-body ~body)))))
 
 (defn- webhook-url
   ([id token]

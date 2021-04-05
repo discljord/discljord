@@ -3,8 +3,31 @@ All notable changes to this project will be documented in this file. This change
 Discljord follows semantic versioning.
 
 ## [Unreleased]
+### Added
+ - Slash Commands Feature
+   - Management Endpoints
+     - `get-global/guild-application-commands!`
+     - `create-global/guild-application-command!`
+     - `get-global/guild-application-command!`
+     - `edit-global/guild-application-command!`
+     - `delete-global/guild-application-command!`
+     - `bulk-overwrite-global/guild-application-command!`
+     - `get-guild-application-command-permissions!`
+     - `get-application-command-permissions!`
+     - `edit-application-command-permissions!`
+   - Interactions Endpoints
+     - `create-interaction-response!`
+     - `edit-original-interaction-response!`
+     - `delete-original-interaction-response!`
+     - `create-followup-message!`
+     - `edit-followup-message!`
+     - `delete-followup-message!`
+ - New webhook endpoints
+   - `edit-webhook-message!`
+   - `delete-webhook-message!`
 
 ### Fixed
+ - `:discljord.specs/snowflake` spec does not throw an exception anymore when passed a string
  - Double checking for sequence numbers on resume
 
 ## [1.2.0] - 2020-12-09

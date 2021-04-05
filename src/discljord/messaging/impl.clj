@@ -721,14 +721,16 @@
                              {:query-params {:wait wait}
                               :headers (assoc (auth-headers token user-agent)
                                               "Content-Type" "multipart/form-data")
-                              :multipart multipart})]
-    (let [body (if (= (:status response) 200)
-                 (json-body (:body response))
-                 (= (:status response) 204))]
-      (when-not (= (:status response) 429)
-        (if (some? body)
-          (a/>!! prom body)
-          (a/close! prom))))
+                              :multipart multipart})
+        status (:status response)
+        raw-body (:body response)
+        body (if (empty? raw-body)
+               (= status 204)
+               (json-body raw-body))]
+    (when-not (= status 429)
+      (if (some? body)
+        (a/>!! prom body)
+        (a/close! prom)))
     response))
 
 

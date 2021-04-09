@@ -148,33 +148,42 @@
   {}
   (json-body body))
 
+(defn- send-message! [token url prom multipart expect-content? {:keys [^File file allowed-mentions stream message-reference] :as opts}]
+  (let [payload (-> opts
+                    (dissoc :user-agent :file)
+                    conform-to-json
+                    json/write-str)
+        multipart (cond-> (conj multipart {:name "payload_json" :content payload})
+                          file (conj {:name "file" :content file :filename (.getName file)}))
+        response @(http/post (api-url url)
+                             {:headers (assoc (auth-headers token user-agent)
+                                              "Content-Type" "multipart/form-data")
+                              :multipart multipart})
+        status (:status response)
+        raw-body (:body response)
+        body (if expect-content?
+               (cond->> (json-body raw-body)
+                 (not= 2 (quot status 100)) (ex-info ""))
+               (= status 204))]
+    (when-not (= status 429)
+      (if (some? body)
+        (a/>!! prom body)
+        (a/close! prom)))
+    response))
+
 (defmethod dispatch-http :create-message
-  [token endpoint [prom & {:keys [^File file user-agent attachments allowed-mentions stream message-reference] :as opts}]]
+  [token endpoint [prom & {:keys [attachments stream] :as opts}]]
   (let [channel-id (-> endpoint
                        ::ms/major-variable
                        ::ms/major-variable-value)
-        payload (conform-to-json (dissoc opts :user-agent :file :attachments :stream))
-        payload-json (json/write-str payload)
-        multipart (cond-> [{:name "payload_json" :content payload-json}]
-                          file (conj {:name "file" :content file :filename (.getName file)})
+        multipart (cond-> []
                           attachments (into (for [attachment attachments]
                                               {:name "attachment"
                                                :content attachment
                                                :filename (.getName ^File attachment)}))
-                          stream (conj (assoc stream :name "file")))
-        response @(http/post (api-url (str "/channels/" channel-id "/messages"))
-                             {:headers (assoc (auth-headers token user-agent)
-                                              "Content-Type" "multipart/form-data")
-                              :multipart multipart})]
-    (let [body (json-body (:body response))
-          body (if (= 2 (int (/ (:status response) 100)))
-                 body
-                 (ex-info "" body))]
-      (when-not (= (:status response) 429)
-        (if (some? body)
-          (a/>!! prom body)
-          (a/close! prom))))
-    response))
+                          stream (conj (assoc stream :name "file")))]
+    (send-message! token (str "/channels/" channel-id "/messages")
+                   prom multipart true (dissoc opts :attachments :stream))))
 
 (defdispatch :create-reaction
   [channel-id message-id emoji] [] _ :put status _
@@ -706,32 +715,16 @@
   {}
   (= status 204))
 
-(defn- execute-webhook
-  [token webhook-id webhook-token prom [& {:keys [^java.io.File file user-agent wait] :as opts
-                                           :or {wait false}} :as data]]
-  (let [payload (conform-to-json (dissoc opts :user-agent :file))
-        payload-json (json/write-str payload)
-        multipart (cond-> [{:name "payload_json" :content payload-json}]
-                          file (conj  {:name "file" :content file :filename (.getName file)}))
-        response @(http/post (api-url (webhook-url webhook-id webhook-token))
-                             {:query-params {:wait wait}
-                              :headers (assoc (auth-headers token user-agent)
-                                              "Content-Type" "multipart/form-data")
-                              :multipart multipart})
-        status (:status response)
-        body (if (= status 200)
-               (json-body (:body response))
-               (= status 204))]
-    (when-not (= status 429)
-      (if (some? body)
-        (a/>!! prom body)
-        (a/close! prom)))
-    response))
-
+(defn- execute-webhook!
+  [token webhook-id webhook-token prom expect-content? opts]
+  (send-message! token (webhook-url webhook-id webhook-token)
+                 prom [] expect-content? opts))
 
 (defmethod dispatch-http :execute-webhook
-  [token endpoint [prom webhook-token & data]]
-  (execute-webhook token (-> endpoint ::ms/major-variable ::ms/major-variable-value) webhook-token prom data))
+  [token endpoint [prom webhook-token & {:as opts}]]
+  (execute-webhook! token
+                   (-> endpoint ::ms/major-variable ::ms/major-variable-value)
+                   webhook-token prom false opts))
 
 (def-message-dispatch :edit-webhook-message
   [webhook-id webhook-token message-id] :patch
@@ -850,8 +843,10 @@
   (webhook-url application-id interaction-token "@original"))
 
 (defmethod dispatch-http :create-followup-message
-  [token endpoint [prom app-id & data]]
-  (execute-webhook token app-id (-> endpoint ::ms/major-variable ::ms/major-variable-value) prom data))
+  [token endpoint [prom app-id & {:as opts}]]
+  (execute-webhook! token app-id
+                    (-> endpoint ::ms/major-variable ::ms/major-variable-value)
+                    prom true opts))
 
 (def-message-dispatch :edit-followup-message
   [interaction-token application-id message-id] :patch

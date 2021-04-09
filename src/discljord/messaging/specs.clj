@@ -296,7 +296,7 @@
                     (reduce +))
                4000))))
 
-(s/def ::commands (s/coll-of ::command))
+(s/def ::commands (s/and (s/coll-of ::command) #(<= (count %) 100)))
 
 (s/def ::command-id ::ds/snowflake)
 
@@ -321,7 +321,6 @@
                    ::tts
                    ::allowed-mentions
                    :interaction-response.data/flags]))
-
 
 (s/def :widget/enabled boolean?)
 (s/def :widget/channel_id ::ds/snowflake)

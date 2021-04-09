@@ -313,14 +313,14 @@
 (s/def :discljord.messaging.specs.interaction-response/type
   (set (vals interaction-response-types)))
 
-(s/def :discljord.messaging.specs.interaction-response.data/flags int?)
+(s/def :interaction-response.data/flags int?)
 
 (s/def :discljord.messaging.specs.interaction-response/data
   (s/keys :req-un [::content]
           :opt-un [::embeds
                    ::tts
                    ::allowed-mentions
-                   :discljord.messaging.specs.interaction-response.data/flags]))
+                   :interaction-response.data/flags]))
 
 
 (s/def :widget/enabled boolean?)

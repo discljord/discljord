@@ -148,6 +148,7 @@
   {}
   (json-body body))
 
+;; TODO add support for stream option (for all message sending endpoints)
 (defn- send-message! [token url prom multipart expect-content? {:keys [^File file allowed-mentions stream message-reference] :as opts}]
   (let [payload (-> opts
                     (dissoc :user-agent :file)
@@ -828,6 +829,7 @@
   {:body (json/write-str {:permissions permissions})}
   (json-body body))
 
+;; TODO use send-message!
 (defdispatch :create-interaction-response
   [_ interaction-id interaction-token type] [data] _ :post status _
   (str "/interactions/" interaction-id \/ interaction-token "/callback")

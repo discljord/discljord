@@ -308,16 +308,19 @@
    :acknowledge 2
    :channel-message 3
    :channel-message-with-source 4
-   :acknowledge-with-source 5})
+   :deferred-channel-message-with-source 5})
 
 (s/def :discljord.messaging.specs.interaction-response/type
   (set (vals interaction-response-types)))
+
+(s/def :discljord.messaging.specs.interaction-response.data/flags int?)
 
 (s/def :discljord.messaging.specs.interaction-response/data
   (s/keys :req-un [::content]
           :opt-un [::embeds
                    ::tts
-                   ::allowed-mentions]))
+                   ::allowed-mentions
+                   :discljord.messaging.specs.interaction-response.data/flags]))
 
 
 (s/def :widget/enabled boolean?)

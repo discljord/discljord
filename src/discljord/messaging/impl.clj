@@ -148,7 +148,7 @@
   {}
   (json-body body))
 
-(defn- send-message! [token url prom multipart always-expect-content? {:keys [^File file user-agent allowed-mentions stream message-reference] :as opts}]
+(defn- send-message! [token url prom multipart always-expect-content? {:keys [wait ^File file user-agent allowed-mentions stream message-reference] :as opts}]
   (let [payload (-> opts
                     (dissoc :user-agent :file :stream)
                     conform-to-json
@@ -157,7 +157,8 @@
                     file (conj {:name "file" :content file :filename (.getName file)})
                     stream (conj (assoc stream :name "file")))
         response @(http/post (api-url url)
-                             {:headers (assoc (auth-headers token user-agent)
+                             {:query-params (when (some? wait) {:wait wait})
+                              :headers (assoc (auth-headers token user-agent)
                                               "Content-Type" "multipart/form-data")
                               :multipart multipart})
         status (:status response)

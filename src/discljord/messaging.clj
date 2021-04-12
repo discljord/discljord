@@ -605,7 +605,7 @@
 (defendpoint execute-webhook! ::ds/webhook-id
   "Executes the given webhook. Returns a promise which contains either a boolean of if the message succeeded, or a map of the response body."
   [webhook-token]
-  [content file embeds wait username avatar-url tts allowed-mentions])
+  [content file stream embeds wait username avatar-url tts allowed-mentions])
 
 (defendpoint edit-webhook-message! ::ds/webhook-id
   "Edits a previously-sent webhook message from the same token.
@@ -749,7 +749,7 @@
 
   Returns a promise containing the message that was created."
   [application-id interaction-token]
-  [content file embeds username avatar-url tts allowed-mentions])
+  [content file stream embeds username avatar-url tts allowed-mentions])
 
 (defendpoint edit-followup-message! ::ms/interaction-token
   "Edits a followup message to an interaction by its id.

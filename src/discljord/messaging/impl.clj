@@ -148,14 +148,14 @@
   {}
   (json-body body))
 
-;; TODO add support for stream option (for all message sending endpoints)
 (defn- send-message! [token url prom multipart always-expect-content? {:keys [^File file user-agent allowed-mentions stream message-reference] :as opts}]
   (let [payload (-> opts
-                    (dissoc :user-agent :file)
+                    (dissoc :user-agent :file :stream)
                     conform-to-json
                     json/write-str)
         multipart (cond-> (conj multipart {:name "payload_json" :content payload})
-                          file (conj {:name "file" :content file :filename (.getName file)}))
+                    file (conj {:name "file" :content file :filename (.getName file)})
+                    stream (conj (assoc stream :name "file")))
         response @(http/post (api-url url)
                              {:headers (assoc (auth-headers token user-agent)
                                               "Content-Type" "multipart/form-data")
@@ -178,13 +178,12 @@
                        ::ms/major-variable
                        ::ms/major-variable-value)
         multipart (cond-> []
-                          attachments (into (for [attachment attachments]
-                                              {:name "attachment"
-                                               :content attachment
-                                               :filename (.getName ^File attachment)}))
-                          stream (conj (assoc stream :name "file")))]
+                    attachments (into (for [attachment attachments]
+                                        {:name "attachment"
+                                         :content attachment
+                                         :filename (.getName ^File attachment)})))]
     (send-message! token (str "/channels/" channel-id "/messages")
-                   prom multipart true (dissoc opts :attachments :stream))))
+                   prom multipart true (dissoc opts :attachments))))
 
 (defdispatch :create-reaction
   [channel-id message-id emoji] [] _ :put status _

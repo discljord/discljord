@@ -25,6 +25,7 @@ Discljord follows semantic versioning.
  - New webhook endpoints
    - `edit-webhook-message!`
    - `delete-webhook-message!`
+ - `execute-webhook!` now also accepts a stream like `create-message!`
 
 ### Changed
  - Removed questionmark from argument for `get-guild`'s `with-counts` for being redundant

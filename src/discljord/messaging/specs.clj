@@ -73,6 +73,10 @@
 (s/def ::nonce ::ds/snowflake)
 (s/def ::file (partial instance? java.io.File))
 
+(s/def :stream/content (partial instance? java.io.InputStream))
+(s/def :stream/filename string?)
+(s/def ::stream (s/keys :req-un [:stream/content :stream/filename]))
+
 (s/def :embed/title string?)
 (s/def :embed/type #{"rich" "image" "video" "gifv" "article" "link"})
 (s/def :embed/description string?)
@@ -188,6 +192,8 @@
 (s/def ::nicks (s/coll-of ::nick))
 
 (s/def ::webhook-token string?)
+
+(s/def ::wait boolean?)
 
 (s/def ::embeds (s/coll-of ::embed))
 

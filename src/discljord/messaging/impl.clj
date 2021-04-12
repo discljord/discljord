@@ -149,7 +149,7 @@
   (json-body body))
 
 ;; TODO add support for stream option (for all message sending endpoints)
-(defn- send-message! [token url prom multipart expect-content? {:keys [^File file allowed-mentions stream message-reference] :as opts}]
+(defn- send-message! [token url prom multipart always-expect-content? {:keys [^File file user-agent allowed-mentions stream message-reference] :as opts}]
   (let [payload (-> opts
                     (dissoc :user-agent :file)
                     conform-to-json
@@ -162,7 +162,7 @@
                               :multipart multipart})
         status (:status response)
         raw-body (:body response)
-        body (if expect-content?
+        body (if (or always-expect-content? (= status 200))
                (cond->> (json-body raw-body)
                  (not= 2 (quot status 100)) (ex-info ""))
                (= status 204))]
@@ -717,9 +717,9 @@
   (= status 204))
 
 (defn- execute-webhook!
-  [token webhook-id webhook-token prom expect-content? opts]
+  [token webhook-id webhook-token prom always-expect-content? opts]
   (send-message! token (webhook-url webhook-id webhook-token)
-                 prom [] expect-content? opts))
+                 prom [] always-expect-content? opts))
 
 (defmethod dispatch-http :execute-webhook
   [token endpoint [prom webhook-token & {:as opts}]]

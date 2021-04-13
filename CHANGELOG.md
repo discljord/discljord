@@ -32,6 +32,7 @@ Discljord follows semantic versioning.
 
 ### Fixed
  - `:discljord.specs/snowflake` spec does not throw an exception anymore when passed a string
+ - Added missing specs for `wait` param in `execute-webhook` and `stream` param in various endpoints
 
 ## [1.2.2] - 2021-01-20
 ### Fixed

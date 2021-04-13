@@ -829,12 +829,9 @@
   {:body (json/write-str {:permissions permissions})}
   (json-body body))
 
-;; TODO use send-message!
-(defdispatch :create-interaction-response
-  [_ interaction-id interaction-token type] [data] _ :post status _
-  (str "/interactions/" interaction-id \/ interaction-token "/callback")
-  {:body (json/write-str (cond-> {:type type} data (assoc :data data)))}
-  (= status 204))
+(defmethod dispatch-http :create-interaction-response
+  [token endpoint [prom interaction-id interaction-token type & {:as opts}]]
+  (send-message! token (str "/interactions/" interaction-id \/ interaction-token "/callback") prom [] false (assoc opts :type type)))
 
 (def-message-dispatch :edit-original-interaction-response
   [interaction-token application-id] :patch

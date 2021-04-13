@@ -728,7 +728,7 @@
 
   Returns a promise containing a boolean of if it succeeded."
   [interaction-id interaction-token ms.interaction-response/type]
-  [ms.interaction-response/data])
+  [ms.interaction-response/data file stream])
 
 (defendpoint edit-original-interaction-response! ::ms/interaction-token
   "Edits the inital response to the given interaction.

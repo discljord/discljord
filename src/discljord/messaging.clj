@@ -44,7 +44,18 @@
     (keyword spec-ns (name sym))))
 
 (defmacro defendpoint
-  "Creates a new non-blocking function for a discord endpoint. `endpoint-name` must end with an '!'"
+  "Creates a new non-blocking function for a discord endpoint.
+
+  - `endpoint-name`: the name of the edpoint function. must end with an '!'
+  - `major-var-type`: the spec-name of the major variable used in this endpoint, if any. If there is none, `nil` should be used.
+  - `doc-str`: Documentation for the endpoint function.
+  - `params`: Required parameters for this endpoint. If the major variable is the first parameter, it need not be included here.
+    The macro will attempt to find a spec for each parameter. If the parameter is an unqualified symbol, `:discljord.messaging.specs/param` will be used,
+    otherwise the associated namespace. Aliases can be used as namespace segments. Some examples for spec resolution:
+    - `baz` => `:discljord.messaging.specs/baz`
+    - `foo.bar/baz` => `:foo.bar/baz`
+    - `foo.bar/baz` and `foo` is an alias for `quz.foo` in the current namespace => `:quz.foo.bar/baz`
+  - `opts`: Optional parameters for this endpoint. Spec resolution works exactly like for `params`."
   [endpoint-name major-var-type doc-str params opts]
   (let [major-var (when major-var-type
                     (symbol (name major-var-type)))

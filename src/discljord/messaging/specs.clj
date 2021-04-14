@@ -43,7 +43,18 @@
 
 (s/def ::user-agent string?)
 
+(def channel-types
+  {:guild-text 0
+   :dm 1
+   :guild-voice 2
+   :group-dm 3
+   :guild-category 4
+   :guild-news 5
+   :guild-store 6
+   :guild-stage-voice 13})
+
 (s/def ::name (string-spec 2 100))
+(s/def :discljord.messaging.specs.channel/type (set (vals channel-types)))
 (s/def ::position integer?)
 (s/def ::topic (string-spec 0 1024))
 (s/def ::nsfw boolean?)
@@ -56,8 +67,9 @@
 (s/def ::user-limit (s/and integer?
                            #(>= % 0)
                            #(<= % 99)))
-(s/def :overwrite/type #{"role" "member"})
-(s/def ::overwrite-object (s/keys :req-un [::ds/id :overwrite/type ::allow ::deny]))
+
+(s/def :discljord.messaging.specs.overwrite/type #{"role" "member"})
+(s/def ::overwrite-object (s/keys :req-un [::ds/id :discljord.messaging.specs.overwrite/type ::allow ::deny]))
 (s/def ::permission-overwrites (s/coll-of ::overwrite-object))
 (s/def ::parent-id ::ds/snowflake)
 
@@ -172,8 +184,8 @@
 (s/def ::days integer?)
 (s/def ::compute-prune-count boolean?)
 
-(s/def ::type string?)
-(s/def ::id ::ds/snowflake)
+(s/def :discljord.messaging.specs.integration/type string?)
+(s/def :discljord.messaging.specs.integration/id ::ds/snowflake)
 
 (s/def ::integration-id ::ds/snowflake)
 (s/def ::expire-behavior integer?)
@@ -240,7 +252,6 @@
                                                :command.option.choice/value]))
 
 (s/def :command.option/choices (s/coll-of :command.option/choice))
-
 
 (s/def :command/option (s/and (s/keys :req-un [:command.option/type
                                                :command.option/name

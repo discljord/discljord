@@ -184,7 +184,7 @@
 
 (defendpoint edit-channel-permissions! ::ds/channel-id
   "Edits the channel's permissions of either a user or role. Returns a promise containing a boolean of if it succeeded."
-  [overwrite-id allow deny type]
+  [overwrite-id allow deny ms.overwrite/type]
   [])
 
 (defendpoint get-channel-invites! ::ds/channel-id
@@ -295,7 +295,7 @@
 (defendpoint create-guild-channel! ::ds/guild-id
   "Returns a promise containing the new channel object."
   [name]
-  [type topic bitrate user-limit rate-limit-per-user
+  [ms.channel/type topic bitrate user-limit rate-limit-per-user
    position permission-overwrites parent-id nsfw])
 
 (defendpoint modify-guild-channel-positions! ::ds/guild-id
@@ -415,7 +415,7 @@
 
 (defendpoint create-guild-integration! ::ds/guild-id
   "Creates a new integration in the guild. Returns a promise containing a boolean of if it succeeded."
-  [type id]
+  [ms.integration/type ms.integration/id]
   [])
 
 (defendpoint modify-guild-integration! ::ds/guild-id
@@ -719,6 +719,8 @@
   Returns a promise containing the updated permission settings in a map with some additional information."
   [application-id guild-id command-id ms.command/permissions]
   [])
+
+;; TODO add get original message and get webhook message endpoints
 
 ;; -------------------------------------------------
 ;; Interactions

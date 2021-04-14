@@ -17,12 +17,14 @@ Discljord follows semantic versioning.
      - `edit-application-command-permissions!`
    - Interactions Endpoints
      - `create-interaction-response!`
+     - `get-original-interaction-response!`
      - `edit-original-interaction-response!`
      - `delete-original-interaction-response!`
      - `create-followup-message!`
      - `edit-followup-message!`
      - `delete-followup-message!`
  - New webhook endpoints
+   - `get-webhook-message!`
    - `edit-webhook-message!`
    - `delete-webhook-message!`
  - `execute-webhook!` now also accepts a stream like `create-message!`

@@ -727,6 +727,12 @@
                    (-> endpoint ::ms/major-variable ::ms/major-variable-value)
                    webhook-token prom false opts))
 
+(defdispatch :get-webhook-message
+  [webhook-id webhook-token message-id] [] _ :get _ body
+  (webhook-url webhook-id webhook-token message-id)
+  {}
+  (json-body body))
+
 (def-message-dispatch :edit-webhook-message
   [webhook-id webhook-token message-id] :patch
   (webhook-url webhook-id webhook-token message-id))
@@ -832,6 +838,12 @@
 (defmethod dispatch-http :create-interaction-response
   [token endpoint [prom interaction-id interaction-token type & {:as opts}]]
   (send-message! token (str "/interactions/" interaction-id \/ interaction-token "/callback") prom [] false (assoc opts :type type)))
+
+(defdispatch :get-original-interaction-response
+  [interaction-token application-id] [] _ :get _ body
+  (webhook-url application-id interaction-token "@original")
+  {}
+  (json-body body))
 
 (def-message-dispatch :edit-original-interaction-response
   [interaction-token application-id] :patch

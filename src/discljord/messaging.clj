@@ -607,6 +607,11 @@
   [webhook-token]
   [content file stream embeds wait username avatar-url tts allowed-mentions])
 
+(defendpoint get-webhook-message! ::ds/webhook-id
+  "Returns the webhook message sent by the given webhook with the given id."
+  [webhook-token message-id]
+  [])
+
 (defendpoint edit-webhook-message! ::ds/webhook-id
   "Edits a previously-sent webhook message from the same token.
 
@@ -720,8 +725,6 @@
   [application-id guild-id command-id ms.command/permissions]
   [])
 
-;; TODO add get original message and get webhook message endpoints
-
 ;; -------------------------------------------------
 ;; Interactions
 
@@ -731,6 +734,11 @@
   Returns a promise containing a boolean of if it succeeded."
   [interaction-id interaction-token ms.interaction-response/type]
   [ms.interaction-response/data file stream])
+
+(defendpoint get-original-interaction-response! ::ms/interaction-token
+  "Returns a promise containing the response object sent for the given interaction."
+  [application-id interaction-token]
+  [])
 
 (defendpoint edit-original-interaction-response! ::ms/interaction-token
   "Edits the inital response to the given interaction.

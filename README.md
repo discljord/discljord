@@ -1,6 +1,6 @@
 ![Discljord](img/comp.png)
 
-Discljord is a library for the easy creation of Discord Bots in Clojure! It works asynchronously by default, and has built-in support for sharding and rate-limits, with no extra work for the bot creator. Feel free to drop on by our [support server](https://discord.gg/284PgKZ) if you'd like to try it out or need any help.
+Discljord is a library for the easy creation of Discord Bots in Clojure! It works asynchronously by default, and has built-in support for sharding and rate-limits, with no extra work for the bot creator. Feel free to drop on by our [support server](https://discord.gg/discljord) if you'd like to try it out or need any help.
 
 ## Version 1.0.0 Released
 

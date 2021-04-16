@@ -611,9 +611,10 @@
    :effects [[:re-shard]]})
 
 (defmethod handle-shard-fx! :error
-  [heartbeat-ch url token shard [_ err]]
+  [heartbeat-ch url token {:keys [websocket] :as shard} [_ err]]
   (log/error err "Error encountered on shard" (:id shard))
-  {:shard shard
+  (ws/close websocket 4000 "Error encountered on the shard")
+  {:shard (dissoc shard :websocket)
    :effects []})
 
 (defmethod handle-shard-fx! :send-discord-event

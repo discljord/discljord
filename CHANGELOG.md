@@ -28,6 +28,7 @@ Discljord follows semantic versioning.
    - `edit-webhook-message!`
    - `delete-webhook-message!`
  - `execute-webhook!` now also accepts a stream like `create-message!`
+ - Keyword argument `:shards` to `discljord.connections/status-update!` to specify which shards to send to
 
 ### Changed
  - Removed questionmark from argument for `get-guild`'s `with-counts` for being redundant

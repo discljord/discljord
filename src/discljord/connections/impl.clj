@@ -825,8 +825,10 @@
 
 (defmethod handle-communication! :status-update
   [shards shard-chs event]
-  (when-let [shard (first (remove nil? shards))]
-    (a/put! (:communication-ch shard) event))
+  (let [destination-shards (:shards (apply hash-map (rest event)))]
+    (doseq [shard (cond->> shards
+                   (set? destination-shards) (filter (comp destination-shards :id)))]
+      (a/put! (:communication-ch shard) event)))
   [shards shard-chs])
 
 (defmethod handle-communication! :voice-state-update

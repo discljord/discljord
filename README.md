@@ -1,6 +1,6 @@
 ![Discljord](img/comp.png)
 
-Discljord is a library for the easy creation of Discord Bots in Clojure! It works asynchronously by default, and has built-in support for sharding and rate-limits, with no extra work for the bot creator. Feel free to drop on by our [support server](https://discord.gg/284PgKZ) if you'd like to try it out or need any help.
+Discljord is a library for the easy creation of Discord Bots in Clojure! It works asynchronously by default, and has built-in support for sharding and rate-limits, with no extra work for the bot creator. Feel free to drop on by our [support server](https://discord.gg/discljord) if you'd like to try it out or need any help.
 
 ## Version 1.0.0 Released
 
@@ -295,6 +295,16 @@ Logging levels in discljord follow a basic pattern that anything at a `warn` lev
  - Compression may fail on very large payloads, appearing as an EOF while parsing JSON exception. This can be mitigated by setting the `disable-compression` flag on `connect-bot!`
 
 If you find any other issues, please report them, and I'll attempt to fix them as soon as possible!
+
+## Supporting the Project
+If you would like to contribute financially to the creation of Discljord, a [Patreon page](https://www.patreon.com/discljord) is available to support me. There's absolutely no obligation to donate if you use this software, but if you do, I'll add your username to this document to thank you for your support!
+
+## Current Patrons
+You could have your name added here if you support the project!
+
+- Jonathan Walch
+- Johnny JayJay
+- Peter Monks
 
 ## License
 

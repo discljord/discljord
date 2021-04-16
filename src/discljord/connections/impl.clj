@@ -584,11 +584,12 @@
    :effects []})
 
 (defmethod handle-shard-fx! :reconnect
-  [heartbeat-ch url token shard event]
+  [heartbeat-ch url token {:keys [websocket] :as shard} event]
   (when (:invalid-session shard)
     (log/warn "Got invalid session payload, reconnecting shard" (:id shard)))
   (when (:heartbeat-ch shard)
     (a/close! (:heartbeat-ch shard)))
+  (ws/close websocket 4000 "Reconnection requested")
   (let [retries (or (:retries shard) 0)
         retry-wait (min (* 5100 (* retries retries)) (* 15 60 1000))]
     (log/debug "Will try to connect in" (int (/ retry-wait 1000)) "seconds")
@@ -601,7 +602,8 @@
                   shard)]
       {:shard (assoc (dissoc shard
                              :heartbeat-ch
-                             :ready)
+                             :ready
+                             :websocket)
                      :retries (inc retries))
        :effects []})))
 

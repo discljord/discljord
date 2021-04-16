@@ -28,9 +28,10 @@
     (and (instance? clojure.lang.Agent x)
          (s/valid? s @x))))
 
-(s/def ::snowflake (partial re-matches #"\d+"))
+(s/def ::snowflake (s/or :number int? :sf-string (s/and string? (partial re-matches #"\d+"))))
 
 (s/def ::id ::snowflake)
 (s/def ::channel-id ::snowflake)
 (s/def ::guild-id ::snowflake)
 (s/def ::user-id ::snowflake)
+(s/def ::application-id ::snowflake)

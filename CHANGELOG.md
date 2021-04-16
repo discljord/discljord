@@ -4,10 +4,39 @@ Discljord follows semantic versioning.
 
 ## [Unreleased]
 ### Added
+ - Slash Commands Feature
+   - Management Endpoints
+     - `get-global/guild-application-commands!`
+     - `create-global/guild-application-command!`
+     - `get-global/guild-application-command!`
+     - `edit-global/guild-application-command!`
+     - `delete-global/guild-application-command!`
+     - `bulk-overwrite-global/guild-application-command!`
+     - `get-guild-application-command-permissions!`
+     - `get-application-command-permissions!`
+     - `edit-application-command-permissions!`
+   - Interactions Endpoints
+     - `create-interaction-response!`
+     - `get-original-interaction-response!`
+     - `edit-original-interaction-response!`
+     - `delete-original-interaction-response!`
+     - `create-followup-message!`
+     - `edit-followup-message!`
+     - `delete-followup-message!`
+ - New webhook endpoints
+   - `get-webhook-message!`
+   - `edit-webhook-message!`
+   - `delete-webhook-message!`
+ - `execute-webhook!` now also accepts a stream like `create-message!`
  - Keyword argument `:shards` to `discljord.connections/status-update!` to specify which shards to send to
 
 ### Changed
  - Removed questionmark from argument for `get-guild`'s `with-counts` for being redundant
+
+### Fixed
+ - `:discljord.specs/snowflake` spec does not throw an exception anymore when passed a string
+ - Added missing specs for `wait` param in `execute-webhook` and `stream` param in various endpoints
+ - Fixed ambiguities regarding specs for parameters named `type`
 
 ## [1.2.2] - 2021-01-20
 ### Fixed

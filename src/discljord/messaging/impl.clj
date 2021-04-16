@@ -43,7 +43,20 @@
    "Content-Type" "application/json"})
 
 (defmacro defdispatch
-  ""
+  "Defines a dispatch method for the the endpoint with `endpoint-name`.
+
+  In the parameter declarations `[major-var & params]`, the major variable always comes first,
+  no matter at which position it is in the actual endpoint definition.
+  Even if the corresponding endpoint does not have a major variable,
+  a symbol for it needs to be provided in the parameters (typically `_` since it will always be bound to `nil`).
+
+  `opts` are the optional parameters as specified in the endpoint definition,
+  `method` is the http method used (`:get`, `:post`, ...),
+  `status-sym` is a symbol that will be bound to the response code (http status),
+  `body-sym` is a symbol that will be bound to the response body (as a string),
+  `url-string` is the url of the endpoint (its expression can depend on the arguments),
+  `method-params` is a map describing what to send in the request,
+  `promise-val` is the expression that will be in the promise returned to the user of the endpoint."
   [endpoint-name [major-var & params] [& opts] opts-sym
    method status-sym body-sym url-str
    method-params promise-val]
@@ -87,6 +100,18 @@
                [(keyword (str/replace (name k) #"-" "_")) v]))
         opts))
 
+(defmacro ^:private def-message-dispatch
+  "Creates a dispatch definition based on the common pattern of creating,
+  editing and updating some sort of message"
+  [name params method url]
+  (let [[opts status body] (repeatedly gensym)
+        delete? (= method :delete)]
+    `(defdispatch ~name
+       ~params [] ~opts ~method ~status ~body
+       ~url
+       ~(if delete? `{} `{:body (json/write-str ~opts)})
+       ~(if delete? `(= ~status 204) `(json-body ~body)))))
+
 (defdispatch :get-guild-audit-log
   [guild-id] [] _ :get _ body
   (str "/guilds/" guild-id "/audit-logs")
@@ -123,39 +148,43 @@
   {}
   (json-body body))
 
+(defn- send-message! [token url prom multipart always-expect-content? {:keys [wait ^File file user-agent allowed-mentions stream message-reference] :as opts}]
+  (let [payload (-> opts
+                    (dissoc :user-agent :file :stream)
+                    conform-to-json
+                    json/write-str)
+        multipart (cond-> (conj multipart {:name "payload_json" :content payload})
+                    file (conj {:name "file" :content file :filename (.getName file)})
+                    stream (conj (assoc stream :name "file")))
+        response @(http/post (api-url url)
+                             {:query-params (when (some? wait) {:wait wait})
+                              :headers (assoc (auth-headers token user-agent)
+                                              "Content-Type" "multipart/form-data")
+                              :multipart multipart})
+        status (:status response)
+        raw-body (:body response)
+        body (if (or always-expect-content? (= status 200))
+               (cond->> (json-body raw-body)
+                 (not= 2 (quot status 100)) (ex-info ""))
+               (= status 204))]
+    (when-not (= status 429)
+      (if (some? body)
+        (a/>!! prom body)
+        (a/close! prom)))
+    response))
+
 (defmethod dispatch-http :create-message
-  [token endpoint [prom & {:keys [^File file user-agent attachments allowed-mentions stream message-reference] :as opts}]]
+  [token endpoint [prom & {:keys [attachments stream] :as opts}]]
   (let [channel-id (-> endpoint
                        ::ms/major-variable
                        ::ms/major-variable-value)
-        payload (conform-to-json (dissoc opts :user-agent :file :attachments :stream))
-        payload-json (json/write-str payload)
-        multipart [{:name "payload_json" :content payload-json}]
-        multipart (if file
-                    (conj multipart {:name "file" :content file :filename (.getName file)})
-                    multipart)
-        multipart (if attachments
-                    (into multipart (for [attachment attachments]
-                                      {:name "attachment"
-                                       :content attachment
-                                       :filename (.getName ^File attachment)}))
-                    multipart)
-        multipart (if stream
-                    (conj multipart (assoc stream :name "file"))
-                    multipart)
-        response @(http/post (api-url (str "/channels/" channel-id "/messages"))
-                             {:headers (assoc (auth-headers token user-agent)
-                                              "Content-Type" "multipart/form-data")
-                              :multipart multipart})]
-    (let [body (json-body (:body response))
-          body (if (= 2 (int (/ (:status response) 100)))
-                 body
-                 (ex-info "" body))]
-      (when-not (= (:status response) 429)
-        (if (some? body)
-          (a/>!! prom body)
-          (a/close! prom))))
-    response))
+        multipart (cond-> []
+                    attachments (into (for [attachment attachments]
+                                        {:name "attachment"
+                                         :content attachment
+                                         :filename (.getName ^File attachment)})))]
+    (send-message! token (str "/channels/" channel-id "/messages")
+                   prom multipart true (dissoc opts :attachments))))
 
 (defdispatch :create-reaction
   [channel-id message-id emoji] [] _ :put status _
@@ -193,17 +222,14 @@
   {}
   (= status 204))
 
-(defdispatch :edit-message
-  [channel-id message-id] [] opts :patch _ body
-  (str "/channels/" channel-id "/messages/" message-id)
-  {:body (json/write-str opts)}
-  (json-body body))
 
-(defdispatch :delete-message
-  [channel-id message-id] [] _ :delete status _
-  (str "/channels/" channel-id "/messages/" message-id)
-  {}
-  (= status 204))
+(def-message-dispatch :edit-message
+  [channel-id message-id] :patch
+  (str "/channels/" channel-id "/messages/" message-id))
+
+(def-message-dispatch :delete-message
+  [channel-id message-id] :delete
+  (str "/channels/" channel-id "/messages/" message-id))
 
 (defdispatch :bulk-delete-messages
   [channel-id messages] [] _ :post status _
@@ -629,6 +655,12 @@
   {}
   (json-body body))
 
+(defn- webhook-url
+  ([id token]
+   (str "/webhooks/" id \/ token))
+  ([id token message-id]
+   (str (webhook-url id token) "/messages/" message-id)))
+
 (defdispatch :create-webhook
   [channel-id name] [avatar] _ :post _ body
   (str "/channels/" channel-id "/webhooks")
@@ -656,7 +688,7 @@
 
 (defdispatch :get-webhook-with-token
   [webhook-id webhook-token] [] _ :get _ body
-  (str "/webhooks/" webhook-id "/" webhook-token)
+  (webhook-url webhook-id webhook-token)
   {}
   (json-body body))
 
@@ -668,7 +700,7 @@
 
 (defdispatch :modify-webhook-with-token
   [webhook-id webhook-token] [] opts :patch _ body
-  (str "/webhooks/" webhook-id "/" webhook-token)
+  (webhook-url webhook-id webhook-token)
   {:body (json/write-str opts)}
   (json-body body))
 
@@ -680,35 +712,161 @@
 
 (defdispatch :delete-webhook-with-token
   [webhook-id webhook-token] [] _ :delete status _
-  (str "/webhooks/" webhook-id "/" webhook-token)
+  (webhook-url webhook-id webhook-token)
   {}
   (= status 204))
 
+(defn- execute-webhook!
+  [token webhook-id webhook-token prom always-expect-content? opts]
+  (send-message! token (webhook-url webhook-id webhook-token)
+                 prom [] always-expect-content? opts))
+
 (defmethod dispatch-http :execute-webhook
-  [token endpoint [prom webhook-token & {:keys [^java.io.File file user-agent wait] :as opts
-                                           :or {wait false}}]]
-  (let [webhook-id (-> endpoint
-                       ::ms/major-variable
-                       ::ms/major-variable-value)
-        payload (conform-to-json (dissoc opts :user-agent :file))
-        payload-json (json/write-str payload)
-        multipart [{:name "payload_json" :content payload-json}]
-        multipart (if file
-                    (conj multipart {:name "file" :content file :filename (.getName file)})
-                    multipart)
-        response @(http/post (api-url (str "/webhooks/" webhook-id "/" webhook-token))
-                             {:query-params {:wait wait}
-                              :headers (assoc (auth-headers token user-agent)
-                                              "Content-Type" "multipart/form-data")
-                              :multipart multipart})]
-    (let [body (if (= (:status response) 200)
-                 (json-body (:body response))
-                 (= (:status response) 204))]
-      (when-not (= (:status response) 429)
-        (if (some? body)
-          (a/>!! prom body)
-          (a/close! prom))))
-    response))
+  [token endpoint [prom webhook-token & {:as opts}]]
+  (execute-webhook! token
+                   (-> endpoint ::ms/major-variable ::ms/major-variable-value)
+                   webhook-token prom false opts))
+
+(defdispatch :get-webhook-message
+  [webhook-id webhook-token message-id] [] _ :get _ body
+  (webhook-url webhook-id webhook-token message-id)
+  {}
+  (json-body body))
+
+(def-message-dispatch :edit-webhook-message
+  [webhook-id webhook-token message-id] :patch
+  (webhook-url webhook-id webhook-token message-id))
+
+(def-message-dispatch :delete-webhook-message
+  [webhook-id webhook-token message-id] :delete
+  (webhook-url webhook-id webhook-token message-id))
+
+(defn- command-params [name description options default-perm]
+  {:body (json/write-str (cond-> {:name name
+                                  :description description}
+                                 options (assoc :options options)
+                                 default-perm (assoc :default_permission default-perm)))})
+
+(defn- global-cmd-url
+  ([application-id] (str "/applications/" application-id "/commands"))
+  ([application-id command-id] (str (global-cmd-url application-id) \/ command-id)))
+
+
+(defdispatch :get-global-application-commands
+  [_ application-id] [] _ :get _ body
+  (global-cmd-url application-id)
+  {}
+  (json-body body))
+
+
+(defdispatch :create-global-application-command
+  [_ application-id name description] [options default_permission] _ :post _ body
+  (global-cmd-url application-id)
+  (command-params name description options default_permission)
+  (json-body body))
+
+(defdispatch :edit-global-application-command
+  [_ application-id command-id name description] [options default_permission] _ :patch _ body
+  (global-cmd-url application-id command-id)
+  (command-params name description options default_permission)
+  (json-body body))
+
+(defdispatch :delete-global-application-command
+  [_ application-id command-id] [] _ :delete status _
+  (global-cmd-url application-id command-id)
+  {}
+  (= status 204))
+
+(defdispatch :bulk-overwrite-global-application-commands
+  [_ application-id commands] [] _ :put _ body
+  (global-cmd-url application-id)
+  {:body (json/write-str commands)}
+  (json-body body))
+
+(defn- guild-cmd-url
+  ([application-id guild-id] (str "/applications/" application-id "/guilds/" guild-id "/commands"))
+  ([application-id guild-id command-id] (str (guild-cmd-url application-id guild-id) \/ command-id)))
+
+(defdispatch :get-guild-application-commands
+  [_ application-id guild-id] [] _ :get _ body
+  (guild-cmd-url application-id guild-id)
+  {}
+  (json-body body))
+
+(defdispatch :create-guild-application-command
+  [_ application-id guild-id name description] [options default_permission] _ :post _ body
+  (guild-cmd-url application-id guild-id)
+  (command-params name description options default_permission)
+  (json-body body))
+
+(defdispatch :edit-guild-application-command
+  [_ application-id guild-id command-id name description] [options default_permission] _ :patch _ body
+  (guild-cmd-url application-id guild-id command-id)
+  (command-params name description options default_permission)
+  (json-body body))
+
+(defdispatch :delete-guild-application-command
+  [_ application-id guild-id command-id] [] _ :delete status _
+  (guild-cmd-url application-id guild-id command-id)
+  {}
+  (= status 204))
+
+(defdispatch :bulk-overwrite-guild-application-commands
+  [_ application-id guild-id commands] [] _ :put _ body
+  (guild-cmd-url application-id guild-id)
+  {:body (json/write-str commands)}
+  (json-body body))
+
+(defdispatch :get-guild-application-command-permissions
+  [_ application-id guild-id] [] _ :get _ body
+  (str (guild-cmd-url application-id guild-id) "/permissions")
+  {}
+  (json-body body))
+
+(defdispatch :get-application-command-permissions
+  [_ application-id guild-id command-id] [] _ :get _ body
+  (str (guild-cmd-url application-id guild-id command-id) "/permissions")
+  {}
+  (json-body body))
+
+(defdispatch :edit-application-command-permissions
+  [_ application-id guild-id command-id permissions] [] _ :put _ body
+  (str (guild-cmd-url application-id guild-id command-id) "/permissions")
+  {:body (json/write-str {:permissions permissions})}
+  (json-body body))
+
+(defmethod dispatch-http :create-interaction-response
+  [token endpoint [prom interaction-id interaction-token type & {:as opts}]]
+  (send-message! token (str "/interactions/" interaction-id \/ interaction-token "/callback") prom [] false (assoc opts :type type)))
+
+(defdispatch :get-original-interaction-response
+  [interaction-token application-id] [] _ :get _ body
+  (webhook-url application-id interaction-token "@original")
+  {}
+  (json-body body))
+
+(def-message-dispatch :edit-original-interaction-response
+  [interaction-token application-id] :patch
+  (webhook-url application-id interaction-token "@original"))
+
+(def-message-dispatch :delete-original-interaction-response
+  [_ application-id interaction-token] :delete
+  (webhook-url application-id interaction-token "@original"))
+
+(defmethod dispatch-http :create-followup-message
+  [token endpoint [prom app-id & {:as opts}]]
+  (execute-webhook! token app-id
+                    (-> endpoint ::ms/major-variable ::ms/major-variable-value)
+                    prom true opts))
+
+(def-message-dispatch :edit-followup-message
+  [interaction-token application-id message-id] :patch
+  (webhook-url application-id interaction-token message-id))
+
+(def-message-dispatch :delete-followup-message
+  [interaction-token application-id message-id] :delete
+  (webhook-url application-id interaction-token message-id))
+
 
 (defdispatch :get-current-application-information
   [_] [] _ :get _ body

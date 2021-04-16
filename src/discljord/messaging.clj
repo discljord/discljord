@@ -33,36 +33,56 @@
 (s/fdef stop-connection!
   :args (s/cat :conn ::ds/channel))
 
+(def ^:const spec-ns "discljord.messaging.specs")
+
+(defn- spec-for [sym]
+  (if-let [ns (namespace sym)]
+    (keyword (->> (str/split ns #"\.")
+                  (map #(or (some-> (ns-aliases *ns*) (get (symbol %)) ns-name) %))
+                  (str/join "."))
+             (name sym))
+    (keyword spec-ns (name sym))))
+
 (defmacro defendpoint
-  "Creates a new non-blocking function for a discord endpoint. `endpoint-name` must end with an '!'"
+  "Creates a new non-blocking function for a discord endpoint.
+
+  - `endpoint-name`: the name of the edpoint function. must end with an '!'
+  - `major-var-type`: the spec-name of the major variable used in this endpoint, if any. If there is none, `nil` should be used.
+  - `doc-str`: Documentation for the endpoint function.
+  - `params`: Required parameters for this endpoint. If the major variable is the first parameter, it need not be included here.
+    The macro will attempt to find a spec for each parameter. If the parameter is an unqualified symbol, `:discljord.messaging.specs/param` will be used,
+    otherwise the associated namespace. Aliases that do not contain dots `.` can be used as namespace segments. Some examples for spec resolution:
+    - `baz` => `:discljord.messaging.specs/baz`
+    - `foo.bar/baz` => `:foo.bar/baz`
+    - `foo.bar/baz` and `foo` is an alias for `quz.foo` in the current namespace => `:quz.foo.bar/baz`
+    - `foo.bar/baz` and `foo.bar` is an alias for `lorem.ipsum` in the current namespace => `:foo.bar/baz` (aliases with dots in them can't be used)
+  - `opts`: Optional parameters for this endpoint. Spec resolution works exactly like for `params`."
   [endpoint-name major-var-type doc-str params opts]
   (let [major-var (when major-var-type
                     (symbol (name major-var-type)))
         sym-name (name endpoint-name)
         action (keyword (subs sym-name 0 (dec (count sym-name))))
         opts (conj opts 'user-agent 'audit-reason)
-        spec-args (into []
-                        (mapcat (fn [param]
-                                  [(keyword (name param)) (keyword "discljord.messaging.specs" (name param))]))
-                        params)
-        spec-keys (into []
-                        (map #(keyword "discljord.messaging.specs" (name %)))
-                        opts)]
+        prepend-major-var? (and major-var (not (contains? (set params) major-var)))
+        spec-args (cond->> (map (juxt (comp keyword name) spec-for) params)
+                           prepend-major-var? (cons [(keyword major-var) major-var-type])
+                           true vec)
+        spec-keys (vec (map spec-for opts))
+        unqualified-params (cond->> (map (comp symbol name) params) prepend-major-var? (cons major-var))]
     `(do
        (defn ~endpoint-name
          ~doc-str
-         [~'conn ~@(when major-var-type [major-var]) ~@params ~'& {:keys ~opts :as ~'opts}]
+         [~'conn ~@unqualified-params ~'& {:keys ~opts :as ~'opts}]
          (let [user-agent# (:user-agent ~'opts)
                audit-reason# (:audit-reason ~'opts)
                p# (util/derefable-promise-chan)
                action# {::ms/action ~action}]
-           (a/put! ~'conn (into [(if ~major-var-type
-                                   (assoc action#
-                                          ::ms/major-variable {::ms/major-variable-type ~major-var-type
-                                                               ::ms/major-variable-value ~major-var})
-                                   action#)
+           (a/put! ~'conn (into [(cond-> action#
+                                         ~major-var-type (assoc ::ms/major-variable
+                                                           {::ms/major-variable-type ~major-var-type
+                                                            ::ms/major-variable-value ~major-var}))
                                  p#
-                                 ~@params
+                                 ~@(remove #{major-var} unqualified-params)
                                  :user-agent user-agent#
                                  :audit-reason audit-reason#]
                                 cat
@@ -70,9 +90,7 @@
            p#))
        (s/fdef ~endpoint-name
          :args (s/cat :conn ::ds/channel
-                      ~@(when major-var-type
-                          [(keyword (name major-var)) major-var-type])
-                      ~@spec-args
+                      ~@(mapcat identity spec-args)
                       :keyword-args (s/keys* :opt-un ~spec-keys))
          :ret ::ds/promise))))
 
@@ -178,7 +196,7 @@
 
 (defendpoint edit-channel-permissions! ::ds/channel-id
   "Edits the channel's permissions of either a user or role. Returns a promise containing a boolean of if it succeeded."
-  [overwrite-id allow deny type]
+  [overwrite-id allow deny ms.overwrite/type]
   [])
 
 (defendpoint get-channel-invites! ::ds/channel-id
@@ -289,7 +307,7 @@
 (defendpoint create-guild-channel! ::ds/guild-id
   "Returns a promise containing the new channel object."
   [name]
-  [type topic bitrate user-limit rate-limit-per-user
+  [ms.channel/type topic bitrate user-limit rate-limit-per-user
    position permission-overwrites parent-id nsfw])
 
 (defendpoint modify-guild-channel-positions! ::ds/guild-id
@@ -409,7 +427,7 @@
 
 (defendpoint create-guild-integration! ::ds/guild-id
   "Creates a new integration in the guild. Returns a promise containing a boolean of if it succeeded."
-  [type id]
+  [ms.integration/type ms.integration/id]
   [])
 
 (defendpoint modify-guild-integration! ::ds/guild-id
@@ -599,7 +617,26 @@
 (defendpoint execute-webhook! ::ds/webhook-id
   "Executes the given webhook. Returns a promise which contains either a boolean of if the message succeeded, or a map of the response body."
   [webhook-token]
-  [content file embeds wait username avatar-url tts allowed-mentions])
+  [content file stream embeds wait username avatar-url tts allowed-mentions])
+
+(defendpoint get-webhook-message! ::ds/webhook-id
+  "Returns the webhook message sent by the given webhook with the given id."
+  [webhook-token message-id]
+  [])
+
+(defendpoint edit-webhook-message! ::ds/webhook-id
+  "Edits a previously-sent webhook message from the same token.
+
+  Returns a promise containing the updated message object."
+  [webhook-token message-id]
+  [content embeds allowed-mentions])
+
+(defendpoint delete-webhook-message! ::ds/webhook-id
+  "Deletes a messages that was sent from the given webhook.
+
+  Returns a promise containing a boolean of if it succeeded."
+  [webhook-token message-id]
+  [])
 
 #_(defendpoint execute-slack-compatible-webhook! ::ds/webhook-id
     ""
@@ -610,6 +647,145 @@
     ""
     [webhook-token]
     [wait])
+
+;; --------------------------------------------------
+;; Slash Commands
+
+(defendpoint get-global-application-commands! nil
+  "Returns a promise containing a vector of application command objects."
+  [application-id]
+  [])
+
+(defendpoint create-global-application-command! nil
+  "Creates or updates a global slash command.
+
+  New global commands will be available in all guilds after 1 hour.
+  Returns a promise containing the new application command object."
+  [application-id ms.command/name ms.command/description]
+  [ms.command/options ms.command/default_permission])
+
+(defendpoint edit-global-application-command! nil
+  "Updates an existing global slash command by its id.
+
+  Returns a promise containing the updated application command object."
+  [application-id command-id]
+  [ms.command/name ms.command/description ms.command/options ms.command/default_permission])
+
+(defendpoint delete-global-application-command! nil
+  "Deletes an existing global slash command by its id.
+
+  Returns a promise containing a boolean of if it succeeded."
+  [application-id command-id]
+  [])
+
+(defendpoint bulk-overwrite-global-application-commands! nil
+  "Overwrites all global slash commands with the provided ones.
+
+  If a command with a given name doesn't exist, creates that command.
+  Returns a promise containing the updated application command objects."
+  [application-id commands]
+  [])
+
+(defendpoint get-guild-application-commands! nil
+  "Returns a promise containing a vector of application command objects."
+  [application-id guild-id]
+  [])
+
+(defendpoint create-guild-application-command! nil
+  "Creates or updates a guild slash command.
+
+  Returns a promise containing the new application command object."
+  [application-id guild-id ms.command/name ms.command/description]
+  [ms.command/options ms.command/default_permission])
+
+(defendpoint edit-guild-application-command! nil
+  "Updates an existing guild slash command by its id.
+
+  Returns a promise containing the updated application command object."
+  [application-id guild-id command-id]
+  [ms.command/name ms.command/description ms.command/options ms.command/default_permission])
+
+(defendpoint delete-guild-application-command! nil
+  "Deletes an existing guild slash command by its id.
+
+  Returns a promise containing a boolean of if it succeeded."
+  [application-id guild-id command-id]
+  [])
+
+(defendpoint bulk-overwrite-guild-application-commands! nil
+  "Overwrites all guild slash commands with the provided ones.
+
+  If a command with a given name doesn't exist, creates that command.
+  Returns a promise containing the updated application command objects."
+  [application-id guild-id commands]
+  [])
+
+(defendpoint get-guild-guild-application-command-permissions! nil
+  "Returns a promise containing the permission settings for all application commands accessible from the guild."
+  [application-id guild-id]
+  [])
+
+(defendpoint get-application-command-permissions! nil
+  "Returns a promose containing the permission settings for a specific application command accessible from the guild."
+  [application-id guild-id command-id]
+  [])
+
+(defendpoint edit-application-command-permissions! nil
+  "Sets the permission settings for the given command in the guild.
+
+  Returns a promise containing the updated permission settings in a map with some additional information."
+  [application-id guild-id command-id ms.command/permissions]
+  [])
+
+;; -------------------------------------------------
+;; Interactions
+
+(defendpoint create-interaction-response! nil
+  "Sends a response to an interaction event.
+
+  Returns a promise containing a boolean of if it succeeded."
+  [interaction-id interaction-token ms.interaction-response/type]
+  [ms.interaction-response/data file stream])
+
+(defendpoint get-original-interaction-response! ::ms/interaction-token
+  "Returns a promise containing the response object sent for the given interaction."
+  [application-id interaction-token]
+  [])
+
+(defendpoint edit-original-interaction-response! ::ms/interaction-token
+  "Edits the inital response to the given interaction.
+
+  Returns a promise containing the updated message object"
+  [application-id interaction-token]
+  [content embeds allowed-mentions])
+
+(defendpoint delete-original-interaction-response! nil
+  "Deletes the initial response to the given interaction.
+
+  Returns a promise containing a boolean of if it succeeded."
+  [application-id interaction-token]
+  [])
+
+(defendpoint create-followup-message! ::ms/interaction-token
+  "Creates a followup message for the given interaction.
+
+  Returns a promise containing the message that was created."
+  [application-id interaction-token]
+  [content file stream embeds username avatar-url tts allowed-mentions])
+
+(defendpoint edit-followup-message! ::ms/interaction-token
+  "Edits a followup message to an interaction by its id.
+
+  Returns a promise containing the updated message object."
+  [application-id interaction-token message-id]
+  [content embeds allowed-mentions])
+
+(defendpoint delete-followup-message! ::ms/interation-token
+  "Deletes a followup message to an interaction by its id.
+
+  Returns a promise containing a boolean of if it succeeded."
+  [application-id interaction-token message-id]
+  [])
 
 (defendpoint get-current-application-information! nil
   "Returns  a promise containing the bot's OAuth2 application info."

@@ -51,10 +51,11 @@
   - `doc-str`: Documentation for the endpoint function.
   - `params`: Required parameters for this endpoint. If the major variable is the first parameter, it need not be included here.
     The macro will attempt to find a spec for each parameter. If the parameter is an unqualified symbol, `:discljord.messaging.specs/param` will be used,
-    otherwise the associated namespace. Aliases can be used as namespace segments. Some examples for spec resolution:
+    otherwise the associated namespace. Aliases that do not contain dots `.` can be used as namespace segments. Some examples for spec resolution:
     - `baz` => `:discljord.messaging.specs/baz`
     - `foo.bar/baz` => `:foo.bar/baz`
     - `foo.bar/baz` and `foo` is an alias for `quz.foo` in the current namespace => `:quz.foo.bar/baz`
+    - `foo.bar/baz` and `foo.bar` is an alias for `lorem.ipsum` in the current namespace => `:foo.bar/baz` (aliases with dots in them can't be used)
   - `opts`: Optional parameters for this endpoint. Spec resolution works exactly like for `params`."
   [endpoint-name major-var-type doc-str params opts]
   (let [major-var (when major-var-type

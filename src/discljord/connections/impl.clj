@@ -246,7 +246,8 @@
                          (log/trace "Websocket received binary message:" msg)
                          (a/put! event-ch [:message msg]))))
          (catch Exception e
-            (throw (ex-info "Failed to connect a websocket" {:client client} e))))))
+           (.stop client)
+           (throw (ex-info "Failed to connect a websocket" {} e))))))
 
 (defmulti handle-shard-fx!
   "Processes an `event` on a given `shard` for side effects.
@@ -355,7 +356,6 @@
         websocket (try (connect-websocket! buffer-size url event-ch compress)
                        (catch Exception err
                          (log/warn "Failed to connect a websocket" err)
-                         (.stop ^WebSocketClient (:client (ex-data err)))
                          nil))]
     (when-not websocket
       (a/put! event-ch [:disconnect nil "Failed to connect"]))

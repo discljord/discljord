@@ -105,12 +105,12 @@
   editing and updating some sort of message"
   [name params method url]
   (let [[opts status body] (repeatedly gensym)
-        delete (= method :delete)]
+        delete? (= method :delete)]
     `(defdispatch ~name
        ~params [] ~opts ~method ~status ~body
        ~url
-       ~(if delete `{} `{:body (json/write-str ~opts)})
-       ~(if delete `(= ~status 204) `(json-body ~body)))))
+       ~(if delete? `{} `{:body (json/write-str ~opts)})
+       ~(if delete? `(= ~status 204) `(json-body ~body)))))
 
 (defdispatch :get-guild-audit-log
   [guild-id] [] _ :get _ body

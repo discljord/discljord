@@ -231,7 +231,8 @@
   idle-since: epoch time in milliseconds of when the bot went idle, defaults to nil
   activity: an activity map, from create-activity, which is used for the bot, defaults to nil
   status: a keyword representing the current status of the bot, can be :online, :dnd, :idle, :invisible, or :offline, defaults to :online
-  afk: a boolean to say if the bot is afk, defaults to false"
+  afk: a boolean to say if the bot is afk, defaults to false
+  shards: a set of shard ids to send this update to, or the keyword `:all`"
   [connection-ch & args]
   (a/put! connection-ch (apply vector :status-update args)))
 (s/fdef status-update!
@@ -239,7 +240,8 @@
                :keyword-args (s/keys* :opt-un [::cs/idle-since
                                                ::cs/activity
                                                ::cs/status
-                                               ::cs/afk])))
+                                               ::cs/afk
+                                               ::cs/shards])))
 
 (defn voice-state-update!
   "Takes the channel returned by connect-bot!, a guild id, and a set of keyword options and

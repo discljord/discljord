@@ -3,6 +3,9 @@ All notable changes to this project will be documented in this file. This change
 Discljord follows semantic versioning.
 
 ## [Unreleased]
+### Added
+ - Keyword argument `:shards` to `discljord.connections/status-update!` to specify which shards to send to
+
 ### Changed
  - Removed questionmark from argument for `get-guild`'s `with-counts` for being redundant
 

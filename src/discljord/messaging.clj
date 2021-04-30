@@ -68,11 +68,12 @@
                            prepend-major-var? (cons [(keyword major-var) major-var-type])
                            true vec)
         spec-keys (vec (map spec-for opts))
-        unqualified-params (cond->> (map (comp symbol name) params) prepend-major-var? (cons major-var))]
+        unqualified-params (cond->> (map (comp symbol name) params) prepend-major-var? (cons major-var))
+        unqualified-opts (mapv (comp keyword name) opts)]
     `(do
        (defn ~endpoint-name
          ~doc-str
-         [~'conn ~@unqualified-params ~'& {:keys ~opts :as ~'opts}]
+         [~'conn ~@unqualified-params ~'& {:keys ~unqualified-opts :as ~'opts}]
          (let [user-agent# (:user-agent ~'opts)
                audit-reason# (:audit-reason ~'opts)
                p# (util/derefable-promise-chan)

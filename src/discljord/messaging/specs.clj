@@ -238,7 +238,7 @@
 
 (s/def :command.option/type (set (vals command-option-types)))
 
-(s/def :command.option/name (string-spec #"[\w-]{1,32}"))
+(s/def :command.option/name (string-spec #"\S{1,32}"))
 (s/def :command.option/description (string-spec 1 100))
 (s/def :command.option/default boolean?)
 (s/def :command.option/required boolean?)
@@ -294,7 +294,7 @@
 
 (s/def :command.option/options :discljord.messaging.specs.command/options)
 
-(s/def :discljord.messaging.specs.command/name (string-spec #"[\w-]{1,32}"))
+(s/def :discljord.messaging.specs.command/name (string-spec #"\S{1,32}"))
 
 (s/def :discljord.messaging.specs.command/description (string-spec 1 100))
 

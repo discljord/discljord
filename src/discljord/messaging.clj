@@ -721,7 +721,7 @@
   [application-id guild-id commands]
   [])
 
-(defendpoint get-guild-guild-application-command-permissions! nil
+(defendpoint get-guild-application-command-permissions! nil
   "Returns a promise containing the permission settings for all application commands accessible from the guild."
   [application-id guild-id]
   [])

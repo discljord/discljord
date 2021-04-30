@@ -738,6 +738,14 @@
   [application-id guild-id command-id ms.command/permissions]
   [])
 
+(defendpoint batch-edit-application-command-permissions! nil
+  "Batch edits the permission settings for all commands in a guild.
+
+  This will overwrite all existing permissions for all commands in the guild.
+  Returns a promise containing the updated permission settings."
+  [application-id guild-id ms.command.guild/permissions-array]
+  [])
+
 ;; -------------------------------------------------
 ;; Interactions
 

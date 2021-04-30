@@ -281,6 +281,15 @@
 
 (s/def :discljord.messaging.specs.command/permissions (s/coll-of :command/permission))
 
+(s/def :command/id ::command-id)
+
+(s/def :discljord.messaging.specs.command.guild/permissions
+  (s/keys :req-un [:command/id
+                   :discljord.messaging.specs.command/permissions]))
+
+(s/def :discljord.messaging.specs.command.guild/permissions-array
+  (s/coll-of :discljord.messaging.specs.command.guild/permissions))
+
 (s/def :discljord.messaging.specs.command/options
   (s/and (s/coll-of :command/option)
          (comp (partial >= 25) count)

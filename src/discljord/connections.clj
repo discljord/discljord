@@ -40,7 +40,7 @@
   relevant message."
   [token out-ch & {:keys [intents disable-compression]}]
   (if-not intents
-    (ex-info "Intents are required as of v8 of the API")
+    (ex-info "Intents are required as of v8 of the API" {})
     (let [token (bot-token token)
           {:keys [url shard-count session-start-limit]}
           (impl/get-websocket-gateway gateway-url token)]

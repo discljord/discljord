@@ -244,6 +244,88 @@
   [user-id]
   [])
 
+; Threads
+
+(defendpoint start-thread-with-message! ::ds/channel-id
+  "Creates a new thread from an existing message.
+
+  Returns a promise containing a channel object."
+  [message-id name auto_archive_duration]
+  [])
+
+(defendpoint start-thread-without-message! ::ds/channel-id
+  "Creates a new thread that is not connected to an existing message (private thread).
+
+  Returns a promise containing a channel object."
+  [name auto_archive_duration])
+
+(defendpoint join-thread! ::ds/channel-id
+  "Adds the current user to a thread.
+
+  Requires the thread is not archived.
+  Returns a promise containing a boolean of if it succeeded."
+  []
+  [])
+
+(defendpoint add-thread-member! ::ds/channel-id
+  "Adds a member to a thread.
+
+  Requires the thread is not archived and the ability to send messages in the thread.
+  Returns a promise containing a boolean of if it succeeded."
+  [user-id]
+  [])
+
+(defendpoint leave-thread! ::ds/channel-id
+  "Removes the current user from a thread.
+
+  Returns a promise containing a boolean of if it succeeded."
+  []
+  [])
+
+(defendpoint remove-thread-member! ::ds/channel-id
+  "Removes a member from a thread.
+
+  Requires `:manage-threads` permissions or that you're the creator of the thread and the thread is not archived.
+  Returns a promise containing a boolean of if it succeeded."
+  [user-id]
+  [])
+
+(defendpoint list-thread-members! ::ds/channel-id
+  "Returns a promise containing a vector of thread member objects for the given thread."
+  []
+  [])
+
+(defendpoint list-active-threads! ::ds/channel-id
+  "Returns a promise containing all active threads, thread member objects for the current user
+   and a boolean indicating whether there are possibly more threads in the given channel."
+  []
+  [])
+
+(defendpoint list-public-archived-threads! ::ds/channel-id
+  "Returns a promise containing all public archived threads, thread member objects for the current user
+   and a boolean indicating whether there are possibly more public archived threads in the given channel.
+
+   Requires `:read-message-history` permissions."
+  []
+  [before limit])
+
+(defendpoint list-private-archived-threads! ::ds/channel-id
+  "Returns a promise containing all private archived threads, thread member objects for the current user
+   and a boolean indicating whether there are possibly more private archived threads in the given channel.
+
+   Requires `:read-message-history` and `:manage-threads` permissions."
+  []
+  [before limit])
+
+(defendpoint list-joined-private-archived-threads! ::ds/channel-id
+  "Returns a promise containing all private archived threads, thread member objects for the current user
+   and a boolean indicating whether there are possibly more private archived threads in the given channel
+   that the current user has joined.
+
+   Requires `:read-message-history` permissions."
+  []
+  [before limit])
+
 ;; --------------------------------------------------
 ;; Emoji
 

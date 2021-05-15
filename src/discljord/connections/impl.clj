@@ -338,9 +338,12 @@
   (when heartbeat-ch
     (a/close! heartbeat-ch))
   (a/close! communication-ch)
-  (if stop-code
-    (ws/close websocket stop-code reason)
-    (ws/close websocket))
+  (if websocket
+    (if stop-code
+      (ws/close websocket stop-code reason)
+      (ws/close websocket))
+    (log/debug "Websocket for shard" (:id shard)
+               "already closed at time of disconnection"))
   (log/info "Disconnecting shard"
             id
             "and closing connection")
@@ -395,7 +398,10 @@
                                      :effects []})
                                   (throw e))))
                          (do
-                           (ws/close websocket 4000 "Zombie Heartbeat")
+                           (if websocket
+                             (ws/close websocket 4000 "Zombie Heartbeat")
+                             (log/debug "Websocket for shard" (:id shard)
+                                        "already closed during zombie heartbeat check"))
                            (log/info "Reconnecting due to zombie heartbeat on shard" (:id shard))
                            (a/close! heartbeat-ch)
                            (a/put! connections-ch [:connect])
@@ -589,7 +595,10 @@
     (log/warn "Got invalid session payload, reconnecting shard" (:id shard)))
   (when (:heartbeat-ch shard)
     (a/close! (:heartbeat-ch shard)))
-  (ws/close websocket 4000 "Reconnection requested")
+  (if websocket
+    (ws/close websocket 4000 "Reconnection requested")
+    (log/debug "Websocket for shard" (:id shard)
+               "already closed at the time of a reconnect"))
   (let [retries (or (:retries shard) 0)
         retry-wait (min (* 5100 (* retries retries)) (* 15 60 1000))]
     (log/debug "Will try to connect in" (int (/ retry-wait 1000)) "seconds")
@@ -615,7 +624,10 @@
 (defmethod handle-shard-fx! :error
   [heartbeat-ch url token {:keys [websocket] :as shard} [_ err]]
   (log/error err "Error encountered on shard" (:id shard))
-  (ws/close websocket 4000 "Error encountered on the shard")
+  (if websocket
+    (ws/close websocket 4000 "Error encountered on the shard")
+    (log/debug "Websocket for shard" (:id shard)
+               "already closed at the time of an error"))
   {:shard (dissoc shard :websocket)
    :effects []})
 
@@ -632,7 +644,10 @@
 
 (defmethod handle-shard-fx! :disconnect
   [heartbeat-ch url token {:keys [websocket] :as shard} _]
-  (ws/close websocket)
+  (if websocket
+    (ws/close websocket)
+    (log/debug "Websocket for shard" (:id shard)
+               "already closed at the time of a disconnect effect"))
   {:shard (dissoc shard :websocket)
    :effects []})
 

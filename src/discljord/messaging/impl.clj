@@ -835,6 +835,12 @@
   {:body (json/write-str {:permissions permissions})}
   (json-body body))
 
+(defdispatch :batch-edit-application-command-permissions
+  [_ application-id guild-id permissions] [] _ :put _ body
+  (str (guild-cmd-url application-id guild-id) "/permissions")
+  {:body (json/write-str permissions)}
+  (json-body body))
+
 (defmethod dispatch-http :create-interaction-response
   [token endpoint [prom interaction-id interaction-token type & {:as opts}]]
   (send-message! token (str "/interactions/" interaction-id \/ interaction-token "/callback") prom [] false (assoc opts :type type)))

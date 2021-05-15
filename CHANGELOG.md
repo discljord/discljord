@@ -16,6 +16,7 @@ Discljord follows semantic versioning.
      - `get-guild-application-command-permissions!`
      - `get-application-command-permissions!`
      - `edit-application-command-permissions!`
+     - `batch-edit-application-command-permissions!`
    - Interactions Endpoints
      - `create-interaction-response!`
      - `get-original-interaction-response!`

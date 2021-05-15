@@ -36,6 +36,7 @@ Discljord follows semantic versioning.
  - Removed questionmark from argument for `get-guild`'s `with-counts` for being redundant
 
 ### Fixed
+ - User's token was logged at trace level logging on identify
  - `discljord.events.middleware/transduce` throws an arity exception for using the incorrect `concat`
  - `:discljord.specs/snowflake` spec does not throw an exception anymore when passed a string
  - Added missing specs for `wait` param in `execute-webhook` and `stream` param in various endpoints

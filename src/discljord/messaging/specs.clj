@@ -281,6 +281,7 @@
 
 (s/def :discljord.messaging.specs.command/permissions (s/coll-of :command/permission))
 
+(s/def ::command-id ::ds/snowflake)
 (s/def :command/id ::command-id)
 
 (s/def :discljord.messaging.specs.command.guild/permissions
@@ -323,8 +324,6 @@
                4000))))
 
 (s/def ::commands (s/and (s/coll-of ::command) #(<= (count %) 100)))
-
-(s/def ::command-id ::ds/snowflake)
 
 (s/def ::interaction-id ::ds/snowflake)
 (s/def ::interaction-token string?)

@@ -35,7 +35,7 @@
   [handlers]
   (reduce-kv
    (fn [m k v]
-     (reduce assoc m (if (keyword? k) #{k} k) v))
+     (reduce #(assoc %1 %2 v) m (if (keyword? k) #{k} k)))
    {}
    handlers))
 (s/fdef normalize-handlers

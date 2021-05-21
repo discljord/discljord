@@ -340,6 +340,12 @@
   {}
   (= status 204))
 
+(defdispatch :list-thread-members
+  [channel-id] [] _ :get _ body
+  (str "/channels/" channel-id "/thread-members")
+  {}
+  (json-body body))
+
 (defdispatch :list-guild-emojis
   [guild-id] [] _ :get _ body
   (str "/guilds/" guild-id "/emojis")

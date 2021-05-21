@@ -291,6 +291,7 @@
   [user-id]
   [])
 
+; TODO verify return type - currently returns vector of user ids rather than objects
 (defendpoint list-thread-members! ::ds/channel-id
   "Returns a promise containing a vector of thread member objects for the given thread."
   []

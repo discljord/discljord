@@ -353,6 +353,12 @@
   {}
   (json-body body))
 
+(defdispatch :list-public-archived-threads
+  [channel-id] [] opts :get _ body
+  (str "/channels/" channel-id "/threads/archived/public")
+  {:query-params opts}
+  (json-body body))
+
 (defdispatch :list-guild-emojis
   [guild-id] [] _ :get _ body
   (str "/guilds/" guild-id "/emojis")

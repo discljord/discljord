@@ -359,6 +359,12 @@
   {:query-params opts}
   (json-body body))
 
+(defdispatch :list-private-archived-threads
+  [channel-id] [] opts :get _ body
+  (str "/channels/" channel-id "/threads/archived/private")
+  {:query-params opts}
+  (json-body body))
+
 (defdispatch :list-guild-emojis
   [guild-id] [] _ :get _ body
   (str "/guilds/" guild-id "/emojis")

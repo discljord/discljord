@@ -68,6 +68,11 @@
                            #(>= % 0)
                            #(<= % 99)))
 
+; Threads
+(s/def :discljord.messaging.specs.thread/auto_archive_duration #{60 1440 4320 10080})
+; This should validate an ISO 8601 timestamp - use a regex instead?
+(s/def :discljord.messaging.specs.thread/before string?)
+
 (s/def :discljord.messaging.specs.overwrite/type #{"role" "member"})
 (s/def ::overwrite-object (s/keys :req-un [::ds/id :discljord.messaging.specs.overwrite/type ::allow ::deny]))
 (s/def ::permission-overwrites (s/coll-of ::overwrite-object))

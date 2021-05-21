@@ -346,6 +346,13 @@
   {}
   (json-body body))
 
+; FIXME 404 for some reason
+(defdispatch :list-active-threads
+  [channel-id] [] _ :get _ body
+  (str "/channels/" channel-id "/threads/active")
+  {}
+  (json-body body))
+
 (defdispatch :list-guild-emojis
   [guild-id] [] _ :get _ body
   (str "/guilds/" guild-id "/emojis")

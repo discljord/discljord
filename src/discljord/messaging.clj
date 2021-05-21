@@ -257,7 +257,8 @@
   "Creates a new thread that is not connected to an existing message (private thread).
 
   Returns a promise containing a channel object."
-  [name auto_archive_duration])
+  [name auto_archive_duration]
+  [])
 
 (defendpoint join-thread! ::ds/channel-id
   "Adds the current user to a thread.

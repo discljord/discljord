@@ -306,6 +306,13 @@
                           :auto_archive_duration auto_archive_duration})}
   (json-body body))
 
+(defdispatch :start-thread-without-message
+  [channel-id name auto_archive_duration] [] _ :post _ body
+  (str "/channels/" channel-id "/threads")
+  {:body (json/write-str {:name name
+                          :auto_archive_duration auto_archive_duration})}
+  (json-body body))
+
 (defdispatch :list-guild-emojis
   [guild-id] [] _ :get _ body
   (str "/guilds/" guild-id "/emojis")

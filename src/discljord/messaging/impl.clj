@@ -313,6 +313,21 @@
                           :auto_archive_duration auto_archive_duration})}
   (json-body body))
 
+
+; TODO implement (= status 204) response handling and watch for method change
+; https://github.com/discord/discord-api-docs/issues/2978
+(defdispatch :join-thread
+  [channel-id] [] _ :post status body
+  (str "/channels/" channel-id "/thread-members/@me")
+  {}
+  [status body])
+
+(defdispatch :add-thread-member
+  [channel-id user-id] [] _ :post status body
+  (str "/channels/" channel-id "/thread-members/" user-id)
+  {}
+  [status body])
+
 (defdispatch :list-guild-emojis
   [guild-id] [] _ :get _ body
   (str "/guilds/" guild-id "/emojis")

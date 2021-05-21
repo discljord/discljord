@@ -328,6 +328,18 @@
   {}
   [status body])
 
+(defdispatch :leave-thread
+  [channel-id] [] _ :delete status _
+  (str "/channels/" channel-id "/thread-members/@me")
+  {}
+  (= status 204))
+
+(defdispatch :remove-thread-member
+  [channel-id user-id] [] _ :delete status _
+  (str "/channels/" channel-id "/thread-members/" user-id)
+  {}
+  (= status 204))
+
 (defdispatch :list-guild-emojis
   [guild-id] [] _ :get _ body
   (str "/guilds/" guild-id "/emojis")

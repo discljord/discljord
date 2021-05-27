@@ -251,14 +251,14 @@
   "Creates a new thread from an existing message.
 
   Returns a promise containing a channel object."
-  [message-id name auto_archive_duration]
+  [message-id name ms.thread/auto_archive_duration]
   [])
 
 (defendpoint start-thread-without-message! ::ds/channel-id
   "Creates a new thread that is not connected to an existing message (private thread).
 
   Returns a promise containing a channel object."
-  [name auto_archive_duration]
+  [name ms.thread/auto_archive_duration]
   [])
 
 (defendpoint join-thread! ::ds/channel-id
@@ -310,7 +310,7 @@
 
    Requires `:read-message-history` permissions."
   []
-  [before limit])
+  [ms.thread/before limit])
 
 (defendpoint list-private-archived-threads! ::ds/channel-id
   "Returns a promise containing all private archived threads, thread member objects for the current user
@@ -318,7 +318,7 @@
 
    Requires `:read-message-history` and `:manage-threads` permissions."
   []
-  [before limit])
+  [ms.thread/before limit])
 
 (defendpoint list-joined-private-archived-threads! ::ds/channel-id
   "Returns a promise containing all private archived threads, thread member objects for the current user
@@ -327,7 +327,7 @@
 
    Requires `:read-message-history` permissions."
   []
-  [before limit])
+  [ms.thread/before limit])
 
 ;; --------------------------------------------------
 ;; Emoji

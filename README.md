@@ -33,13 +33,13 @@ The `start-bot!` and `stop-bot!` functions help you connect/disconnect to/from t
 Add the following to your project.clj in leiningen:
 
 ```clojure
-[org.suskalo/discljord "1.2.3-SNAPSHOT"]
+[org.suskalo/discljord "1.2.3"]
 ```
 
 If you use tools.deps, then add the following to your `:dependencies` key in your `deps.edn`:
 
 ```clojure
-{org.suskalo/discljord {:mvn/version "1.2.3-SNAPSHOT"}}
+{org.suskalo/discljord {:mvn/version "1.2.3"}}
 ```
 
 ## Usage

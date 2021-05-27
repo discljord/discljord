@@ -150,14 +150,14 @@
 
 (s/def :component/emoji
   (s/keys :req-un [:component.emoji/id :component.emoji/animated :component.emoji/name]))
-(s/def :component/custom-id (string-spec 0 100))
+(s/def :component/custom_id (string-spec 0 100))
 (s/def :component/url string?)
 (s/def :component/disabled boolean?)
 
 (s/def ::component
   (s/keys :req-un [:component/type]
           :opt-un [:component/style :component/label :component/emoji
-                   :component/custom-id :component/url :component/disabled ::components]))
+                   :component/custom_id :component/url :component/disabled ::components]))
 
 (s/def ::components
   (s/coll-of ::component))

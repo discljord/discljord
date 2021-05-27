@@ -27,8 +27,8 @@
   (assoc guild
          :roles (vector->map (:roles guild))
          :channels (vector->map (:channels guild))
-         :members (vector->map (comp :id :user) #(assoc % :user (:id (:user %))) (:members guild))
-         :presences (vector->map (comp :id :user) #(assoc % :user (:id (:user %))) (:presences guild))))
+         :members (vector->map (comp :id :user) #(update % :user :id) (:members guild))
+         :presences (vector->map (comp :id :user) #(update % :user :id) (:presences guild))))
 
 (defn- get-users-from-guild
   "Takes a guild and returns a map from user id to user objects."

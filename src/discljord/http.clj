@@ -8,7 +8,7 @@
 
   For example: (api-url (str \"/channels/\" channel-id))"
   [endpoint]
-  (str "https://discord.com/api/v8" endpoint))
+  (str "https://discord.com/api/v9" endpoint))
 (s/fdef api-url
   :args (s/cat :url ::ds/url)
   :ret ::ds/url)

@@ -377,6 +377,7 @@
           :opt-un [::embeds
                    ::tts
                    ::allowed-mentions
+                   ::components
                    :interaction-response.data/flags]))
 
 (s/def :widget/enabled boolean?)

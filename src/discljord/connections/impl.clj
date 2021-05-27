@@ -551,7 +551,7 @@
           payload (if-let [intents (:intents shard)]
                     (assoc payload "intents" (intents->intent-int intents))
                     payload)]
-      (log/trace "Identify payload:" payload)
+      (log/trace "Identify payload:" (assoc payload "token" "REDACTED"))
       (ws/send-msg (:websocket shard)
                    (json/write-str {:op 2
                                     :d payload})))))

@@ -26,6 +26,24 @@
                :handle-event ifn?)
   :ret nil?)
 
+(defn normalize-handlers
+  "Constructs a `handlers` map for [[dispatch-handlers]], allowing sets for keys.
+
+  Keyword keys are kept as-is, but sets will be split into their members to
+  allow keying the handler map off of a single event type. This is done in an
+  undefined order, so duplicate keys have an undefined precidence."
+  [handlers]
+  (reduce-kv
+   (fn [m k v]
+     (reduce #(assoc %1 %2 v) m (if (keyword? k) #{k} k)))
+   {}
+   handlers))
+(s/fdef normalize-handlers
+  :args (s/cat :handlers (s/map-of (s/or :keyword keyword?
+                                         :key-set (s/coll-of keyword? :kind set?))
+                                   (s/coll-of ifn? :kind vector?)))
+  :ret (s/map-of keyword? (s/coll-of ifn? :kind vector?)))
+
 (defn dispatch-handlers
   "Calls event handlers from `handlers` with the event and `args`.
 

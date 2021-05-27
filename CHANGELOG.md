@@ -4,6 +4,7 @@ Discljord follows semantic versioning.
 
 ## [Unreleased]
 ### Added
+ - New function for creating handlers for multiple events, `discljord.events/normalize-handlers`
  - Slash Commands Feature
    - Management Endpoints
      - `get-global/guild-application-commands!`
@@ -15,6 +16,7 @@ Discljord follows semantic versioning.
      - `get-guild-application-command-permissions!`
      - `get-application-command-permissions!`
      - `edit-application-command-permissions!`
+     - `batch-edit-application-command-permissions!`
    - Interactions Endpoints
      - `create-interaction-response!`
      - `get-original-interaction-response!`
@@ -34,6 +36,8 @@ Discljord follows semantic versioning.
  - Removed questionmark from argument for `get-guild`'s `with-counts` for being redundant
 
 ### Fixed
+ - User's token was logged at trace level logging on identify
+ - `discljord.events.middleware/transduce` throws an arity exception for using the incorrect `concat`
  - `:discljord.specs/snowflake` spec does not throw an exception anymore when passed a string
  - Added missing specs for `wait` param in `execute-webhook` and `stream` param in various endpoints
  - Fixed ambiguities regarding specs for parameters named `type`

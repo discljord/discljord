@@ -74,9 +74,13 @@
   [{:keys [websocket] :as shard} [_ stop-code msg]]
   (if shard
     {:shard (if stop-code
-              (assoc (dissoc shard :websocket)
-                     :stop-code stop-code
-                     :disconnect-msg msg)
+              (do
+                (when websocket
+                  (log/debug "Websocket was not closed during disconnect event, now closing")
+                  (ws/close websocket 4000 "Closing before reconnect"))
+                (assoc (dissoc shard :websocket)
+                       :stop-code stop-code
+                       :disconnect-msg msg))
               shard)
      :effects [(cond
                  (re-shard-stop-code? stop-code) [:re-shard]

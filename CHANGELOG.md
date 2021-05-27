@@ -2,9 +2,7 @@
 All notable changes to this project will be documented in this file. This change log follows the conventions of [keepachangelog.com](http://keepachangelog.com/).
 Discljord follows semantic versioning.
 
-## [Unreleased]
-
-## [1.2.3] - 
+## [1.2.3] - 2021-05-26
 ### Fixed
  - Case where websocket clients weren't closed in some cases
 

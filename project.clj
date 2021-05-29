@@ -7,12 +7,12 @@
                  [org.clojure/core.async "1.2.603"]
                  [org.clojure/data.json "1.0.0"]
                  [org.clojure/tools.logging "1.1.0"]
-                 [http-kit "2.4.0-alpha6"]
+                 [http-kit/http-kit "2.4.0-alpha6"]
                  [stylefruits/gniazdo "1.2.0"]]
   :target-path "target/%s"
   :jar-name "discljord-%s.jar"
   :deploy-branches ["master" "release" "hotfix"]
-  :profiles {:dev {:dependencies [[http-kit.fake "0.2.2"]
+  :profiles {:dev {:dependencies [[http-kit.fake/http-kit.fake "0.2.2"]
                                   [ch.qos.logback/logback-classic "1.2.3"]]
                    :plugins [[lein-codox "0.10.7"]]
                    :exclusions [http-kit]

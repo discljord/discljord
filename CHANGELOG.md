@@ -43,6 +43,10 @@ Discljord follows semantic versioning.
  - Added missing specs for `wait` param in `execute-webhook` and `stream` param in various endpoints
  - Fixed ambiguities regarding specs for parameters named `type`
 
+## [1.2.3] - 2021-05-26
+### Fixed
+ - Case where websocket clients weren't closed in some cases
+
 ## [1.2.2] - 2021-01-20
 ### Fixed
  - Fix wrong uses of body/query-params in
@@ -310,7 +314,8 @@ Discljord follows semantic versioning.
  - README follows new API
  - Project name from `discljord-functional` to `discljord`
 
-[Unreleased]: https://github.com/IGJoshua/discljord/compare/1.2.2..develop
+[Unreleased]: https://github.com/IGJoshua/discljord/compare/1.2.3..develop
+[1.2.3]: https://github.com/IGJoshua/discljord/compare/1.2.2..1.2.3
 [1.2.2]: https://github.com/IGJoshua/discljord/compare/1.2.1..1.2.2
 [1.2.1]: https://github.com/IGJoshua/discljord/compare/1.2.0..1.2.1
 [1.2.0]: https://github.com/IGJoshua/discljord/compare/1.1.1..1.2.0

@@ -332,7 +332,7 @@
              (or (<= amount 1)
                  (and (= amount 2) first-required?))))))
 
-(s/def :discljord.messaging.specs.command/default_permission boolean?)
+(s/def :discljord.messaging.specs.command/default-permission boolean?)
 
 (s/def :command.option/options :discljord.messaging.specs.command/options)
 
@@ -344,7 +344,7 @@
   (s/and (s/keys :req-un [:discljord.messaging.specs.command/name
                           :discljord.messaging.specs.command/description]
                  :opt-un [:discljord.messaging.specs.command/options
-                          :discljord.messaging.specs.command/default_permission])
+                          :discljord.messaging.specs.command/default-permission])
          (fn [cmd]
            (<= (->> cmd
                     (tree-seq :options :options)

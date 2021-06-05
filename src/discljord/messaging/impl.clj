@@ -760,15 +760,15 @@
 
 
 (defdispatch :create-global-application-command
-  [_ application-id name description] [options default_permission] _ :post _ body
+  [_ application-id name description] [options default-permission] _ :post _ body
   (global-cmd-url application-id)
-  (command-params name description options default_permission)
+  (command-params name description options default-permission)
   (json-body body))
 
 (defdispatch :edit-global-application-command
-  [_ application-id command-id name description] [options default_permission] _ :patch _ body
+  [_ application-id command-id name description] [options default-permission] _ :patch _ body
   (global-cmd-url application-id command-id)
-  (command-params name description options default_permission)
+  (command-params name description options default-permission)
   (json-body body))
 
 (defdispatch :delete-global-application-command
@@ -794,15 +794,15 @@
   (json-body body))
 
 (defdispatch :create-guild-application-command
-  [_ application-id guild-id name description] [options default_permission] _ :post _ body
+  [_ application-id guild-id name description] [options default-permission] _ :post _ body
   (guild-cmd-url application-id guild-id)
-  (command-params name description options default_permission)
+  (command-params name description options default-permission)
   (json-body body))
 
 (defdispatch :edit-guild-application-command
-  [_ application-id guild-id command-id name description] [options default_permission] _ :patch _ body
+  [_ application-id guild-id command-id name description] [options default-permission] _ :patch _ body
   (guild-cmd-url application-id guild-id command-id)
-  (command-params name description options default_permission)
+  (command-params name description options default-permission)
   (json-body body))
 
 (defdispatch :delete-guild-application-command

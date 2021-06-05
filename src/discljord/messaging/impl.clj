@@ -745,7 +745,7 @@
   {:body (json/write-str (cond-> {:name name
                                   :description description}
                                  options (assoc :options options)
-                                 default-perm (assoc :default_permission default-perm)))})
+                                 (some? default-perm) (assoc :default_permission default-perm)))})
 
 (defn- global-cmd-url
   ([application-id] (str "/applications/" application-id "/commands"))

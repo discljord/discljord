@@ -82,9 +82,14 @@
 
 (defn guild-member-update
   [_ {:keys [guild-id user] :as member} state]
-  (swap! state update-in [::guilds guild-id :members (:id user)]
-         merge (assoc (dissoc member :guild-id)
-                      :user (:id user))))
+  (swap! state
+         (fn [state]
+           (update-in
+            (update-in state [::users (:id user)]
+                       merge user)
+            [::guilds guild-id :members (:id user)]
+            merge (assoc (dissoc member :guild-id)
+                         :user (:id user))))))
 
 (defn guild-member-remove
   [_ {:keys [guild-id user]} state]

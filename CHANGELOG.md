@@ -37,6 +37,7 @@ Discljord follows semantic versioning.
  - Removed questionmark from argument for `get-guild`'s `with-counts` for being redundant
 
 ### Fixed
+ - User state was not cached from member updates
  - Guild member state was not correctly added in the caching
  - User's token was logged at trace level logging on identify
  - `discljord.events.middleware/transduce` throws an arity exception for using the incorrect `concat`

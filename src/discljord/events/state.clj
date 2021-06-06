@@ -98,9 +98,13 @@
 
 (defn guild-members-chunk
   [_ {:keys [guild-id members]} state]
-  (swap! state update-in [::guilds guild-id :members]
-         merge (vector->map (comp :id :user) #(assoc % :user (:id (:user %)))
-                            members)))
+  (swap! state
+         (fn [state]
+           (update-in
+            (update-in state [::users] (partial merge-with merge) (vector->map (map :user members)))
+            [::guilds guild-id :members]
+            merge (vector->map (comp :id :user) #(assoc % :user (:id (:user %)))
+                               members)))))
 
 (defn guild-role-update
   [_ {:keys [guild-id role]} state]

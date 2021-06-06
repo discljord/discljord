@@ -37,6 +37,7 @@ Discljord follows semantic versioning.
  - Removed questionmark from argument for `get-guild`'s `with-counts` for being redundant
 
 ### Fixed
+ - User state was not cached during guild member chunks
  - User state was incorrectly stored during presence updates
  - User state was not cached from member updates
  - Guild member state was not correctly added in the caching

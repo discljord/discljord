@@ -780,7 +780,7 @@
 
   Returns a promise containing the message that was created."
   [application-id interaction-token]
-  [content file stream embeds username avatar-url tts allowed-mentions components])
+  [content file stream embeds username avatar-url tts allowed-mentions components flags])
 
 (defendpoint edit-followup-message! ::ms/interaction-token
   "Edits a followup message to an interaction by its id.

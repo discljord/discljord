@@ -121,16 +121,14 @@
          id))
 
 (defn presence-update
-  [_ {:keys [user guild-id roles nick] :as presence} state]
+  [_ {:keys [user guild-id activities status client-status] :as presence} state]
   (swap! state
          (fn [state]
-           (update-in
-            (update-in state [::users (:id user)]
-                       merge (dissoc presence :user :guild-id))
-            [::guilds guild-id :members (:id user)]
-            assoc
-            :roles roles
-            :nick nick))))
+           (update-in state [::users (:id user)]
+                      merge (assoc user
+                                   :activities activities
+                                   :status status
+                                   :client-status client-status)))))
 
 (defn voice-state-update
   [_ {:keys [user-id] :as voice} state]

@@ -4,6 +4,21 @@ Discljord follows semantic versioning.
 
 ## [Unreleased]
 ### Added
+ - Additional arities on caching middleware functions for custom caching configuration and handlers
+ - Threads Feature
+   - Endpoints
+     - `start-thread-with-message!`
+     - `start-thread-without-message!`
+     - `join-thread!`
+     - `add-thread-member!`
+     - `leave-thread!`
+     - `remove-thread-member!`
+     - `list-thread-members!`
+     - `list-active-threads!`
+     - `list-public-archived-threads!`
+     - `list-private-archived-threads!`
+     - `list-joined-private-archived-threads!`
+   - New caching middlewares to cache threads
  - Initial support for Message Components
  - New function for creating handlers for multiple events, `discljord.events/normalize-handlers`
  - Slash Commands Feature
@@ -34,9 +49,11 @@ Discljord follows semantic versioning.
  - Keyword argument `:shards` to `discljord.connections/status-update!` to specify which shards to send to
 
 ### Changed
+ - Set API version to `v9`
  - Removed questionmark from argument for `get-guild`'s `with-counts` for being redundant
 
 ### Fixed
+ - Previous user and guilds state was discarded in ready event caching handler
  - Event data with snowflake keys would be conformed to keyword keys
  - User state was not cached during guild member chunks
  - User state was incorrectly stored during presence updates

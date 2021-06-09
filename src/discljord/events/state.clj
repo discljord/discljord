@@ -32,8 +32,10 @@
                (update :members into (map (juxt :user-id #(select-keys % [:user-id :join-timestamp :id :flags]))))
                (assoc :member-count member-count)))))
 
-(defn thread-update [_ {:keys [guild-id id] :as thread} state]
-  (swap! state assoc-in [::guilds guild-id :threads id] (prepare-thread thread)))
+(defn thread-update [_ {:keys [guild-id id] {:keys [archived]} :thread-metadata :as thread} state]
+  (if archived
+    (thread-delete nil thread state)
+    (swap! state assoc-in [::guilds guild-id :threads id] (prepare-thread thread))))
 
 (defn thread-delete [_ {:keys [guild-id id]} state]
   (swap! state update-in [::guilds guild-id :threads] dissoc id))

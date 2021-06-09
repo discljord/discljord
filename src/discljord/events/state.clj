@@ -170,7 +170,7 @@
   [_ user state]
   (swap! state update ::bot merge user))
 
-(def ^:private caching-handlers
+(def caching-handlers
   "Handler map for all state-caching events."
   {:ready [#'ready]
    :guild-create [#'guild-update]

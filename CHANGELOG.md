@@ -4,6 +4,7 @@ Discljord follows semantic versioning.
 
 ## [Unreleased]
 ### Added
+ - Initial support for Message Components
  - New function for creating handlers for multiple events, `discljord.events/normalize-handlers`
  - Slash Commands Feature
    - Management Endpoints
@@ -36,11 +37,20 @@ Discljord follows semantic versioning.
  - Removed questionmark from argument for `get-guild`'s `with-counts` for being redundant
 
 ### Fixed
+ - Event data with snowflake keys would be conformed to keyword keys
+ - User state was not cached during guild member chunks
+ - User state was incorrectly stored during presence updates
+ - User state was not cached from member updates
+ - Guild member state was not correctly added in the caching
  - User's token was logged at trace level logging on identify
  - `discljord.events.middleware/transduce` throws an arity exception for using the incorrect `concat`
  - `:discljord.specs/snowflake` spec does not throw an exception anymore when passed a string
  - Added missing specs for `wait` param in `execute-webhook` and `stream` param in various endpoints
  - Fixed ambiguities regarding specs for parameters named `type`
+
+## [1.2.3] - 2021-05-26
+### Fixed
+ - Case where websocket clients weren't closed in some cases
 
 ## [1.2.2] - 2021-01-20
 ### Fixed
@@ -309,7 +319,8 @@ Discljord follows semantic versioning.
  - README follows new API
  - Project name from `discljord-functional` to `discljord`
 
-[Unreleased]: https://github.com/IGJoshua/discljord/compare/1.2.2..develop
+[Unreleased]: https://github.com/IGJoshua/discljord/compare/1.2.3..develop
+[1.2.3]: https://github.com/IGJoshua/discljord/compare/1.2.2..1.2.3
 [1.2.2]: https://github.com/IGJoshua/discljord/compare/1.2.1..1.2.2
 [1.2.1]: https://github.com/IGJoshua/discljord/compare/1.2.0..1.2.1
 [1.2.0]: https://github.com/IGJoshua/discljord/compare/1.1.1..1.2.0

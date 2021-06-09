@@ -135,6 +135,38 @@
 
 (s/def ::content ::message)
 
+(def component-types {:action-row 1, :button 2})
+
+(s/def :component/type (set (vals component-types)))
+
+(def component-styles
+  {:primary 1
+   :secondary 2
+   :success 3
+   :danger 4
+   :link 5})
+
+(s/def :component/style (set (vals component-styles)))
+(s/def :component/label (string-spec 0 80))
+
+(s/def :component.emoji/name string?)
+(s/def :component.emoji/id ::ds/snowflake)
+(s/def :component.emoji/animated boolean?)
+
+(s/def :component/emoji
+  (s/keys :req-un [:component.emoji/id :component.emoji/animated :component.emoji/name]))
+(s/def :component/custom_id (string-spec 0 100))
+(s/def :component/url string?)
+(s/def :component/disabled boolean?)
+
+(s/def ::component
+  (s/keys :req-un [:component/type]
+          :opt-un [:component/style :component/label :component/emoji
+                   :component/custom_id :component/url :component/disabled ::components]))
+
+(s/def ::components
+  (s/coll-of ::component))
+
 (s/def ::messages (s/coll-of ::message-id))
 
 (s/def ::overwrite-id ::ds/snowflake)
@@ -305,7 +337,7 @@
              (or (<= amount 1)
                  (and (= amount 2) first-required?))))))
 
-(s/def :discljord.messaging.specs.command/default_permission boolean?)
+(s/def :discljord.messaging.specs.command/default-permission boolean?)
 
 (s/def :command.option/options :discljord.messaging.specs.command/options)
 
@@ -317,7 +349,7 @@
   (s/and (s/keys :req-un [:discljord.messaging.specs.command/name
                           :discljord.messaging.specs.command/description]
                  :opt-un [:discljord.messaging.specs.command/options
-                          :discljord.messaging.specs.command/default_permission])
+                          :discljord.messaging.specs.command/default-permission])
          (fn [cmd]
            (<= (->> cmd
                     (tree-seq :options :options)
@@ -350,6 +382,7 @@
           :opt-un [::embeds
                    ::tts
                    ::allowed-mentions
+                   ::components
                    :interaction-response.data/flags]))
 
 (s/def :widget/enabled boolean?)

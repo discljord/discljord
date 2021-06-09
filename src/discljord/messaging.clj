@@ -144,7 +144,7 @@
   :stream is a map that has a :content of a java.io.InputStream and a :filename of the filename to attach to the message.
   :embed is a map specifying the embed format for the message (See Discord API)"
   []
-  [content tts nonce embed file allowed-mentions attachments stream message-reference])
+  [content tts nonce embed file allowed-mentions attachments stream message-reference components])
 
 (defn ^:deprecated send-message!
   [conn channel-id msg & {:keys [tts none embed file] :as opts}]
@@ -183,7 +183,7 @@
 (defendpoint edit-message! ::ds/channel-id
   "Edits the given message with the new content or embed. Returns a promise containing the new message."
   [message-id]
-  [content embed])
+  [content embed components])
 
 (defendpoint delete-message! ::ds/channel-id
   "Deletes the given message. Returns a promise containing a boolean of if it succeeded."
@@ -701,7 +701,7 @@
 (defendpoint execute-webhook! ::ds/webhook-id
   "Executes the given webhook. Returns a promise which contains either a boolean of if the message succeeded, or a map of the response body."
   [webhook-token]
-  [content file stream embeds wait username avatar-url tts allowed-mentions])
+  [content file stream embeds wait username avatar-url tts allowed-mentions components])
 
 (defendpoint get-webhook-message! ::ds/webhook-id
   "Returns the webhook message sent by the given webhook with the given id."
@@ -713,7 +713,7 @@
 
   Returns a promise containing the updated message object."
   [webhook-token message-id]
-  [content embeds allowed-mentions])
+  [content embeds allowed-mentions components])
 
 (defendpoint delete-webhook-message! ::ds/webhook-id
   "Deletes a messages that was sent from the given webhook.
@@ -746,14 +746,14 @@
   New global commands will be available in all guilds after 1 hour.
   Returns a promise containing the new application command object."
   [application-id ms.command/name ms.command/description]
-  [ms.command/options ms.command/default_permission])
+  [ms.command/options ms.command/default-permission])
 
 (defendpoint edit-global-application-command! nil
   "Updates an existing global slash command by its id.
 
   Returns a promise containing the updated application command object."
   [application-id command-id]
-  [ms.command/name ms.command/description ms.command/options ms.command/default_permission])
+  [ms.command/name ms.command/description ms.command/options ms.command/default-permission])
 
 (defendpoint delete-global-application-command! nil
   "Deletes an existing global slash command by its id.
@@ -780,14 +780,14 @@
 
   Returns a promise containing the new application command object."
   [application-id guild-id ms.command/name ms.command/description]
-  [ms.command/options ms.command/default_permission])
+  [ms.command/options ms.command/default-permission])
 
 (defendpoint edit-guild-application-command! nil
   "Updates an existing guild slash command by its id.
 
   Returns a promise containing the updated application command object."
   [application-id guild-id command-id]
-  [ms.command/name ms.command/description ms.command/options ms.command/default_permission])
+  [ms.command/name ms.command/description ms.command/options ms.command/default-permission])
 
 (defendpoint delete-guild-application-command! nil
   "Deletes an existing guild slash command by its id.
@@ -849,7 +849,7 @@
 
   Returns a promise containing the updated message object"
   [application-id interaction-token]
-  [content embeds allowed-mentions])
+  [content embeds allowed-mentions components])
 
 (defendpoint delete-original-interaction-response! nil
   "Deletes the initial response to the given interaction.
@@ -863,14 +863,14 @@
 
   Returns a promise containing the message that was created."
   [application-id interaction-token]
-  [content file stream embeds username avatar-url tts allowed-mentions])
+  [content file stream embeds username avatar-url tts allowed-mentions components flags])
 
 (defendpoint edit-followup-message! ::ms/interaction-token
   "Edits a followup message to an interaction by its id.
 
   Returns a promise containing the updated message object."
   [application-id interaction-token message-id]
-  [content embeds allowed-mentions])
+  [content embeds allowed-mentions components])
 
 (defendpoint delete-followup-message! ::ms/interation-token
   "Deletes a followup message to an interaction by its id.

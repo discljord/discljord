@@ -82,9 +82,14 @@
 
 (defn guild-member-update
   [_ {:keys [guild-id user] :as member} state]
-  (swap! state update-in [::guilds guild-id :members (:id user)]
-         merge (assoc (dissoc member :guild-id)
-                      :user (:id user))))
+  (swap! state
+         (fn [state]
+           (update-in
+            (update-in state [::users (:id user)]
+                       merge user)
+            [::guilds guild-id :members (:id user)]
+            merge (assoc (dissoc member :guild-id)
+                         :user (:id user))))))
 
 (defn guild-member-remove
   [_ {:keys [guild-id user]} state]
@@ -93,9 +98,13 @@
 
 (defn guild-members-chunk
   [_ {:keys [guild-id members]} state]
-  (swap! state update-in [::guilds guild-id :members]
-         merge-with merge (vector->map (comp :id :user) #(assoc % :user (:id (:user %)))
-                                       members)))
+  (swap! state
+         (fn [state]
+           (update-in
+            (update-in state [::users] (partial merge-with merge) (vector->map (map :user members)))
+            [::guilds guild-id :members]
+            merge (vector->map (comp :id :user) #(assoc % :user (:id (:user %)))
+                               members)))))
 
 (defn guild-role-update
   [_ {:keys [guild-id role]} state]
@@ -116,16 +125,14 @@
          id))
 
 (defn presence-update
-  [_ {:keys [user guild-id roles nick] :as presence} state]
+  [_ {:keys [user guild-id activities status client-status] :as presence} state]
   (swap! state
          (fn [state]
-           (update-in
-            (update-in state [::users (:id user)]
-                       merge (dissoc presence :user :guild-id))
-            [::guilds guild-id :members (:id user)]
-            assoc
-            :roles roles
-            :nick nick))))
+           (update-in state [::users (:id user)]
+                      merge (assoc user
+                                   :activities activities
+                                   :status status
+                                   :client-status client-status)))))
 
 (defn voice-state-update
   [_ {:keys [user-id] :as voice} state]

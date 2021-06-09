@@ -142,11 +142,12 @@
 
 (defn message-create
   [_ {:keys [guild-id channel-id id]} state]
-  (swap! state assoc-in
-         (if guild-id
-           [::guilds guild-id :channels channel-id :last-message-id]
-           [::private-channels channel-id :last-message-id])
-         id))
+  (swap! state
+         (fn [state]
+           (if guild-id
+             (let [guild (get-in state [::guilds guild-id])]
+               (assoc-in state [::guilds guild-id (if ((:channels guild) channel-id) :channels :threads) channel-id :last-message-id] id))
+             (assoc-in state [::private-channels channel-id :last-message-id] id)))))
 
 (defn presence-update
   [_ {:keys [user guild-id activities status client-status] :as presence} state]

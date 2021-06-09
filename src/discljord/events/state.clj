@@ -17,6 +17,27 @@
   ([kf vf coll]
    (zipmap (map kf coll) (map vf coll))))
 
+(defn prepare-thread [thread]
+  (update thread :members (partial vector->map :user-id)))
+
+(defn thread-member-update [_ {:keys [guild-id id user-id] :as member} state]
+  (swap! state assoc-in [::guilds guild-id :threads id :members user-id] member))
+
+(defn thread-members-update [_ {:keys [added-members removed-member-ids id guild-id  member-count :as event]} state]
+  (swap! state update-in
+         [::guilds guild-id :threads id]
+         (fn [thread]
+           (-> thread
+               (update :members #(reduce dissoc % removed-member-ids))
+               (update :members into (map (juxt :user-id #(select-keys % [:user-id :join-timestamp :id :flags]))))
+               (assoc :member-count member-count)))))
+
+(defn thread-update [_ {:keys [guild-id id] :as thread} state]
+  (swap! state assoc-in [::guilds guild-id :threads id] (prepare-thread thread)))
+
+(defn thread-delete [_ {:keys [guild-id id]} state]
+  (swap! state update-in [::guilds guild-id :threads] dissoc id))
+
 (defn prepare-guild
   "Takes a guild and prepares it for storing in the cache.
 
@@ -27,6 +48,7 @@
   (assoc guild
          :roles (vector->map (:roles guild))
          :channels (vector->map (:channels guild))
+         :threads (vector->map :id prepare-thread (:threads guild))
          :members (vector->map (comp :id :user) #(update % :user :id) (:members guild))
          :presences (vector->map (comp :id :user) #(update % :user :id) (:presences guild))))
 
@@ -161,6 +183,11 @@
    :guild-role-create [#'guild-role-update]
    :guild-role-update [#'guild-role-update]
    :guild-role-delete [#'guild-role-delete]
+   :thread-create [#'thread-update]
+   :thread-update [#'thread-update]
+   :thread-member-update [#'thread-member-update]
+   :thread-members-update [#'thread-members-update]
+   :thread-delete [#'thread-delete]
    :message-create [#'message-create]
    :presence-update [#'presence-update]
    :voice-state-update [#'voice-state-update]

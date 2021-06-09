@@ -171,7 +171,28 @@
   (swap! state update ::bot merge user))
 
 (def caching-handlers
-  "Handler map for all state-caching events."
+  "Handler map for all state-caching events.
+
+  The state saved is of the following form:
+  ```clojure
+  {:discljord.events.state/bot <current-user>
+   :discljord.events.state/guilds {<guild-id> <guild-object>}
+   :discljord.events.state/users {<user-id> <user-object>}
+   :discljord.events.state/private-channels {<channel-id> <channel-object>}}
+  ```
+
+  Guild objects are modified in a few ways. Roles, members, presences, threads and
+  channels are all stored as maps from id to object, and members' and presence's
+  user keys are the id of the user which is stored under the state's
+  `:discljord.events.state/users` key. Any information received from
+  `:presence-update` events is also merged into the user object, and a voice
+  state object is stored under `:voice`.
+
+  Threads also include a map of user ids to
+  [thread member objects](https://discord.com/developers/docs/resources/channel#thread-member-object) in their `:member` key.
+
+  Private channels are channels which lack a guild, including direct messages
+  and group messages."
   {:ready [#'ready]
    :guild-create [#'guild-update]
    :guild-update [#'guild-update]
@@ -199,30 +220,19 @@
    :user-update [#'user-update]})
 
 (defn caching-middleware
-  "Creates a middleware that caches all Discord event data in `state`.
+  "Creates a middleware that caches Discord event data in `state`.
 
   `state` must be an [[clojure.core/atom]] containing a map.
+  `caching-handlers`, if provided, must be a map of event keyword -> sequence of caching handlers.
+  Each caching handler is a function that takes the event type, data and the state atom and updates the atom where applicable.
 
-  The state saved is of the following form:
-  ```clojure
-  {:discljord.events.state/bot <current-user>
-   :discljord.events.state/guilds {<guild-id> <guild-object>}
-   :discljord.events.state/users {<user-id> <user-object>}
-   :discljord.events.state/private-channels {<channel-id> <channel-object>}}
-  ```
-
-  Guild objects are modified in a few ways. Roles, members, presences, and
-  channels are all stored as maps from id to object, and members' and presence's
-  user keys are the id of the user which is stored under the state's
-  `:discljord.events.state/users` key. Any information received from
-  `:presence-update` events is also merged into the user object, and a voice
-  state object is stored under `:voice`.
-
-  Private channels are channels which lack a guild, including direct messages
-  and group messages."
-  [state]
-  (mdw/concat
-   #(e/dispatch-handlers #'caching-handlers %1 %2 state)))
+  If this parameter is not provided, the default [[caching-handlers]] are used.
+  See its docs for more information on the default cache layout and behavior."
+  ([state]
+   (caching-middleware state #'caching-handlers))
+  ([state caching-handlers]
+   (mdw/concat
+    #(e/dispatch-handlers caching-handlers %1 %2 state))))
 
 (defn caching-transducer
   "Creates a transducer which caches event data and passes on all events.
@@ -230,9 +240,14 @@
   Values on the transducer are expected to be tuples of event-type and
   event-data.
   `state` must be an [[clojure.core/atom]] containing a map.
+  `caching-handlers`, if provided, must be a map of event keyword -> sequence of caching handlers.
+  Each caching handler is a function that takes the event type, data and the state atom and updates the atom where applicable.
 
-  Saved state is identical to [[caching-middleware]]."
-  [state]
-  (map (fn [[event-type event-data :as event]]
-         (e/dispatch-handlers #'caching-handlers event-type event-data state)
-         event)))
+  If this parameter is not provided, the default [[caching-handlers]] are used.
+  See its docs for more information on the default cache layout and behavior."
+  ([state]
+   (caching-transducer state #'caching-handlers))
+  ([state caching-handlers]
+   (map (fn [[event-type event-data :as event]]
+          (e/dispatch-handlers caching-handlers event-type event-data state)
+          event))))

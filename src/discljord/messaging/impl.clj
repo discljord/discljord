@@ -313,20 +313,17 @@
                           :auto_archive_duration auto_archive_duration})}
   (json-body body))
 
-
-; TODO implement (= status 204) response handling and watch for method change
-; https://github.com/discord/discord-api-docs/issues/2978
 (defdispatch :join-thread
-  [channel-id] [] _ :post status body
+  [channel-id] [] _ :put status _
   (str "/channels/" channel-id "/thread-members/@me")
   {}
-  [status body])
+  (= status 204))
 
 (defdispatch :add-thread-member
-  [channel-id user-id] [] _ :post status body
+  [channel-id user-id] [] _ :put status body
   (str "/channels/" channel-id "/thread-members/" user-id)
   {}
-  [status body])
+  (= status 204))
 
 (defdispatch :leave-thread
   [channel-id] [] _ :delete status _

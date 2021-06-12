@@ -29,7 +29,7 @@
          (fn [thread]
            (-> thread
                (update :members #(reduce dissoc % removed-member-ids))
-               (update :members into (map (juxt :user-id #(select-keys % [:user-id :join-timestamp :id :flags]))))
+               (update :members into (map (juxt :user-id #(select-keys % [:user-id :join-timestamp :id :flags])) added-members))
                (assoc :member-count member-count)))))
 
 (defn thread-delete [_ {:keys [guild-id id]} state]

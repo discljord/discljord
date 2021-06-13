@@ -300,17 +300,17 @@
   nil)
 
 (defdispatch :start-thread-with-message
-  [channel-id message-id name auto_archive_duration] [] _ :post _ body
+  [channel-id message-id name auto-archive-duration] [] _ :post _ body
   (str "/channels/" channel-id "/messages/" message-id "/threads")
   {:body (json/write-str {:name name
-                          :auto_archive_duration auto_archive_duration})}
+                          :auto_archive_duration auto-archive-duration})}
   (json-body body))
 
 (defdispatch :start-thread-without-message
-  [channel-id name auto_archive_duration] [] _ :post _ body
+  [channel-id name auto-archive-duration] [] _ :post _ body
   (str "/channels/" channel-id "/threads")
   {:body (json/write-str {:name name
-                          :auto_archive_duration auto_archive_duration})}
+                          :auto_archive_duration auto-archive-duration})}
   (json-body body))
 
 (defdispatch :join-thread

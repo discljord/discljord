@@ -3,7 +3,8 @@
   (:require
    [clojure.tools.logging :as log]
    [discljord.events :as e]
-   [discljord.events.middleware :as mdw]))
+   [discljord.events.middleware :as mdw]
+   [clojure.set :as sets]))
 
 (defn- vector->map
   "Turns a vector into a map from an item of each value to the value.
@@ -31,6 +32,17 @@
                (update :members #(reduce dissoc % removed-member-ids))
                (update :members into (map (juxt :user-id #(select-keys % [:user-id :join-timestamp :id :flags])) added-members))
                (assoc :member-count member-count)))))
+
+(defn thread-list-sync [_ {:keys [guild-id channel-ids threads members]} state]
+  (let [channels-to-clear (sets/difference (set channel-ids) (set (map :parent-id threads)))]
+    (swap! state update-in [::guilds guild-id threads]
+           (fn [threads]
+             (as-> threads $
+                 (merge $ (vector->map :id prepare-thread threads))
+                 (reduce dissoc $ channels-to-clear)
+                 (reduce (fn [threads {:keys [user-id id] :as thread-member}]
+                           (assoc-in threads [id :members user-id] thread-member))
+                         $ members))))))
 
 (defn thread-delete [_ {:keys [guild-id id]} state]
   (swap! state update-in [::guilds guild-id :threads] dissoc id))
@@ -214,6 +226,7 @@
    :thread-member-update [#'thread-member-update]
    :thread-members-update [#'thread-members-update]
    :thread-delete [#'thread-delete]
+   :thread-list-sync [#'thread-list-sync]
    :message-create [#'message-create]
    :presence-update [#'presence-update]
    :voice-state-update [#'voice-state-update]

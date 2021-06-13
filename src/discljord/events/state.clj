@@ -18,8 +18,9 @@
   ([kf vf coll]
    (zipmap (map kf coll) (map vf coll))))
 
-(defn prepare-thread [thread]
-  (update thread :members (partial vector->map :user-id)))
+(defn prepare-thread [{:keys [member] :as thread}]
+  (cond-> (update thread :members (partial vector->map :user-id))
+    member  (assoc-in [:members (:user-id member)] member)))
 
 (defn thread-member-update [_ {:keys [guild-id id user-id] :as member} state]
   (swap! state assoc-in [::guilds guild-id :threads id :members user-id] member))
@@ -50,7 +51,7 @@
 (defn thread-update [_ {:keys [guild-id id] {:keys [archived]} :thread-metadata :as thread} state]
   (if archived
     (thread-delete nil thread state)
-    (swap! state assoc-in [::guilds guild-id :threads id] (prepare-thread thread))))
+    (swap! state update-in [::guilds guild-id :threads id] merge (prepare-thread thread))))
 
 (defn prepare-guild
   "Takes a guild and prepares it for storing in the cache.

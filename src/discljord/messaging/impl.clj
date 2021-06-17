@@ -39,8 +39,7 @@
         ", "
         "1.3.0-SNAPSHOT"
         ") "
-        user-agent)
-   "Content-Type" "application/json"})
+        user-agent)})
 
 (defmacro defdispatch
   "Defines a dispatch method for the the endpoint with `endpoint-name`.
@@ -60,33 +59,38 @@
   [endpoint-name [major-var & params] [& opts] opts-sym
    method status-sym body-sym url-str
    method-params promise-val]
-  `(defmethod dispatch-http ~endpoint-name
-     [token# endpoint# [prom# ~@params & {user-agent# :user-agent audit-reason# :audit-reason
-                                            :keys [~@opts] :as opts#}]]
-     (let [~opts-sym (dissoc opts# :user-agent)
-           ~major-var (-> endpoint#
-                          ::ms/major-variable
-                          ::ms/major-variable-value)
-           headers# (auth-headers token# user-agent#)
-           headers# (if audit-reason#
-                      (assoc headers# "X-Audit-Log-Reason" (http/url-encode audit-reason#))
-                      headers#)
-           request-params# (merge-with merge
-                                       ~method-params
-                                       {:headers headers#})
-           ~'_ (log/trace "Making request to" ~major-var "with params" request-params#)
-           response# @(~(symbol "org.httpkit.client" (name method))
-                       (api-url ~url-str)
-                       request-params#)
-           ~'_ (log/trace "Response:" response#)
-           ~status-sym (:status response#)
-           ~body-sym (:body response#)]
-       (when-not (= ~status-sym 429)
-         (let [prom-val# ~promise-val]
-           (if (some? prom-val#)
-             (a/>!! prom# prom-val#)
-             (a/close! prom#))))
-       response#)))
+  (let [token-sym (gensym "token")
+        user-agent-sym (gensym "user-agent")]
+    `(defmethod dispatch-http ~endpoint-name
+       [~token-sym endpoint# [prom# ~@params & {~user-agent-sym :user-agent audit-reason# :audit-reason
+                                                :keys [~@opts] :as opts#}]]
+       (let [~opts-sym (dissoc opts# :user-agent)
+             ~major-var (-> endpoint#
+                            ::ms/major-variable
+                            ::ms/major-variable-value)
+             headers# ~(cond-> `(auth-headers ~token-sym ~user-agent-sym)
+                         (not= (:body method-params ::not-found) ::not-found)
+                         (as-> src
+                             `(assoc ~src "Content-Type" "application/json")))
+             headers# (if audit-reason#
+                        (assoc headers# "X-Audit-Log-Reason" (http/url-encode audit-reason#))
+                        headers#)
+             request-params# (merge-with merge
+                                         ~method-params
+                                         {:headers headers#})
+             ~'_ (log/trace "Making request to" ~major-var "with params" request-params#)
+             response# @(~(symbol "org.httpkit.client" (name method))
+                         (api-url ~url-str)
+                         request-params#)
+             ~'_ (log/trace "Response:" response#)
+             ~status-sym (:status response#)
+             ~body-sym (:body response#)]
+         (when-not (= ~status-sym 429)
+           (let [prom-val# ~promise-val]
+             (if (some? prom-val#)
+               (a/>!! prom# prom-val#)
+               (a/close! prom#))))
+         response#))))
 
 (defn ^:private json-body
   [body]

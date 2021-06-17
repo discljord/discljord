@@ -37,6 +37,7 @@ Discljord follows semantic versioning.
  - Removed questionmark from argument for `get-guild`'s `with-counts` for being redundant
 
 ### Fixed
+ - The `Content-Type` header was sent on requests with no body
  - Event data with snowflake keys would be conformed to keyword keys
  - User state was not cached during guild member chunks
  - User state was incorrectly stored during presence updates

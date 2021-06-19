@@ -1,9 +1,13 @@
 (ns discljord.events
   "Functions for getting events off of a queue and processing them."
   (:require
+   [clojure.core.async.impl.protocols :refer [ReadPort]]
    [clojure.core.async :as a]
    [clojure.spec.alpha :as s]
-   [clojure.tools.logging :as log]))
+   [clojure.tools.logging :as log]
+   [discljord.specs :as ds])
+  (:import
+   (clojure.lang IDeref)))
 
 (defn message-pump!
   "Starts a process which pulls events off of the channel and calls
@@ -58,4 +62,59 @@
                :event-type keyword?
                :event-data any?
                :args (s/* any?))
+  :ret nil?)
+
+(defn event-grinder!
+  "Starts a process to handle each event as it arrives from discord, each in its own go block.
+
+  The `context` is a map with a `:queue` key that represents the operations
+  which must happen next, and an `:fx` key to represent actions which must be
+  taken.
+
+  When each event is received from Discord, it is added to the end of the
+  `:queue` in the context in the form [event-type event-data], and then calls
+  `stepper` with the context and each element of the `:queue` in order. The
+  return value from the stepper is the next context, and any alterations to the
+  queue will affect what the stepper will be called next with. After each step,
+  the `:fx` key will be taken and the `fx` function will be called with the
+  context and each element of the collection in `:fx`. When the `:queue` is
+  empty, the event has been fully processed and the modified context will be
+  discarded. The stepper may also return a channel or implementation
+  of [[IDeref]] (although a channel requires fewer threads) that resolves to the
+  next context."
+  [event-ch context stepper fx]
+  (loop []
+    (let [event (a/<!! event-ch)]
+      (a/go
+        (loop [ctx (update context :queue concat event)]
+          (when-some [[step & next-queue] (seq (:queue ctx))]
+            (let [ctx (try
+                        (stepper (assoc ctx :queue next-queue) step)
+                        (catch Exception e
+                          (log/error e "Exception occurred in context stepper.")))
+                  ctx (try
+                        (cond
+                          (instance? ReadPort ctx) (a/<! ctx)
+                          (instance? IDeref ctx)
+                          (a/<! (a/thread
+                                  (try @ctx
+                                       (catch Exception e
+                                         (log/error e "Exception while dereferencing an async context."))))))
+                        (catch Exception e
+                          (log/error e "Exception while dereferencing an async context.")))]
+              (when ctx
+                (run! (fn [v]
+                        (try (fx (dissoc ctx :fx) v)
+                             (catch Exception e
+                               (log/error e "Exception while realizing effect."))))
+                      (:fx ctx))
+                (recur (dissoc ctx :fx)))))))
+      (when-not (= (first event) :disconnect)
+        (recur))))
+  nil)
+(s/fdef event-grinder!
+  :args (s/cat :event-ch ::ds/channel
+               :context map?
+               :stepper ifn?
+               :fx ifn?)
   :ret nil?)

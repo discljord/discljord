@@ -22,7 +22,7 @@
         (recur))))
   nil)
 (s/fdef message-pump!
-  :args (s/cat :channel any?
+  :args (s/cat :channel ::ds/channel
                :handle-event ifn?)
   :ret nil?)
 

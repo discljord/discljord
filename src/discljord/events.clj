@@ -96,12 +96,13 @@
                           (log/error e "Exception occurred in context stepper.")))
                   ctx (try
                         (cond
-                          (instance? ReadPort ctx) (a/<! ctx)
+                          (satisfies? ReadPort ctx) (a/<! ctx)
                           (instance? IDeref ctx)
                           (a/<! (a/thread
                                   (try @ctx
                                        (catch Exception e
-                                         (log/error e "Exception while dereferencing an async context."))))))
+                                         (log/error e "Exception while dereferencing an async context.")))))
+                          :otherwise ctx)
                         (catch Exception e
                           (log/error e "Exception while dereferencing an async context.")))]
               (when ctx

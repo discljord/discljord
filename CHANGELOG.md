@@ -4,6 +4,7 @@ Discljord follows semantic versioning.
 
 ## [Unreleased]
 ### Added
+ - A new function `discljord.events.state/update-cache` to update a state immediately with an event
  - A new event pump making use of [coffee grinders](https://lambdaisland.com/p/coffee-grinders-2)
  - Initial support for Message Components
  - New function for creating handlers for multiple events, `discljord.events/normalize-handlers`

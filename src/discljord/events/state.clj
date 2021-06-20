@@ -166,6 +166,15 @@
    :voice-state-update [#'voice-state-update]
    :user-update [#'user-update]})
 
+(defn update-cache
+  "Updates a cache inside the atom `state` with a single event.
+
+  `state` must be an [[clojure.core/atom]] containing a map.
+
+  Saved state is identical to [[caching-middleware]]."
+  [state event-type event-data]
+  (e/dispatch-handlers #'caching-handlers event-type event-data state))
+
 (defn caching-middleware
   "Creates a middleware that caches all Discord event data in `state`.
 
@@ -189,8 +198,7 @@
   Private channels are channels which lack a guild, including direct messages
   and group messages."
   [state]
-  (mdw/concat
-   #(e/dispatch-handlers #'caching-handlers %1 %2 state)))
+  (mdw/concat (partial #'update-cache state)))
 
 (defn caching-transducer
   "Creates a transducer which caches event data and passes on all events.
@@ -202,5 +210,5 @@
   Saved state is identical to [[caching-middleware]]."
   [state]
   (map (fn [[event-type event-data :as event]]
-         (e/dispatch-handlers #'caching-handlers event-type event-data state)
+         (partial #'update-cache state)
          event)))

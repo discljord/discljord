@@ -169,7 +169,7 @@
         raw-body (:body response)
         body (if (or always-expect-content? (= status 200))
                (cond->> (json-body raw-body)
-                 (not= 2 (quot status 100)) (ex-info ""))
+                 (not= 2 (quot status 100)) (ex-info "Attempted to send an invalid message payload"))
                (= status 204))]
     (when-not (= status 429)
       (if (some? body)

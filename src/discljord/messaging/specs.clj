@@ -137,7 +137,6 @@
 (s/def :component/action-row
   (s/keys :req-un [::components :component.action-row/type]))
 
-
 (def button-styles
   {:primary 1
    :secondary 2
@@ -393,10 +392,10 @@
 
 (def interaction-response-types
   {:pong 1
-   :acknowledge 2
-   :channel-message 3
    :channel-message-with-source 4
-   :deferred-channel-message-with-source 5})
+   :deferred-channel-message-with-source 5
+   :deferred-update-message 6
+   :update-message 7})
 
 (s/def :discljord.messaging.specs.interaction-response/type
   (set (vals interaction-response-types)))
@@ -404,8 +403,8 @@
 (s/def :interaction-response.data/flags int?)
 
 (s/def :discljord.messaging.specs.interaction-response/data
-  (s/keys :req-un [::content]
-          :opt-un [::embeds
+  (s/keys :opt-un [::content
+                   ::embeds
                    ::tts
                    ::allowed-mentions
                    ::components

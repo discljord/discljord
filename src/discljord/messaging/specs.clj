@@ -383,3 +383,5 @@
 (s/def :widget/enabled boolean?)
 (s/def :widget/channel_id ::ds/snowflake)
 (s/def ::widget (s/keys :req-un [:widget/enabled :widget/channel_id]))
+
+(s/def ::query string?)

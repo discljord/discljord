@@ -46,7 +46,7 @@
 (defmacro defendpoint
   "Creates a new non-blocking function for a discord endpoint.
 
-  - `endpoint-name`: the name of the edpoint function. must end with an '!'
+  - `endpoint-name`: the name of the endpoint function. must end with an '!'
   - `major-var-type`: the spec-name of the major variable used in this endpoint, if any. If there is none, `nil` should be used.
   - `doc-str`: Documentation for the endpoint function.
   - `params`: Required parameters for this endpoint. If the major variable is the first parameter, it need not be included here.
@@ -325,6 +325,11 @@
   "Returns a promise containing a vector of the guild member objects."
   []
   [limit after])
+
+(defendpoint search-guild-members! ::ds/guild-id
+  "Returns a promise containing a vector of the guild member objects matching the search."
+  [query]
+  [limit])
 
 (defendpoint add-guild-member! ::ds/guild-id
   "NOT INTENDED FOR BOT USE. Adds a user to a guild. Requires an access token. Returns a promise containing the keyword :already-member if the user is already a member, or the guild member object."

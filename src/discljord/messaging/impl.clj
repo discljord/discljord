@@ -404,6 +404,12 @@
   {:query-params opts}
   (json-body body))
 
+(defdispatch :search-guild-members
+  [guild-id query] [] opts :get _ body
+  (str "/guilds/" guild-id "/members/search")
+  {:query-params (assoc opts :query query)}
+  (json-body body))
+
 (defdispatch :add-guild-member
   [guild-id user-id access-token] [] opts :put status body
   (str "/guilds/" guild-id "/members/" user-id)

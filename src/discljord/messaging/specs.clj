@@ -146,7 +146,7 @@
 
 (s/def :component.button/type #{2})
 (s/def :component.button/custom_id (string-spec 0 100))
-(s/def :component.button/style (set (vals component-styles)))
+(s/def :component.button/style (set (vals button-styles)))
 (s/def :component.button/label (string-spec 0 80))
 
 (s/def :component.button.emoji/name string?)

@@ -307,10 +307,11 @@
   (json-body body))
 
 (defdispatch :start-thread-without-message
-  [channel-id name auto-archive-duration] [] _ :post _ body
+  [channel-id name auto-archive-duration type] [] _ :post _ body
   (str "/channels/" channel-id "/threads")
   {:body (json/write-str {:name name
-                          :auto_archive_duration auto-archive-duration})}
+                          :auto_archive_duration auto-archive-duration
+                          :tyoe type})}
   (json-body body))
 
 (defdispatch :join-thread

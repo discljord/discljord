@@ -37,8 +37,8 @@
 (defn thread-list-sync [_ {:keys [guild-id channel-ids threads members]} state]
   (let [channels-to-clear (sets/difference (set channel-ids) (set (map :parent-id threads)))]
     (swap! state update-in [::guilds guild-id threads]
-           (fn [threads]
-             (as-> threads $
+           (fn [old-threads]
+             (as-> old-threads $
                  (merge $ (vector->map :id prepare-thread threads))
                  (reduce dissoc $ channels-to-clear)
                  (reduce (fn [threads {:keys [user-id id] :as thread-member}]

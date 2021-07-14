@@ -51,6 +51,9 @@
    :guild-category 4
    :guild-news 5
    :guild-store 6
+   :guild-news-thread 10
+   :guild-public-thread 11
+   :guild-private-thread 12
    :guild-stage-voice 13})
 
 (s/def ::name (string-spec 2 100))

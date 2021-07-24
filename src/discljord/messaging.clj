@@ -297,9 +297,8 @@
   []
   [])
 
-(defendpoint list-active-threads! ::ds/channel-id
-  "Returns a promise containing all active threads, thread member objects for the current user
-   and a boolean indicating whether there are possibly more threads in the given channel."
+(defendpoint list-active-threads! ::ds/guild-id
+  "Returns a promise containing all active threads in the guild and thread member objects for the current user."
   []
   [])
 

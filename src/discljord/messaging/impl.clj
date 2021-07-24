@@ -345,8 +345,8 @@
   (json-body body))
 
 (defdispatch :list-active-threads
-  [channel-id] [] _ :get _ body
-  (str "/channels/" channel-id "/threads/active")
+  [guild-id] [] _ :get _ body
+  (str "/guilds/" guild-id "/threads/active")
   {}
   (json-body body))
 

@@ -303,6 +303,75 @@
   {}
   nil)
 
+(defdispatch :start-thread-with-message
+  [channel-id message-id name auto-archive-duration] [] _ :post _ body
+  (str "/channels/" channel-id "/messages/" message-id "/threads")
+  {:body (json/write-str {:name name
+                          :auto_archive_duration auto-archive-duration})}
+  (json-body body))
+
+(defdispatch :start-thread-without-message
+  [channel-id name auto-archive-duration type] [] _ :post _ body
+  (str "/channels/" channel-id "/threads")
+  {:body (json/write-str {:name name
+                          :auto_archive_duration auto-archive-duration
+                          :tyoe type})}
+  (json-body body))
+
+(defdispatch :join-thread
+  [channel-id] [] _ :put status _
+  (str "/channels/" channel-id "/thread-members/@me")
+  {}
+  (= status 204))
+
+(defdispatch :add-thread-member
+  [channel-id user-id] [] _ :put status body
+  (str "/channels/" channel-id "/thread-members/" user-id)
+  {}
+  (= status 204))
+
+(defdispatch :leave-thread
+  [channel-id] [] _ :delete status _
+  (str "/channels/" channel-id "/thread-members/@me")
+  {}
+  (= status 204))
+
+(defdispatch :remove-thread-member
+  [channel-id user-id] [] _ :delete status _
+  (str "/channels/" channel-id "/thread-members/" user-id)
+  {}
+  (= status 204))
+
+(defdispatch :list-thread-members
+  [channel-id] [] _ :get _ body
+  (str "/channels/" channel-id "/thread-members")
+  {}
+  (json-body body))
+
+(defdispatch :list-active-threads
+  [guild-id] [] _ :get _ body
+  (str "/guilds/" guild-id "/threads/active")
+  {}
+  (json-body body))
+
+(defdispatch :list-public-archived-threads
+  [channel-id] [] opts :get _ body
+  (str "/channels/" channel-id "/threads/archived/public")
+  {:query-params opts}
+  (json-body body))
+
+(defdispatch :list-private-archived-threads
+  [channel-id] [] opts :get _ body
+  (str "/channels/" channel-id "/threads/archived/private")
+  {:query-params opts}
+  (json-body body))
+
+(defdispatch :list-joined-private-archived-threads
+  [channel-id] [] opts :get _ body
+  (str "/channels/" channel-id "/users/@me/threads/archived/private")
+  {:query-params opts}
+  (json-body body))
+
 (defdispatch :list-guild-emojis
   [guild-id] [] _ :get _ body
   (str "/guilds/" guild-id "/emojis")

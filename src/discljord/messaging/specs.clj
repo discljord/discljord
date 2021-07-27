@@ -51,6 +51,9 @@
    :guild-category 4
    :guild-news 5
    :guild-store 6
+   :guild-news-thread 10
+   :guild-public-thread 11
+   :guild-private-thread 12
    :guild-stage-voice 13})
 
 (s/def ::name (string-spec 2 100))
@@ -67,6 +70,11 @@
 (s/def ::user-limit (s/and integer?
                            #(>= % 0)
                            #(<= % 99)))
+
+; Threads
+(s/def :discljord.messaging.specs.thread/auto-archive-duration #{60 1440 4320 10080})
+; This should validate an ISO 8601 timestamp - use a regex instead?
+(s/def :discljord.messaging.specs.thread/before string?)
 
 (s/def :discljord.messaging.specs.overwrite/type #{"role" "member"})
 (s/def ::overwrite-object (s/keys :req-un [::ds/id :discljord.messaging.specs.overwrite/type ::allow ::deny]))

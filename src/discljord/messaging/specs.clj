@@ -130,34 +130,64 @@
 
 (s/def ::content ::message)
 
-(def component-types {:action-row 1, :button 2})
+;; Message Components
 
-(s/def :component/type (set (vals component-types)))
+(s/def :component.action-row/type #{1})
 
-(def component-styles
+(s/def :component/action-row
+  (s/keys :req-un [::components :component.action-row/type]))
+
+(def button-styles
   {:primary 1
    :secondary 2
    :success 3
    :danger 4
    :link 5})
 
-(s/def :component/style (set (vals component-styles)))
-(s/def :component/label (string-spec 0 80))
+(s/def :component.button/type #{2})
+(s/def :component.button/custom_id (string-spec 0 100))
+(s/def :component.button/style (set (vals button-styles)))
+(s/def :component.button/label (string-spec 0 80))
 
-(s/def :component.emoji/name string?)
-(s/def :component.emoji/id ::ds/snowflake)
-(s/def :component.emoji/animated boolean?)
+(s/def :component.button.emoji/name string?)
+(s/def :component.button.emoji/id ::ds/snowflake)
+(s/def :component.button.emoji/animated boolean?)
 
-(s/def :component/emoji
-  (s/keys :req-un [:component.emoji/id :component.emoji/animated :component.emoji/name]))
-(s/def :component/custom_id (string-spec 0 100))
-(s/def :component/url string?)
-(s/def :component/disabled boolean?)
+(s/def :component.button/emoji
+  (s/keys :opt-un [:component.button.emoji/id :component.button.emoji/animated :component.button.emoji/name]))
+
+(s/def :component.button/url string?)
+(s/def :component.button/disabled boolean?)
+
+(s/def :component/button
+  (s/keys :req-un [:component.button/type :component.button/style]
+          :opt-un [:component.button/label :component.button/emoji :component.button/custom_id
+                   :component.button/url :component.button/disabled]))
+
+(s/def :component.select/type #{3})
+(s/def :component.select/custom_id :component.button/custom_id)
+
+(s/def :component.select.option/label (string-spec 0 25))
+(s/def :component.select.option/value (string-spec 0 100))
+(s/def :component.select.option/description (string-spec 0 50))
+(s/def :component.select.option/emoji :component.button/emoji)
+(s/def :component.select.option/default boolean?)
+(s/def :component.select/option
+  (s/keys :req-un [:component.select.option/label :component.select.option/value]
+          :opt-un [:component.select.option/description :component.select.option/emoji :component.select.option/default]))
+
+(s/def :component.select/options (s/coll-of :component.select/option))
+
+(s/def :component.select/placeholder (string-spec 0 100))
+(s/def :component.select/min_values (s/and integer? #(<= 0 % 25)))
+(s/def :component.select/max_values (s/and integer? #(<= % 25)))
+
+(s/def :component/select-menu
+  (s/keys :req-un [:component.select/type :component.select/custom_id :component.select/options]
+          :opt-un [:component.select/placeholder :component.select/min_values :component.select/max_values]))
 
 (s/def ::component
-  (s/keys :req-un [:component/type]
-          :opt-un [:component/style :component/label :component/emoji
-                   :component/custom_id :component/url :component/disabled ::components]))
+  (s/or :action-row :component/action-row :button :component/button :select-menu :component/select-menu))
 
 (s/def ::components
   (s/coll-of ::component))
@@ -362,10 +392,10 @@
 
 (def interaction-response-types
   {:pong 1
-   :acknowledge 2
-   :channel-message 3
    :channel-message-with-source 4
-   :deferred-channel-message-with-source 5})
+   :deferred-channel-message-with-source 5
+   :deferred-update-message 6
+   :update-message 7})
 
 (s/def :discljord.messaging.specs.interaction-response/type
   (set (vals interaction-response-types)))
@@ -373,8 +403,8 @@
 (s/def :interaction-response.data/flags int?)
 
 (s/def :discljord.messaging.specs.interaction-response/data
-  (s/keys :req-un [::content]
-          :opt-un [::embeds
+  (s/keys :opt-un [::content
+                   ::embeds
                    ::tts
                    ::allowed-mentions
                    ::components

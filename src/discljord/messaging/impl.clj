@@ -39,8 +39,7 @@
         ", "
         "1.3.0-SNAPSHOT"
         ") "
-        user-agent)
-   "Content-Type" "application/json"})
+        user-agent)})
 
 (defmacro defdispatch
   "Defines a dispatch method for the the endpoint with `endpoint-name`.
@@ -60,33 +59,38 @@
   [endpoint-name [major-var & params] [& opts] opts-sym
    method status-sym body-sym url-str
    method-params promise-val]
-  `(defmethod dispatch-http ~endpoint-name
-     [token# endpoint# [prom# ~@params & {user-agent# :user-agent audit-reason# :audit-reason
-                                            :keys [~@opts] :as opts#}]]
-     (let [~opts-sym (dissoc opts# :user-agent)
-           ~major-var (-> endpoint#
-                          ::ms/major-variable
-                          ::ms/major-variable-value)
-           headers# (auth-headers token# user-agent#)
-           headers# (if audit-reason#
-                      (assoc headers# "X-Audit-Log-Reason" (http/url-encode audit-reason#))
-                      headers#)
-           request-params# (merge-with merge
-                                       ~method-params
-                                       {:headers headers#})
-           ~'_ (log/trace "Making request to" ~major-var "with params" request-params#)
-           response# @(~(symbol "org.httpkit.client" (name method))
-                       (api-url ~url-str)
-                       request-params#)
-           ~'_ (log/trace "Response:" response#)
-           ~status-sym (:status response#)
-           ~body-sym (:body response#)]
-       (when-not (= ~status-sym 429)
-         (let [prom-val# ~promise-val]
-           (if (some? prom-val#)
-             (a/>!! prom# prom-val#)
-             (a/close! prom#))))
-       response#)))
+  (let [token-sym (gensym "token")
+        user-agent-sym (gensym "user-agent")]
+    `(defmethod dispatch-http ~endpoint-name
+       [~token-sym endpoint# [prom# ~@params & {~user-agent-sym :user-agent audit-reason# :audit-reason
+                                                :keys [~@opts] :as opts#}]]
+       (let [~opts-sym (dissoc opts# :user-agent)
+             ~major-var (-> endpoint#
+                            ::ms/major-variable
+                            ::ms/major-variable-value)
+             headers# ~(cond-> `(auth-headers ~token-sym ~user-agent-sym)
+                         (not= (:body method-params ::not-found) ::not-found)
+                         (as-> src
+                             `(assoc ~src "Content-Type" "application/json")))
+             headers# (if audit-reason#
+                        (assoc headers# "X-Audit-Log-Reason" (http/url-encode audit-reason#))
+                        headers#)
+             request-params# (merge-with merge
+                                         ~method-params
+                                         {:headers headers#})
+             ~'_ (log/trace "Making request to" ~major-var "with params" request-params#)
+             response# @(~(symbol "org.httpkit.client" (name method))
+                         (api-url ~url-str)
+                         request-params#)
+             ~'_ (log/trace "Response:" response#)
+             ~status-sym (:status response#)
+             ~body-sym (:body response#)]
+         (when-not (= ~status-sym 429)
+           (let [prom-val# ~promise-val]
+             (if (some? prom-val#)
+               (a/>!! prom# prom-val#)
+               (a/close! prom#))))
+         response#))))
 
 (defn ^:private json-body
   [body]
@@ -165,7 +169,7 @@
         raw-body (:body response)
         body (if (or always-expect-content? (= status 200))
                (cond->> (json-body raw-body)
-                 (not= 2 (quot status 100)) (ex-info ""))
+                 (not= 2 (quot status 100)) (ex-info "Attempted to send an invalid message payload"))
                (= status 204))]
     (when-not (= status 429)
       (if (some? body)
@@ -467,6 +471,12 @@
   [guild-id] [] opts :get _ body
   (str "/guilds/" guild-id "/members")
   {:query-params opts}
+  (json-body body))
+
+(defdispatch :search-guild-members
+  [guild-id query] [] opts :get _ body
+  (str "/guilds/" guild-id "/members/search")
+  {:query-params (assoc opts :query query)}
   (json-body body))
 
 (defdispatch :add-guild-member
@@ -829,16 +839,18 @@
 
 
 (defdispatch :create-global-application-command
-  [_ application-id name description] [options default-permission] _ :post _ body
+  [_ application-id name description] [options default-permission] _ :post status body
   (global-cmd-url application-id)
   (command-params name description options default-permission)
-  (json-body body))
+  (cond->> (json-body body)
+    (not= 2 (quot status 100)) (ex-info "Attempted to create an invalid global command")))
 
 (defdispatch :edit-global-application-command
-  [_ application-id command-id name description] [options default-permission] _ :patch _ body
+  [_ application-id command-id name description] [options default-permission] _ :patch status body
   (global-cmd-url application-id command-id)
   (command-params name description options default-permission)
-  (json-body body))
+  (cond->> (json-body body)
+    (not= 2 (quot status 100)) (ex-info "Attempted to edit an invalid global command")))
 
 (defdispatch :delete-global-application-command
   [_ application-id command-id] [] _ :delete status _
@@ -847,10 +859,11 @@
   (= status 204))
 
 (defdispatch :bulk-overwrite-global-application-commands
-  [_ application-id commands] [] _ :put _ body
+  [_ application-id commands] [] _ :put status body
   (global-cmd-url application-id)
   {:body (json/write-str commands)}
-  (json-body body))
+  (cond->> (json-body body)
+    (not= 2 (quot status 100)) (ex-info "Attempted to overwrite with invalid global commands")))
 
 (defn- guild-cmd-url
   ([application-id guild-id] (str "/applications/" application-id "/guilds/" guild-id "/commands"))
@@ -863,16 +876,18 @@
   (json-body body))
 
 (defdispatch :create-guild-application-command
-  [_ application-id guild-id name description] [options default-permission] _ :post _ body
+  [_ application-id guild-id name description] [options default-permission] _ :post status body
   (guild-cmd-url application-id guild-id)
   (command-params name description options default-permission)
-  (json-body body))
+  (cond->> (json-body body)
+    (not= 2 (quot status 100)) (ex-info "Attempted to create an invalid guild command")))
 
 (defdispatch :edit-guild-application-command
-  [_ application-id guild-id command-id name description] [options default-permission] _ :patch _ body
+  [_ application-id guild-id command-id name description] [options default-permission] _ :patch status body
   (guild-cmd-url application-id guild-id command-id)
   (command-params name description options default-permission)
-  (json-body body))
+  (cond->> (json-body body)
+    (not= 2 (quot status 100)) (ex-info "Attempted to edit an invalid guild command")))
 
 (defdispatch :delete-guild-application-command
   [_ application-id guild-id command-id] [] _ :delete status _
@@ -881,10 +896,11 @@
   (= status 204))
 
 (defdispatch :bulk-overwrite-guild-application-commands
-  [_ application-id guild-id commands] [] _ :put _ body
+  [_ application-id guild-id commands] [] _ :put status body
   (guild-cmd-url application-id guild-id)
   {:body (json/write-str commands)}
-  (json-body body))
+  (cond->> (json-body body)
+    (not= 2 (quot status 100)) (ex-info "Attempted to overwrite with invalid guild commands")))
 
 (defdispatch :get-guild-application-command-permissions
   [_ application-id guild-id] [] _ :get _ body
@@ -899,16 +915,18 @@
   (json-body body))
 
 (defdispatch :edit-application-command-permissions
-  [_ application-id guild-id command-id permissions] [] _ :put _ body
+  [_ application-id guild-id command-id permissions] [] _ :put status body
   (str (guild-cmd-url application-id guild-id command-id) "/permissions")
   {:body (json/write-str {:permissions permissions})}
-  (json-body body))
+  (cond->> (json-body body)
+    (not= 2 (quot status 100)) (ex-info "Attempted to set invalid command permissions")))
 
 (defdispatch :batch-edit-application-command-permissions
-  [_ application-id guild-id permissions] [] _ :put _ body
+  [_ application-id guild-id permissions] [] _ :put status body
   (str (guild-cmd-url application-id guild-id) "/permissions")
   {:body (json/write-str permissions)}
-  (json-body body))
+  (cond->> (json-body body)
+    (not= 2 (quot status 100)) (ex-info "Attempted to set invalid command permissions")))
 
 (defmethod dispatch-http :create-interaction-response
   [token endpoint [prom interaction-id interaction-token type & {:as opts}]]

@@ -77,7 +77,7 @@
                                                 "t" "READY"
                                                 "d" {"session_id" "session"}})))
                         nil)))]
-      (fake/with-fake-http ["https://discordapp.com/api/gateway/bot?v=6&encoding=json"
+      (fake/with-fake-http ["https://discord.com/api/gateway/bot?v=8&encoding=json"
                             (fn [orig-fn opts callback]
                               (if (= (get (:headers opts) "Authorization")
                                      "Bot VALID_TOKEN")
@@ -88,7 +88,7 @@
                                                                             "reset_after" 1000}})}
                                 {:status 401
                                  :body (json/write-str {"code" 0 "message" "401: Unauthorized"})}))]
-        (let [comm-chan (c/connect-bot! t (a/chan 10))]
+        (let [comm-chan (c/connect-bot! t (a/chan 10) :intents #{})]
           (Thread/sleep 1000)
           (a/put! comm-chan [:disconnect])
           (t/is (< 0 @success) "Connection can be established")

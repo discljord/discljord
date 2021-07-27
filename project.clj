@@ -3,11 +3,11 @@
   :url "https://github.com/IGJoshua/discljord"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.10.1"]
-                 [org.clojure/core.async "1.2.603"]
-                 [org.clojure/data.json "1.0.0"]
+  :dependencies [[org.clojure/clojure "1.10.3"]
+                 [org.clojure/core.async "1.3.618"]
+                 [org.clojure/data.json "2.3.1"]
                  [org.clojure/tools.logging "1.1.0"]
-                 [http-kit/http-kit "2.4.0-alpha6"]
+                 [http-kit/http-kit "2.5.3"]
                  [stylefruits/gniazdo "1.2.0"]]
   :target-path "target/%s"
   :jar-name "discljord-%s.jar"

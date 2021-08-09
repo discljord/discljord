@@ -6,6 +6,7 @@
   (:require
    [clojure.core.async :as a]
    [clojure.spec.alpha :as s]
+   [clojure.set :as set]
    [discljord.connections.impl :as impl]
    [discljord.connections.specs :as cs]
    [discljord.http :refer [gateway-url]]
@@ -32,12 +33,17 @@
   which shard you use to talk to the server immediately after starting the bot.
 
   `intents` is a set containing keywords representing which events will be sent
-  to the bot by Discord. Valid values for the set are in [[gateway-intents]]. If
-  `intents` is unspecified, a [[clojure.core/ex-info]] is returned with a
-  relevant message."
+  to the bot by Discord. Valid values for the set are in [[gateway-intents]]."
   [token out-ch & {:keys [intents disable-compression]}]
-  (if-not intents
-    (ex-info "Intents are required as of v8 of the API" {})
+  (cond
+    (not intents)
+    (throw (ex-info "Intents are required as of v8 of the API" {}))
+
+    (some (complement gateway-intents) intents)
+    (throw (ex-info "Only valid intents may be specified."
+                    {:invalid-intents (set/difference intents gateway-intents)}))
+
+    :else
     (let [token (bot-token token)
           {:keys [url shard-count session-start-limit]}
           (impl/get-websocket-gateway gateway-url token)]
@@ -97,8 +103,15 @@
   Additional calls should only be made five seconds after the
   `:connected-all-shards` event has been received."
   [token out-ch gateway shard-ids & {:keys [intents identify-when disable-compression]}]
-  (if-not intents
+  (cond
+    (not intents)
     (ex-info "Intents are required as of v8 of the API" {})
+
+    (some (complement gateway-intents) intents)
+    (throw (ex-info "Only valid intents may be specified."
+                    {:invalid-intents (set/difference intents gateway-intents)}))
+
+    :else
     (let [token (bot-token token)
           {:keys [url shard-count session-start-limit]} gateway]
       (if (and url shard-count session-start-limit)
@@ -155,7 +168,10 @@
 (defn add-shards!
   "Adds new shard connections using state fetched with `get-shard-state!`."
   [connection-ch new-shards intents & {:keys [disable-compression]}]
-  (a/put! connection-ch [:connect-shards new-shards intents disable-compression])
+  (if (every? gateway-intents intents)
+    (a/put! connection-ch [:connect-shards new-shards intents disable-compression])
+    (throw (ex-info "Only valid intents may be specified."
+                    {:invalid-intents (set/difference intents gateway-intents)})))
   nil)
 (s/fdef add-shards!
   :args (s/cat :connection-ch ::ds/channel

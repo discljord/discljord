@@ -13,12 +13,9 @@
    [discljord.util :refer [bot-token derefable-promise-chan]]
    [clojure.tools.logging :as log]))
 
-(def gateway-intents #{:guilds :guild-members :guild-bans :guild-emojis
-                       :guild-integrations :guild-webhooks :guild-invites
-                       :guild-voice-states :guild-presences :guild-messages
-                       :guild-message-reactions :guild-message-typing
-                       :direct-messages :direct-message-reactions
-                       :direct-message-typing})
+(def gateway-intents
+  "All the valid intent keywords to send to Discord."
+  (set (keys impl/intent->intent-int)))
 
 (defn connect-bot!
   "Creates a connection process which will handle the services granted by

@@ -1,7 +1,7 @@
 (ns discljord.connections
-  "Namespace for creating a connection to Discord, and recieving messages.
+  "Namespace for creating a connection to Discord, and receiving messages.
   Contains functionality required to create and maintain a sharded and auto-reconnecting
-  connection object which will recieve messages from Discord, and pass them on to client
+  connection object which will receive messages from Discord, and pass them on to client
   code."
   (:require
    [clojure.core.async :as a]
@@ -56,7 +56,7 @@
                 (impl/connect-shards! out-ch communication-chan url token intents shard-count (range shard-count)
                                       (not disable-compression)))
               communication-chan))
-        (log/debug "Unable to recieve gateway information.")))))
+        (log/debug "Unable to receive gateway information.")))))
 (s/fdef connect-bot!
   :args (s/cat :token ::ds/token :out-ch ::ds/channel
                :keyword-args (s/keys* :opt-un [::cs/intents ::cs/disable-compression]))

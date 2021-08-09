@@ -53,6 +53,8 @@ Discljord follows semantic versioning.
  - Removed question mark from argument for `get-guild`'s `with-counts` for being redundant
 
 ### Fixed
+ - Invalid intents were accepted on bot connection
+ - The `ex-info` produced for missing intents in `discljord.connections/connect-bot!` was not thrown
  - Previous user and guilds state was discarded in ready event caching handler
  - The `Content-Type` header was sent on requests with no body
  - Event data with snowflake keys would be conformed to keyword keys

@@ -378,11 +378,19 @@
 
 (s/def :discljord.messaging.specs.command/description (string-spec 1 100))
 
+(def command-types
+  {:chat-input 1
+   :user 2
+   :message 3})
+
+(s/def :discljord.messaging.specs.command/type nat-int?)
+
 (s/def ::command
   (s/and (s/keys :req-un [:discljord.messaging.specs.command/name
                           :discljord.messaging.specs.command/description]
                  :opt-un [:discljord.messaging.specs.command/options
-                          :discljord.messaging.specs.command/default-permission])
+                          :discljord.messaging.specs.command/default-permission
+                          :discljord.messaging.specs.command/type])
          (fn [cmd]
            (<= (->> cmd
                     (tree-seq :options :options)

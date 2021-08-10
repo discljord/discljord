@@ -21,7 +21,7 @@ Discljord follows semantic versioning.
    - New caching middlewares to cache threads
  - Initial support for Message Components
  - New function for creating handlers for multiple events, `discljord.events/normalize-handlers`
- - Slash Commands Feature
+ - Application Commands Feature
    - Management Endpoints
      - `get-global/guild-application-commands!`
      - `create-global/guild-application-command!`

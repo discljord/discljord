@@ -884,6 +884,6 @@
   [])
 
 (defendpoint get-current-application-information! nil
-  "Returns  a promise containing the bot's OAuth2 application info."
+  "Returns a promise containing the bot's OAuth2 application info."
   []
   [])

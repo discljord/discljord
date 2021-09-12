@@ -1,6 +1,8 @@
 (ns discljord.permissions
   "Functions for determining users' permissions."
-  (:require [clojure.set :refer [map-invert]]))
+  (:require
+   [clojure.set :refer [map-invert]]
+   [discljord.util :as util]))
 
 (def permissions-bit
   "Map from permission names to the binary flag representation of it."
@@ -44,7 +46,7 @@
   "Returns a set of all permissions included in a given permission integer."
   [perms-int]
   (->> (vals permissions-bit)
-       (filter (comp (complement zero?) (partial bit-and perms-int)))
+       (filter (comp (complement zero?) (partial bit-and (util/parse-if-str perms-int))))
        (map permissions-key)
        (set)))
 
@@ -56,27 +58,27 @@
   (when perms-int
     (when-let [bit (or (permissions-bit perm)
                        perm)]
-      (not (zero? (bit-and bit perms-int))))))
+      (not (zero? (bit-and bit (util/parse-if-str perms-int)))))))
 
 (defn has-permission-flags?
   "Returns if the given permission integer includes all the given permission flags.
 
   `perm` is a keyword from the keys of [[permissions-bit]]."
   [perms perms-int]
-  (every? #(has-permission-flag? % perms-int) perms))
+  (every? #(has-permission-flag? % (util/parse-if-str perms-int)) perms))
 
 (defn- override
   "Integrates the overrides into the permissions int."
   [perms-int overrides]
   (let [allow (or (when (seq overrides)
-                    (reduce bit-or 0 (map :allow overrides)))
+                    (reduce (comp bit-or util/parse-if-str) 0 (map :allow overrides)))
                   0)
         deny (or (when (seq overrides)
-                   (reduce bit-or 0 (map :deny overrides)))
+                   (reduce (comp bit-or util/parse-if-str) 0 (map :deny overrides)))
                  0)]
     (bit-or
      (bit-and
-      perms-int
+      (util/parse-if-str perms-int)
       (bit-not deny))
      allow)))
 
@@ -95,7 +97,7 @@
   ([perms]
    (reduce bit-or 0 (map permissions-bit perms)))
   ([everyone roles]
-   (let [perms-int (reduce bit-or 0 (conj roles everyone))]
+   (let [perms-int (reduce (comp bit-or util/parse-if-str) 0 (conj roles everyone))]
      (if (has-permission-flag? :administrator perms-int)
        0xFFFFFFFF
        perms-int)))

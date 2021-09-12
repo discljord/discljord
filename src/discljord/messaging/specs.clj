@@ -434,3 +434,8 @@
 
 (s/def :discljord.messaging.specs.stage/topic (string-spec 1 120))
 (s/def :discljord.messaging.specs.stage/privacy-level integer?)
+
+(s/def ::sticker-id ::ds/snowflake)
+(s/def :discljord.messaging.specs.sticker/name (string-spec 2 30))
+(s/def :discljord.messaging.specs.sticker/description (string-spec 2 100))
+(s/def :discljord.messaging.specs.sticker/tags (string-spec 2 200))

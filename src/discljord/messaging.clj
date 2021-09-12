@@ -916,3 +916,46 @@
   Returns a promise of a boolean indicating whether the operation succeeded."
   []
   [])
+
+;; -------------------------------------------------
+;; Stickers
+
+(defendpoint get-sticker! nil
+  "Returns a promise containing a sticker object."
+  [sticker-id]
+  [])
+
+(defendpoint list-nitro-sticker-packs! nil
+  "Returns a promise containing a vector of sticker pack objects."
+  []
+  [])
+
+(defendpoint list-guild-stickers! ::ds/guild-id
+  "Returns a promise containing a vector of sticker objects."
+  []
+  [])
+
+(defendpoint get-guild-sticker! ::ds/guild-id
+  "Returns a promise containing a guild-specific sticker object."
+  [sticker-id]
+  [])
+
+(defendpoint create-guild-sticker! ::ds/guild-id
+  "Creates a new sticker on the guild with the given options.
+
+  Returns a promise containing a guild-specific sticker object."
+  [ms.sticker/name ms.sticker/description ms.sticker/tags file]
+  [])
+
+(defendpoint modify-guild-sticker! ::ds/guild-id
+  "Modifies an existing sticker with new options.
+
+  Returns a promise containing the modified sticker object."
+  [sticker-id]
+  [ms.sticker/name ms.sticker/description ms.sticker/tags])
+
+(defendpoint delete-guild-sticker! ::ds/guild-id
+  "Deletes an existing sticker from the guild.
+
+  Returns a promise with a boolean indicating whether the operation succeeded."
+  [sticker-id])

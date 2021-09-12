@@ -993,6 +993,70 @@
   {}
   (= status 204))
 
+(defdispatch :get-sticker
+  [_ sticker-id] [] _ :get _ body
+  (str "/stickers/" sticker-id)
+  {}
+  (json-body body))
+
+(defdispatch :list-nitro-sticker-packs
+  [_] [] _ :get _ body
+  "/sticker-packs"
+  {}
+  (json-body body))
+
+(defdispatch :list-guild-stickers
+  [guild-id] [] _ :get _ body
+  (str "/guilds/" guild-id "/stickers")
+  {}
+  (json-body body))
+
+(defdispatch :get-guild-sticker
+  [guild-id sticker-id] [] _ :get _ body
+  (str "/guilds/" guild-id "/stickers/" sticker-id)
+  {}
+  (json-body body))
+
+(defmethod dispatch-http :create-guild-sticker
+  [token endpoint [prom & {:keys [name description tags ^File file user-agent audit-reason]}]]
+  (let [guild-id (-> endpoint
+                     ::ms/major-variable
+                     ::ms/major-variable-value)
+        multipart [{:name "name"
+                    :content name}
+                   {:name "description"
+                    :content description}
+                   {:name "tags"
+                    :content tags}
+                   {:name "file"
+                    :content file
+                    :filename (.getName file)}]
+        response @(http/post (api-url (str "/guilds/" guild-id "/stickers"))
+                             {:headers (cond-> (assoc (auth-headers token user-agent)
+                                                      "Content-Type" "multipart/form-data")
+                                         audit-reason (assoc "X-Audit-Log-Reason" audit-reason))
+                              :multipart multipart})
+        status (:status response)
+        body (cond->> (json-body (:body response))
+               (not= 2 (quot status 100)) (ex-info "Invalid sticker"))]
+    (when-not (= status 429)
+      (if (some? body)
+        (a/>!! prom body)
+        (a/close! prom)))
+    response))
+
+(defdispatch :modify-guild-sticker
+  [guild-id sticker-id] [name description tags] _ :patch _ body
+  (str "/guilds/" guild-id "/stickers/" sticker-id)
+  {:body (json/write-str body)}
+  (json-body body))
+
+(defdispatch :delete-guild-sticker
+  [guild-id sticker-id] [] _ :delete status _
+  (str "/guilds/" guild-id "/stickers/" sticker-id)
+  {}
+  (= status 204))
+
 (defn rate-limited?
   "Returns the number of millis until the limit expires, or nil if not limited"
   [rate-limit]

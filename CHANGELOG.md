@@ -4,6 +4,7 @@ Discljord follows semantic versioning.
 
 ## [1.3.0]
 ### Added
+ - Stage Endpoints
  - Additional arities on caching middleware functions for custom caching configuration and handlers
  - Threads Feature
    - Endpoints

@@ -965,6 +965,34 @@
   {}
   (json-body body))
 
+(defdispatch :create-stage-instance
+  [_ channel-id topic] [privacy-level] _ :post _ body
+  "/stage-instances"
+  {:body (json/write-str (cond-> {:channel_id channel-id
+                                  :topic topic}
+                           privacy-level (assoc :privacy_level privacy-level)))}
+  (json-body body))
+
+(defdispatch :get-stage-instance
+  [channel-id] [] _ :get _ body
+  (str "/stage-instances/" channel-id)
+  {}
+  (json-body body))
+
+(defdispatch :modify-stage-instance
+  [channel-id] [topic privacy-level] _ :patch _ body
+  (str "/stage-instances/" channel-id)
+  {:body (json/write-str (cond-> {}
+                           topic (assoc :topic topic)
+                           privacy-level (assoc :privacy_level privacy-level)))}
+  (json-body body))
+
+(defdispatch :delete-stage-instance
+  [channel-id] [] _ :delete status _
+  (str "/stage-instances/" channel-id)
+  {}
+  (= status 204))
+
 (defn rate-limited?
   "Returns the number of millis until the limit expires, or nil if not limited"
   [rate-limit]

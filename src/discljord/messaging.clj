@@ -958,4 +958,5 @@
   "Deletes an existing sticker from the guild.
 
   Returns a promise with a boolean indicating whether the operation succeeded."
-  [sticker-id])
+  [sticker-id]
+  [])

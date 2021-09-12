@@ -1046,9 +1046,9 @@
     response))
 
 (defdispatch :modify-guild-sticker
-  [guild-id sticker-id] [name description tags] _ :patch _ body
+  [guild-id sticker-id] [] opts :patch _ body
   (str "/guilds/" guild-id "/stickers/" sticker-id)
-  {:body (json/write-str body)}
+  {:body (json/write-str opts)}
   (json-body body))
 
 (defdispatch :delete-guild-sticker

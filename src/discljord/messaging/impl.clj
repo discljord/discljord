@@ -68,15 +68,12 @@
              ~major-var (-> endpoint#
                             ::ms/major-variable
                             ::ms/major-variable-value)
-             headers# ~(cond-> `(auth-headers ~token-sym ~user-agent-sym)
-                         (not= (:body method-params ::not-found) ::not-found)
-                         (as-> src
-                             `(assoc ~src "Content-Type" "application/json")))
-             headers# (if audit-reason#
-                        (assoc headers# "X-Audit-Log-Reason" (http/url-encode audit-reason#))
-                        headers#)
+             method-params# ~method-params
+             headers# (cond-> (auth-headers ~token-sym ~user-agent-sym)
+                        (:body method-params#) (assoc "Content-Type" "application/json")
+                        audit-reason# (assoc "X-Audit-Log-Reason" (http/url-encode audit-reason#)))
              request-params# (merge-with merge
-                                         ~method-params
+                                         method-params#
                                          {:headers headers#})
              ~'_ (log/trace "Making request to" ~major-var "with params" request-params#)
              response# @(~(symbol "org.httpkit.client" (name method))

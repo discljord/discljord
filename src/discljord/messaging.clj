@@ -814,7 +814,7 @@
   [])
 
 (defendpoint get-application-command-permissions! nil
-  "Returns a promose containing the permission settings for a specific application command accessible from the guild."
+  "Returns a promise containing the permission settings for a specific application command accessible from the guild."
   [application-id guild-id command-id]
   [])
 

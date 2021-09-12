@@ -431,3 +431,6 @@
 (s/def ::widget (s/keys :req-un [:widget/enabled :widget/channel_id]))
 
 (s/def ::query string?)
+
+(s/def :discljord.messaging.specs.stage/topic (string-spec 1 120))
+(s/def :discljord.messaging.specs.stage/privacy-level integer?)

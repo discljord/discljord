@@ -895,8 +895,8 @@
   "Creates a new stage instance associated to a stage channel.
 
   Returns a promise with the stage instance."
-  [channel-id topic]
-  [privacy-level])
+  [channel-id ms.stage/topic]
+  [ms.stage/privacy-level])
 
 (defendpoint get-stage-instance! ::ds/channel-id
   "Returns a promise containing the stage instance for the given channel."
@@ -908,7 +908,7 @@
 
   Returns a promise with the modified stage instance."
   []
-  [topic privacy-level])
+  [ms.stage/topic ms.stage/privacy-level])
 
 (defendpoint delete-stage-instance! ::ds/channel-id
   "Deletes a stage instance for the given channel.

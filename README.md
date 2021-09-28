@@ -292,6 +292,7 @@ Logging levels in discljord follow a basic pattern that anything at a `warn` lev
 
 ## Known Issues
 
+ - When using an SNI client for http-kit in JDK 17, discljord will fail to connect (see [this issue on http-kit](https://github.com/http-kit/http-kit/issues/482))
  - Compression may fail on very large payloads, appearing as an EOF while parsing JSON exception. This can be mitigated by setting the `disable-compression` flag on `connect-bot!`
  - `with-counts?` keyword argument on `discljord.messaging/get-guild!` is specified with the keyword `:with-counts`, without a questionmark
 

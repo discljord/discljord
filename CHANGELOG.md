@@ -4,6 +4,7 @@ Discljord follows semantic versioning.
 
 ## [Unreleased]
 ### Added
+ - Timestamp formatting utilities in `discljord.formatting`
  - Additional arities on caching middleware functions for custom caching configuration and handlers
  - Threads Feature
    - Endpoints

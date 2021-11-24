@@ -750,7 +750,7 @@
   New global commands will be available in all guilds after 1 hour.
   Returns a promise containing the new application command object."
   [application-id ms.command/name ms.command/description]
-  [ms.command/options ms.command/default-permission])
+  [ms.command/type ms.command/options ms.command/default-permission])
 
 (defendpoint edit-global-application-command! nil
   "Updates an existing global slash command by its id.
@@ -784,7 +784,7 @@
 
   Returns a promise containing the new application command object."
   [application-id guild-id ms.command/name ms.command/description]
-  [ms.command/options ms.command/default-permission])
+  [ms.command/type ms.command/options ms.command/default-permission])
 
 (defendpoint edit-guild-application-command! nil
   "Updates an existing guild slash command by its id.

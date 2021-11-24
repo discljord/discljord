@@ -51,6 +51,7 @@ Discljord follows semantic versioning.
 
 ### Changed
  - Set API version to `v9`
+ - Add public vars defining the API version used
  - Removed questionmark from argument for `get-guild`'s `with-counts` for being redundant
 
 ### Fixed

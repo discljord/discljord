@@ -403,20 +403,28 @@
    :channel-message-with-source 4
    :deferred-channel-message-with-source 5
    :deferred-update-message 6
-   :update-message 7})
+   :update-message 7
+   :application-command-autocomplete-result 8})
 
 (s/def :discljord.messaging.specs.interaction-response/type
   (set (vals interaction-response-types)))
 
 (s/def :interaction-response.data/flags int?)
 
+(s/def :interaction-response.data/choices (s/coll-of string?))
+
 (s/def :discljord.messaging.specs.interaction-response/data
-  (s/keys :opt-un [::content
-                   ::embeds
-                   ::tts
-                   ::allowed-mentions
-                   ::components
-                   :interaction-response.data/flags]))
+  (s/or
+   :message
+   (s/keys :opt-un [::content
+                    ::embeds
+                    ::tts
+                    ::allowed-mentions
+                    ::components
+                    :interaction-response.data/flags])
+
+   :autocomplete
+   (s/keys :req-un [:interaction-response.data/choices])))
 
 (s/def :widget/enabled boolean?)
 (s/def :widget/channel_id ::ds/snowflake)

@@ -304,7 +304,9 @@
    :boolean 5
    :user 6
    :channel 7
-   :role 8})
+   :role 8
+   :mentionable 9
+   :number 10})
 
 (s/def :command.option/type (set (vals command-option-types)))
 
@@ -312,6 +314,10 @@
 (s/def :command.option/description (string-spec 1 100))
 (s/def :command.option/default boolean?)
 (s/def :command.option/required boolean?)
+(s/def :command.option/autocomplete boolean?)
+(s/def :command.option/min_value int?)
+(s/def :command.option/max_value int?)
+
 
 (s/def :command.option.choice/name (string-spec 1 100))
 
@@ -329,7 +335,10 @@
                                       :opt-un [:command.option/default
                                                :command.option/required
                                                :command.option/choices
-                                               :command.option/options])
+                                               :command.option/options
+                                               :command.option/autocomplete
+                                               :command.option/min_value
+                                               :command.option/max_value])
                               #(<= (count (:choices %)) 25)
                               #(not-any? #{(command-option-types :sub-command-group)} (map :type (:options %)))
                               #(or (= (command-option-types :sub-command-group) (:type %))

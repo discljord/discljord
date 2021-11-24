@@ -383,6 +383,14 @@
 
 (s/def :command.option/options :discljord.messaging.specs.command/options)
 
+(def command-types
+  {:chat-input 1
+   :user 2
+   :message 3})
+
+(s/def :discljord.messaging.specs.command/type
+  (set (vals command-types)))
+
 (s/def :discljord.messaging.specs.command/name (string-spec #"\S{1,32}"))
 
 (s/def :discljord.messaging.specs.command/description (string-spec 1 100))
@@ -390,7 +398,8 @@
 (s/def ::command
   (s/and (s/keys :req-un [:discljord.messaging.specs.command/name
                           :discljord.messaging.specs.command/description]
-                 :opt-un [:discljord.messaging.specs.command/options
+                 :opt-un [:discljord.messaging.specs.command/type
+                          :discljord.messaging.specs.command/options
                           :discljord.messaging.specs.command/default-permission])
          (fn [cmd]
            (<= (->> cmd

@@ -36,7 +36,16 @@
    :manage-nicknames 0x8000000
    :manage-roles 0x10000000
    :manage-webooks 0x20000000
-   :manage-emojis 0x40000000})
+   :manage-emojis-and-stickers 0x40000000
+   :use-application-commands 0x80000000
+   :request-to-speak 0x100000000
+   :manage-events 0x200000000
+   :manage-threads 0x400000000
+   :create-public-threads 0x800000000
+   :create-private-threads 0x1000000000
+   :use-external-stickers 0x2000000000
+   :send-messages-in-threads 0x4000000000
+   :start-embedded-activities 0x8000000000})
 
 (def permissions-key
   "Map from binary flag representation to permission name."

@@ -304,7 +304,9 @@
    :boolean 5
    :user 6
    :channel 7
-   :role 8})
+   :role 8
+   :mentionable 9
+   :number 10})
 
 (s/def :command.option/type (set (vals command-option-types)))
 
@@ -312,6 +314,10 @@
 (s/def :command.option/description (string-spec 1 100))
 (s/def :command.option/default boolean?)
 (s/def :command.option/required boolean?)
+(s/def :command.option/autocomplete boolean?)
+(s/def :command.option/min_value int?)
+(s/def :command.option/max_value int?)
+
 
 (s/def :command.option.choice/name (string-spec 1 100))
 
@@ -329,7 +335,10 @@
                                       :opt-un [:command.option/default
                                                :command.option/required
                                                :command.option/choices
-                                               :command.option/options])
+                                               :command.option/options
+                                               :command.option/autocomplete
+                                               :command.option/min_value
+                                               :command.option/max_value])
                               #(<= (count (:choices %)) 25)
                               #(not-any? #{(command-option-types :sub-command-group)} (map :type (:options %)))
                               #(or (= (command-option-types :sub-command-group) (:type %))
@@ -411,20 +420,28 @@
    :channel-message-with-source 4
    :deferred-channel-message-with-source 5
    :deferred-update-message 6
-   :update-message 7})
+   :update-message 7
+   :application-command-autocomplete-result 8})
 
 (s/def :discljord.messaging.specs.interaction-response/type
   (set (vals interaction-response-types)))
 
 (s/def :interaction-response.data/flags int?)
 
+(s/def :interaction-response.data/choices (s/coll-of string?))
+
 (s/def :discljord.messaging.specs.interaction-response/data
-  (s/keys :opt-un [::content
-                   ::embeds
-                   ::tts
-                   ::allowed-mentions
-                   ::components
-                   :interaction-response.data/flags]))
+  (s/or
+   :message
+   (s/keys :opt-un [::content
+                    ::embeds
+                    ::tts
+                    ::allowed-mentions
+                    ::components
+                    :interaction-response.data/flags])
+
+   :autocomplete
+   (s/keys :req-un [:interaction-response.data/choices])))
 
 (s/def :widget/enabled boolean?)
 (s/def :widget/channel_id ::ds/snowflake)

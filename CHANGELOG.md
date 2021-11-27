@@ -4,6 +4,7 @@ Discljord follows semantic versioning.
 
 ## [1.3.0]
 ### Added
+ - Timestamp formatting utilities in `discljord.formatting`
  - Sticker Endpoints
  - Stage Endpoints
  - Additional arities on caching middleware functions for custom caching configuration and handlers
@@ -51,6 +52,7 @@ Discljord follows semantic versioning.
  - Keyword argument `:shards` to `discljord.connections/status-update!` to specify which shards to send to
 
 ### Changed
+ - Add public vars defining the API version used
  - Set API version to `v9`
  - Removed question mark from argument for `get-guild`'s `with-counts` for being redundant
 

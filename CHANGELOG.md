@@ -2,7 +2,7 @@
 All notable changes to this project will be documented in this file. This change log follows the conventions of [keepachangelog.com](http://keepachangelog.com/).
 Discljord follows semantic versioning.
 
-## [1.3.0]
+## [1.3.0] - 2021-11-30
 ### Added
  - Timestamp formatting utilities in `discljord.formatting`
  - Sticker Endpoints

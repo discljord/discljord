@@ -54,12 +54,13 @@
 
   Strings and numbers simply return themselves.
   Objects have their keys and values recursively conformed.
-  Objects with string keys are converted to maps with keyword keys.
+  Objects with string keys are converted to maps with keyword keys, except for snowflakes.
   Arrays are converted to vectors with each element recursively conformed."
   [j]
   (cond
     (map? j) (into {}
-                   (map (fn [[key val]] [(if (string? key)
+                   (map (fn [[key val]] [(if (and (string? key)
+                                                  (not (Character/isDigit (first key))))
                                            (json-keyword key)
                                            (clean-json-input key))
                                          (clean-json-input val)]))

@@ -2,6 +2,79 @@
 All notable changes to this project will be documented in this file. This change log follows the conventions of [keepachangelog.com](http://keepachangelog.com/).
 Discljord follows semantic versioning.
 
+## [1.3.0]
+### Added
+ - Timestamp formatting utilities in `discljord.formatting`
+ - Sticker Endpoints
+ - Stage Endpoints
+ - Additional arities on caching middleware functions for custom caching configuration and handlers
+ - Threads Feature
+   - Endpoints
+     - `start-thread-with-message!`
+     - `start-thread-without-message!`
+     - `join-thread!`
+     - `add-thread-member!`
+     - `leave-thread!`
+     - `remove-thread-member!`
+     - `list-thread-members!`
+     - `list-active-threads!`
+     - `list-public-archived-threads!`
+     - `list-private-archived-threads!`
+     - `list-joined-private-archived-threads!`
+   - New caching middlewares to cache threads
+ - Initial support for Message Components
+ - New function for creating handlers for multiple events, `discljord.events/normalize-handlers`
+ - Application Commands Feature
+   - Management Endpoints
+     - `get-global/guild-application-commands!`
+     - `create-global/guild-application-command!`
+     - `get-global/guild-application-command!`
+     - `edit-global/guild-application-command!`
+     - `delete-global/guild-application-command!`
+     - `bulk-overwrite-global/guild-application-command!`
+     - `get-guild-application-command-permissions!`
+     - `get-application-command-permissions!`
+     - `edit-application-command-permissions!`
+     - `batch-edit-application-command-permissions!`
+   - Interactions Endpoints
+     - `create-interaction-response!`
+     - `get-original-interaction-response!`
+     - `edit-original-interaction-response!`
+     - `delete-original-interaction-response!`
+     - `create-followup-message!`
+     - `edit-followup-message!`
+     - `delete-followup-message!`
+ - New webhook endpoints
+   - `get-webhook-message!`
+   - `edit-webhook-message!`
+   - `delete-webhook-message!`
+ - `execute-webhook!` now also accepts a stream like `create-message!`
+ - Keyword argument `:shards` to `discljord.connections/status-update!` to specify which shards to send to
+
+### Changed
+ - Add public vars defining the API version used
+ - Set API version to `v9`
+ - Removed question mark from argument for `get-guild`'s `with-counts` for being redundant
+
+### Fixed
+ - Some invalid keywords could be constructed during event deserialization
+ - Rate limit checks would crash the messaging component when instrumented
+ - String permissions values passed from Discord failed to parse in permissions functions
+ - Invalid intents were accepted on bot connection
+ - The `ex-info` produced for missing intents in `discljord.connections/connect-bot!` was not thrown
+ - Previous user and guilds state was discarded in ready event caching handler
+ - The `Content-Type` header was sent on requests with no body
+ - Event data with snowflake keys would be conformed to keyword keys
+ - User state was not cached during guild member chunks
+ - User state was incorrectly stored during presence updates
+ - User state was not cached from member updates
+ - Guild member state was not correctly added in the caching
+ - User's token was logged at trace level logging on identify
+ - `discljord.events.middleware/transduce` throws an arity exception for using the incorrect `concat`
+ - `:discljord.specs/snowflake` spec does not throw an exception anymore when passed a string
+ - Added missing specs for `wait` param in `execute-webhook` and `stream` param in various endpoints
+ - Fixed ambiguities regarding specs for parameters named `type`
+
 ## [1.2.3] - 2021-05-26
 ### Fixed
  - Case where websocket clients weren't closed in some cases
@@ -273,7 +346,7 @@ Discljord follows semantic versioning.
  - README follows new API
  - Project name from `discljord-functional` to `discljord`
 
-[Unreleased]: https://github.com/IGJoshua/discljord/compare/1.2.3..develop
+[1.3.0]: https://github.com/IGJoshua/discljord/compare/1.2.3..1.3.0
 [1.2.3]: https://github.com/IGJoshua/discljord/compare/1.2.2..1.2.3
 [1.2.2]: https://github.com/IGJoshua/discljord/compare/1.2.1..1.2.2
 [1.2.1]: https://github.com/IGJoshua/discljord/compare/1.2.0..1.2.1

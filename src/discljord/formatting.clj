@@ -120,3 +120,23 @@
   Can only be used in embeds, not in regular messages."
   ([text url title] (str \[ text "](" url \space \" title \" \)))
   ([text url] (str \[ text "](" url \))))
+
+(def timestamp-styles
+  "The available timestamp display styles."
+  {:short-time \t
+   :long-time \T
+   :short-date \d
+   :long-date \D
+   :short-date-time \f
+   :long-date-time \F
+   :relative-time \R})
+
+(defn timestamp
+  "Creates a timestamp that will be displayed according to each user's locale.
+
+  An optional style (one of [[timestamp-styles]]) can be set. The default is `:short-date-time`.
+  The timestamp is a UNIX timestamp (seconds)."
+  ([unix-timestamp]
+   (str "<t:" unix-timestamp \>))
+  ([unix-timestamp style]
+   (str "<t:" unix-timestamp \: (timestamp-styles style) \>)))

@@ -48,3 +48,6 @@
 (s/def :shard/count pos-int?)
 (s/def :shard/seq nat-int?)
 (s/def ::shard (s/keys :req-un [:shard/id :shard/session :shard/count :shard/seq]))
+(s/def ::shards (s/nonconforming
+                 (s/or :all #{:all}
+                       :set (s/coll-of nat-int? :kind set?))))

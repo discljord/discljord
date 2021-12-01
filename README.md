@@ -33,13 +33,13 @@ The `start-bot!` and `stop-bot!` functions help you connect/disconnect to/from t
 Add the following to your project.clj in leiningen:
 
 ```clojure
-[org.suskalo/discljord "1.2.3"]
+[org.suskalo/discljord "1.3.0-RC2"]
 ```
 
 If you use tools.deps, then add the following to your `:dependencies` key in your `deps.edn`:
 
 ```clojure
-{org.suskalo/discljord {:mvn/version "1.2.3"}}
+{org.suskalo/discljord {:mvn/version "1.3.0-RC2"}}
 ```
 
 ## Usage
@@ -67,9 +67,10 @@ Before your code can connect to Discord and start making API requests, it must b
 3. Navigating to the "Bot" tab on the left, and click the blue "Add Bot" button.  Confirm your choice (blue "Yes, do it!" button).
 4. Copying the bot's auth token (blue "Copy" button) and paste it somewhere secure (**do not save this token anywhere public!**).
 5. Turning off the "Public Bot" setting (halfway down the page).  This step is optional, and you can turn this back on once your bot is released if you want others to be able to find it.
-6. Navigating to the "OAuth2" tab on the left, and select the "bot" checkbox in the Scopes section.
-7. Copying the URL generated in the previous step (blue "Copy" button), then paste it into a new browser tab.
-8. Selecting which Discord server(s) you wish to add the bot to (note: you must have the "Manage Servers" role for servers to be visible in the dropdown).
+6. Turn on the Message Content Intent switch to make it easier to send events to your bot. You can turn this off for bots that don't need it, but it will be used in the examples below.
+7. Navigating to the "OAuth2" tab on the left, and select the "bot" checkbox in the Scopes section.
+8. Copying the URL generated in the previous step (blue "Copy" button), then paste it into a new browser tab.
+9. Selecting which Discord server(s) you wish to add the bot to (note: you must have the "Manage Servers" role for servers to be visible in the dropdown).
 
 After a few minutes, the bot should become visible as a user in the selected server, and it will be able to connect to, and interact with, that server.
 
@@ -78,6 +79,8 @@ After a few minutes, the bot should become visible as a user in the selected ser
 Bots in discljord are applications which consist of three separate processes. First is the connection on which Discord sends information to the bot. Second is an event handler which takes care of all the events sent to it by Discord. Third is a messaging process which takes messages the event handler (or other sources) want to send, and sends it to Discord, respecting rate limits.
 
 Communication between these three processes is facilitiated via core.async's channels. To create a connection process, simply call the function `discljord.connections/connect-bot!`, which takes a channel on which you want to communicate with that process, and returns a channel that it will send events on. Starting the process to send messages is done with `discljord.messaging/start-connection!` which takes the token of your bot and returns a channel which you need to keep track of to send it messages, via the other functions in the `discljord.messaging` namespace.
+
+In addition to the event channel, starting the connection requires specifying intents. All the examples below will use `:guilds` and `:guild-messages`, but a full list can be viewed [in the developer documentation](https://discord.com/developers/docs/topics/gateway#gateway-intents).
 
 ### Examples
 
@@ -93,9 +96,10 @@ This example prints out all events that the bot receives to stdout, and is usefu
 (require '[discljord.messaging   :as m])
 
 (def token "TOKEN")
+(def intents #{:guilds :guild-messages})
 
 (let [event-ch      (a/chan 100)
-      connection-ch (c/connect-bot! token event-ch)
+      connection-ch (c/connect-bot! token event-ch :intents intents)
       message-ch    (m/start-connection! token)]
   (try
     (loop []
@@ -120,10 +124,11 @@ This example responds with "Hello, World" to every message a human user posts in
 (require '[discljord.messaging   :as m])
 
 (def token      "TOKEN")
+(def intents    #{:guilds :guild-messages})
 (def channel-id "12345")
 
 (let [event-ch      (a/chan 100)
-      connection-ch (c/connect-bot! token event-ch)
+      connection-ch (c/connect-bot! token event-ch :intents intents)
       message-ch    (m/start-connection! token)]
   (try
     (loop []
@@ -154,10 +159,11 @@ This example responds to messages by echoing whatever is said by human users in 
 (require '[discljord.messaging   :as m])
 
 (def token      "TOKEN")
+(def intents    #{:guilds :guild-messages})
 (def channel-id "12345")
 
 (let [event-ch      (a/chan 100)
-      connection-ch (c/connect-bot! token event-ch)
+      connection-ch (c/connect-bot! token event-ch :intents intents)
       message-ch    (m/start-connection! token)]
   (try
     (loop []
@@ -191,6 +197,7 @@ Discljord also provides a default event pump to assist with simplicity and exten
 (require '[clojure.core.async :as a])
 
 (def token "TOKEN")
+(def intents #{:guilds :guild-messages})
 
 (def state (atom nil))
 
@@ -209,7 +216,7 @@ Discljord also provides a default event pump to assist with simplicity and exten
       (m/create-message! (:messaging @state) channel-id :content "Hello, World!"))))
 
 (let [event-ch (a/chan 100)
-      connection-ch (c/connect-bot! token event-ch)
+      connection-ch (c/connect-bot! token event-ch :intents intents)
       messaging-ch (m/start-connection! token)
       init-state {:connection connection-ch
                   :event event-ch
@@ -236,6 +243,7 @@ The event pump provided by discljord will accept any function that takes an even
 (require '[clojure.core.async :as a])
 
 (def token "TOKEN")
+(def intents #{:guilds :guild-messages})
 
 (def state (atom nil))
 
@@ -259,7 +267,7 @@ The event pump provided by discljord will accept any function that takes an even
    :message-reaction-add [#'send-emoji]})
 
 (let [event-ch (a/chan 100)
-      connection-ch (c/connect-bot! token event-ch)
+      connection-ch (c/connect-bot! token event-ch :intents intents)
       messaging-ch (m/start-connection! token)
       init-state {:connection connection-ch
                   :event event-ch
@@ -272,10 +280,6 @@ The event pump provided by discljord will accept any function that takes an even
 ```
 
 This bot will send emoji to the channel that a reaction is added in, as well as perform the same hello-world response the previous bot did. The main difference is that the actual dispatch to different handler functions is done via data, rather than via a multimethod. Additionally, this adds the ability to call multiple handler functions with a single event.
-
-### Intents
-
-As of right now, Discord will send your bot all events which happen on any guild that your bot is in, however you can specify [intents](https://discord.com/developers/docs/topics/gateway#gateway-intents) to specify which events you want to receive. In the future, Discord intends to make these intents mandatory. They can be specified as a keyword argument to `discljord.connections/connect-bot!`, and are represented as a set of keywords in lower-kebab-case.
 
 ## Logging
 
@@ -294,7 +298,6 @@ Logging levels in discljord follow a basic pattern that anything at a `warn` lev
 
  - When using an SNI client for http-kit in JDK 17, discljord will fail to connect (see [this issue on http-kit](https://github.com/http-kit/http-kit/issues/482))
  - Compression may fail on very large payloads, appearing as an EOF while parsing JSON exception. This can be mitigated by setting the `disable-compression` flag on `connect-bot!`
- - `with-counts?` keyword argument on `discljord.messaging/get-guild!` is specified with the keyword `:with-counts`, without a questionmark
 
 If you find any other issues, please report them, and I'll attempt to fix them as soon as possible!
 
@@ -304,7 +307,6 @@ If you would like to contribute financially to the creation of Discljord, a [Pat
 ## Current Patrons
 You could have your name added here if you support the project!
 
-- Jonathan Walch
 - Johnny JayJay
 - Peter Monks
 

@@ -2,7 +2,13 @@
   (:require [clojure.spec.alpha :as s]
             [discljord.specs :as ds]))
 
-(s/def ::major-variable-type #{::ds/guild-id ::ds/channel-id ::ds/webhook-id})
+(defn- string-spec
+  ([min-length max-length]
+   (s/and string? #(<= min-length (count %) max-length)))
+  ([pattern]
+   (s/and string? (partial re-matches pattern))))
+
+(s/def ::major-variable-type #{::ds/guild-id ::ds/channel-id ::ds/webhook-id ::ds/application-id})
 (s/def ::major-variable-value ::ds/snowflake)
 (s/def ::major-variable (s/keys :req [::major-variable-type
                                       ::major-variable-value]))
@@ -37,13 +43,23 @@
 
 (s/def ::user-agent string?)
 
-(s/def ::name (s/and string?
-                     #(>= (count %) 2)
-                     #(<= (count %) 100)))
+(def channel-types
+  {:guild-text 0
+   :dm 1
+   :guild-voice 2
+   :group-dm 3
+   :guild-category 4
+   :guild-news 5
+   :guild-store 6
+   :guild-news-thread 10
+   :guild-public-thread 11
+   :guild-private-thread 12
+   :guild-stage-voice 13})
+
+(s/def ::name (string-spec 2 100))
+(s/def :discljord.messaging.specs.channel/type (set (vals channel-types)))
 (s/def ::position integer?)
-(s/def ::topic (s/and string?
-                      #(>= (count %) 0)
-                      #(<= (count %) 1024)))
+(s/def ::topic (string-spec 0 1024))
 (s/def ::nsfw boolean?)
 (s/def ::rate-limit-per-user (s/and integer?
                                     #(>= % 0)
@@ -54,8 +70,14 @@
 (s/def ::user-limit (s/and integer?
                            #(>= % 0)
                            #(<= % 99)))
-(s/def :overwrite/type #{"role" "member"})
-(s/def ::overwrite-object (s/keys :req-un [::ds/id :overwrite/type ::allow ::deny]))
+
+; Threads
+(s/def :discljord.messaging.specs.thread/auto-archive-duration #{60 1440 4320 10080})
+; This should validate an ISO 8601 timestamp - use a regex instead?
+(s/def :discljord.messaging.specs.thread/before string?)
+
+(s/def :discljord.messaging.specs.overwrite/type #{"role" "member"})
+(s/def ::overwrite-object (s/keys :req-un [::ds/id :discljord.messaging.specs.overwrite/type ::allow ::deny]))
 (s/def ::permission-overwrites (s/coll-of ::overwrite-object))
 (s/def ::parent-id ::ds/snowflake)
 
@@ -66,11 +88,14 @@
 
 (s/def ::message-id ::ds/snowflake)
 
-(s/def ::message (s/and string?
-                        #(< (count %) 2000)))
+(s/def ::message (string-spec 0 1999))
 (s/def ::tts boolean?)
 (s/def ::nonce ::ds/snowflake)
 (s/def ::file (partial instance? java.io.File))
+
+(s/def :stream/content (partial instance? java.io.InputStream))
+(s/def :stream/filename string?)
+(s/def ::stream (s/keys :req-un [:stream/content :stream/filename]))
 
 (s/def :embed/title string?)
 (s/def :embed/type #{"rich" "image" "video" "gifv" "article" "link"})
@@ -112,6 +137,68 @@
 (s/def ::user-id ::ds/user-id)
 
 (s/def ::content ::message)
+
+;; Message Components
+
+(s/def :component.action-row/type #{1})
+
+(s/def :component/action-row
+  (s/keys :req-un [::components :component.action-row/type]))
+
+(def button-styles
+  {:primary 1
+   :secondary 2
+   :success 3
+   :danger 4
+   :link 5})
+
+(s/def :component.button/type #{2})
+(s/def :component.button/custom_id (string-spec 0 100))
+(s/def :component.button/style (set (vals button-styles)))
+(s/def :component.button/label (string-spec 0 80))
+
+(s/def :component.button.emoji/name string?)
+(s/def :component.button.emoji/id ::ds/snowflake)
+(s/def :component.button.emoji/animated boolean?)
+
+(s/def :component.button/emoji
+  (s/keys :opt-un [:component.button.emoji/id :component.button.emoji/animated :component.button.emoji/name]))
+
+(s/def :component.button/url string?)
+(s/def :component.button/disabled boolean?)
+
+(s/def :component/button
+  (s/keys :req-un [:component.button/type :component.button/style]
+          :opt-un [:component.button/label :component.button/emoji :component.button/custom_id
+                   :component.button/url :component.button/disabled]))
+
+(s/def :component.select/type #{3})
+(s/def :component.select/custom_id :component.button/custom_id)
+
+(s/def :component.select.option/label (string-spec 0 25))
+(s/def :component.select.option/value (string-spec 0 100))
+(s/def :component.select.option/description (string-spec 0 50))
+(s/def :component.select.option/emoji :component.button/emoji)
+(s/def :component.select.option/default boolean?)
+(s/def :component.select/option
+  (s/keys :req-un [:component.select.option/label :component.select.option/value]
+          :opt-un [:component.select.option/description :component.select.option/emoji :component.select.option/default]))
+
+(s/def :component.select/options (s/coll-of :component.select/option))
+
+(s/def :component.select/placeholder (string-spec 0 100))
+(s/def :component.select/min_values (s/and integer? #(<= 0 % 25)))
+(s/def :component.select/max_values (s/and integer? #(<= % 25)))
+
+(s/def :component/select-menu
+  (s/keys :req-un [:component.select/type :component.select/custom_id :component.select/options]
+          :opt-un [:component.select/placeholder :component.select/min_values :component.select/max_values]))
+
+(s/def ::component
+  (s/or :action-row :component/action-row :button :component/button :select-menu :component/select-menu))
+
+(s/def ::components
+  (s/coll-of ::component))
 
 (s/def ::messages (s/coll-of ::message-id))
 
@@ -167,8 +254,8 @@
 (s/def ::days integer?)
 (s/def ::compute-prune-count boolean?)
 
-(s/def ::type string?)
-(s/def ::id ::ds/snowflake)
+(s/def :discljord.messaging.specs.integration/type string?)
+(s/def :discljord.messaging.specs.integration/id ::ds/snowflake)
 
 (s/def ::integration-id ::ds/snowflake)
 (s/def ::expire-behavior integer?)
@@ -188,6 +275,8 @@
 
 (s/def ::webhook-token string?)
 
+(s/def ::wait boolean?)
+
 (s/def ::embeds (s/coll-of ::embed))
 
 (def allowed-mention-types #{:roles :users :everyone})
@@ -205,6 +294,165 @@
                                             :message-reference/channel_id
                                             :message-reference/guild_id]))
 
+(s/def ::application-id ::ds/application-id)
+
+(def command-option-types
+  {:sub-command 1
+   :sub-command-group 2
+   :string 3
+   :integer 4
+   :boolean 5
+   :user 6
+   :channel 7
+   :role 8
+   :mentionable 9
+   :number 10})
+
+(s/def :command.option/type (set (vals command-option-types)))
+
+(s/def :command.option/name (string-spec #"\S{1,32}"))
+(s/def :command.option/description (string-spec 1 100))
+(s/def :command.option/default boolean?)
+(s/def :command.option/required boolean?)
+(s/def :command.option/autocomplete boolean?)
+(s/def :command.option/min_value int?)
+(s/def :command.option/max_value int?)
+
+
+(s/def :command.option.choice/name (string-spec 1 100))
+
+(s/def :command.option.choice/value
+  (s/or :string string? :int int?))
+
+(s/def :command.option/choice (s/keys :req-un [:command.option.choice/name
+                                               :command.option.choice/value]))
+
+(s/def :command.option/choices (s/coll-of :command.option/choice))
+
+(s/def :command/option (s/and (s/keys :req-un [:command.option/type
+                                               :command.option/name
+                                               :command.option/description]
+                                      :opt-un [:command.option/default
+                                               :command.option/required
+                                               :command.option/choices
+                                               :command.option/options
+                                               :command.option/autocomplete
+                                               :command.option/min_value
+                                               :command.option/max_value])
+                              #(<= (count (:choices %)) 25)
+                              #(not-any? #{(command-option-types :sub-command-group)} (map :type (:options %)))
+                              #(or (= (command-option-types :sub-command-group) (:type %))
+                                   (not-any? #{(command-option-types :sub-command)} (map :type (:options %))))))
+
+(def command-permission-types
+  {:role 1
+   :user 2})
+
+(s/def :command.permission/id ::ds/snowflake)
+
+(s/def :command.permission/type (set (vals command-permission-types)))
+
+(s/def :command.permission/permission boolean?)
+
+(s/def :command/permission (s/keys :req-un [:command.permission/id
+                                            :command.permission/type
+                                            :command.permission/permission]))
+
+(s/def :discljord.messaging.specs.command/permissions (s/coll-of :command/permission))
+
+(s/def ::command-id ::ds/snowflake)
+(s/def :command/id ::command-id)
+
+(s/def :discljord.messaging.specs.command.guild/permissions
+  (s/keys :req-un [:command/id
+                   :discljord.messaging.specs.command/permissions]))
+
+(s/def :discljord.messaging.specs.command.guild/permissions-array
+  (s/coll-of :discljord.messaging.specs.command.guild/permissions))
+
+(s/def :discljord.messaging.specs.command/options
+  (s/and (s/coll-of :command/option)
+         (comp (partial >= 25) count)
+         (fn [[{first-required? :required} :as opts]]
+           (let [option-segments (partition-by :required opts)
+                 amount (count option-segments)]
+             (or (<= amount 1)
+                 (and (= amount 2) first-required?))))))
+
+(s/def :discljord.messaging.specs.command/default-permission boolean?)
+
+(s/def :command.option/options :discljord.messaging.specs.command/options)
+
+(s/def :discljord.messaging.specs.command/name (string-spec #"\S{1,32}"))
+
+(s/def :discljord.messaging.specs.command/description (string-spec 1 100))
+
+(def command-types
+  {:chat-input 1
+   :user 2
+   :message 3})
+
+(s/def :discljord.messaging.specs.command/type nat-int?)
+
+(s/def ::command
+  (s/and (s/keys :req-un [:discljord.messaging.specs.command/name
+                          :discljord.messaging.specs.command/description]
+                 :opt-un [:discljord.messaging.specs.command/options
+                          :discljord.messaging.specs.command/default-permission
+                          :discljord.messaging.specs.command/type])
+         (fn [cmd]
+           (<= (->> cmd
+                    (tree-seq :options :options)
+                    (map (juxt :name :description (comp (partial map (juxt :name :value)) :choices)))
+                    flatten
+                    (filter string?)
+                    (map count)
+                    (reduce +))
+               4000))))
+
+(s/def ::commands (s/and (s/coll-of ::command) #(<= (count %) 100)))
+
+(s/def ::interaction-id ::ds/snowflake)
+(s/def ::interaction-token string?)
+
+(def interaction-response-types
+  {:pong 1
+   :channel-message-with-source 4
+   :deferred-channel-message-with-source 5
+   :deferred-update-message 6
+   :update-message 7
+   :application-command-autocomplete-result 8})
+
+(s/def :discljord.messaging.specs.interaction-response/type
+  (set (vals interaction-response-types)))
+
+(s/def :interaction-response.data/flags int?)
+
+(s/def :interaction-response.data/choices (s/coll-of string?))
+
+(s/def :discljord.messaging.specs.interaction-response/data
+  (s/or
+   :message
+   (s/keys :opt-un [::content
+                    ::embeds
+                    ::tts
+                    ::allowed-mentions
+                    ::components
+                    :interaction-response.data/flags])
+
+   :autocomplete
+   (s/keys :req-un [:interaction-response.data/choices])))
+
 (s/def :widget/enabled boolean?)
 (s/def :widget/channel_id ::ds/snowflake)
 (s/def ::widget (s/keys :req-un [:widget/enabled :widget/channel_id]))
+
+(s/def ::query string?)
+
+(s/def :discljord.messaging.specs.stage/topic (string-spec 1 120))
+(s/def :discljord.messaging.specs.stage/privacy-level integer?)
+
+(s/def ::sticker-id ::ds/snowflake)
+(s/def :discljord.messaging.specs.sticker/name (string-spec 2 30))
+(s/def :discljord.messaging.specs.sticker/description (string-spec 2 100))
+(s/def :discljord.messaging.specs.sticker/tags (string-spec 2 200))

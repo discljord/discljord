@@ -1,11 +1,12 @@
 (ns discljord.connections
-  "Namespace for creating a connection to Discord, and recieving messages.
+  "Namespace for creating a connection to Discord, and receiving messages.
   Contains functionality required to create and maintain a sharded and auto-reconnecting
-  connection object which will recieve messages from Discord, and pass them on to client
+  connection object which will receive messages from Discord, and pass them on to client
   code."
   (:require
    [clojure.core.async :as a]
    [clojure.spec.alpha :as s]
+   [clojure.set :as set]
    [discljord.connections.impl :as impl]
    [discljord.connections.specs :as cs]
    [discljord.http :refer [gateway-url]]
@@ -13,12 +14,9 @@
    [discljord.util :refer [bot-token derefable-promise-chan]]
    [clojure.tools.logging :as log]))
 
-(def gateway-intents #{:guilds :guild-members :guild-bans :guild-emojis
-                       :guild-integrations :guild-webhooks :guild-invites
-                       :guild-voice-states :guild-presences :guild-messages
-                       :guild-message-reactions :guild-message-typing
-                       :direct-messages :direct-message-reactions
-                       :direct-message-typing})
+(def gateway-intents
+  "All the valid intent keywords to send to Discord."
+  (set (keys impl/intent->intent-int)))
 
 (defn connect-bot!
   "Creates a connection process which will handle the services granted by
@@ -35,12 +33,17 @@
   which shard you use to talk to the server immediately after starting the bot.
 
   `intents` is a set containing keywords representing which events will be sent
-  to the bot by Discord. Valid values for the set are in [[gateway-intents]]. If
-  `intents` is unspecified, a [[clojure.core/ex-info]] is returned with a
-  relevant message."
+  to the bot by Discord. Valid values for the set are in [[gateway-intents]]."
   [token out-ch & {:keys [intents disable-compression]}]
-  (if-not intents
-    (ex-info "Intents are required as of v8 of the API")
+  (cond
+    (not intents)
+    (throw (ex-info "Intents are required as of v8 of the API" {}))
+
+    (some (complement gateway-intents) intents)
+    (throw (ex-info "Only valid intents may be specified."
+                    {:invalid-intents (set/difference intents gateway-intents)}))
+
+    :else
     (let [token (bot-token token)
           {:keys [url shard-count session-start-limit]}
           (impl/get-websocket-gateway gateway-url token)]
@@ -56,7 +59,7 @@
                 (impl/connect-shards! out-ch communication-chan url token intents shard-count (range shard-count)
                                       (not disable-compression)))
               communication-chan))
-        (log/debug "Unable to recieve gateway information.")))))
+        (log/debug "Unable to receive gateway information.")))))
 (s/fdef connect-bot!
   :args (s/cat :token ::ds/token :out-ch ::ds/channel
                :keyword-args (s/keys* :opt-un [::cs/intents ::cs/disable-compression]))
@@ -100,8 +103,15 @@
   Additional calls should only be made five seconds after the
   `:connected-all-shards` event has been received."
   [token out-ch gateway shard-ids & {:keys [intents identify-when disable-compression]}]
-  (if-not intents
+  (cond
+    (not intents)
     (ex-info "Intents are required as of v8 of the API" {})
+
+    (some (complement gateway-intents) intents)
+    (throw (ex-info "Only valid intents may be specified."
+                    {:invalid-intents (set/difference intents gateway-intents)}))
+
+    :else
     (let [token (bot-token token)
           {:keys [url shard-count session-start-limit]} gateway]
       (if (and url shard-count session-start-limit)
@@ -158,7 +168,10 @@
 (defn add-shards!
   "Adds new shard connections using state fetched with `get-shard-state!`."
   [connection-ch new-shards intents & {:keys [disable-compression]}]
-  (a/put! connection-ch [:connect-shards new-shards intents disable-compression])
+  (if (every? gateway-intents intents)
+    (a/put! connection-ch [:connect-shards new-shards intents disable-compression])
+    (throw (ex-info "Only valid intents may be specified."
+                    {:invalid-intents (set/difference intents gateway-intents)})))
   nil)
 (s/fdef add-shards!
   :args (s/cat :connection-ch ::ds/channel
@@ -231,7 +244,8 @@
   idle-since: epoch time in milliseconds of when the bot went idle, defaults to nil
   activity: an activity map, from create-activity, which is used for the bot, defaults to nil
   status: a keyword representing the current status of the bot, can be :online, :dnd, :idle, :invisible, or :offline, defaults to :online
-  afk: a boolean to say if the bot is afk, defaults to false"
+  afk: a boolean to say if the bot is afk, defaults to false
+  shards: a set of shard ids to send this update to, or the keyword `:all`"
   [connection-ch & args]
   (a/put! connection-ch (apply vector :status-update args)))
 (s/fdef status-update!
@@ -239,7 +253,8 @@
                :keyword-args (s/keys* :opt-un [::cs/idle-since
                                                ::cs/activity
                                                ::cs/status
-                                               ::cs/afk])))
+                                               ::cs/afk
+                                               ::cs/shards])))
 
 (defn voice-state-update!
   "Takes the channel returned by connect-bot!, a guild id, and a set of keyword options and

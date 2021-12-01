@@ -520,7 +520,7 @@
                 (a/<!! (a/timeout millis))
                 nil)))
 
-(def ^:private intent->intent-int
+(def intent->intent-int
   {:guilds (bit-shift-left 1 0)
    :guild-members (bit-shift-left 1 1)
    :guild-bans (bit-shift-left 1 2)
@@ -561,7 +561,7 @@
           payload (if-let [intents (:intents shard)]
                     (assoc payload "intents" (intents->intent-int intents))
                     payload)]
-      (log/trace "Identify payload:" payload)
+      (log/trace "Identify payload:" (assoc payload "token" "REDACTED"))
       (ws/send-msg (:websocket shard)
                    (json/write-str {:op 2
                                     :d payload})))))
@@ -847,8 +847,10 @@
 
 (defmethod handle-communication! :status-update
   [shards shard-chs event]
-  (when-let [shard (first (remove nil? shards))]
-    (a/put! (:communication-ch shard) event))
+  (let [destination-shards (:shards (apply hash-map (rest event)))]
+    (doseq [shard (cond->> shards
+                   (set? destination-shards) (filter (comp destination-shards :id)))]
+      (a/put! (:communication-ch shard) event)))
   [shards shard-chs])
 
 (defmethod handle-communication! :voice-state-update

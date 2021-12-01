@@ -1,4 +1,4 @@
-(defproject org.suskalo/discljord "1.3.0-SNAPSHOT"
+(defproject org.suskalo/discljord "1.3.0"
   :description " A Clojure wrapper library for the Discord API, with full API coverage (except voice, for now), and high scalability."
   :url "https://github.com/IGJoshua/discljord"
   :license {:name "Eclipse Public License"
@@ -16,4 +16,4 @@
                                   [ch.qos.logback/logback-classic "1.2.3"]]
                    :plugins [[lein-codox "0.10.7"]]
                    :exclusions [http-kit]
-                   :jvm-opts ["-Dclojure.tools.logging.factory=clojure.tools.logging.impl/slf4j-factory"]}})
+                   :jvm-opts ["--add-opens" "java.base/java.lang=ALL-UNNAMED" "-Dclojure.tools.logging.factory=clojure.tools.logging.impl/slf4j-factory"]}})

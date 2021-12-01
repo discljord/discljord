@@ -520,7 +520,7 @@
                 (a/<!! (a/timeout millis))
                 nil)))
 
-(def ^:private intent->intent-int
+(def intent->intent-int
   {:guilds (bit-shift-left 1 0)
    :guild-members (bit-shift-left 1 1)
    :guild-bans (bit-shift-left 1 2)

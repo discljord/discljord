@@ -2,9 +2,11 @@
 All notable changes to this project will be documented in this file. This change log follows the conventions of [keepachangelog.com](http://keepachangelog.com/).
 Discljord follows semantic versioning.
 
-## [Unreleased]
+## [1.3.0] - 2021-11-30
 ### Added
  - Timestamp formatting utilities in `discljord.formatting`
+ - Sticker Endpoints
+ - Stage Endpoints
  - Additional arities on caching middleware functions for custom caching configuration and handlers
  - Threads Feature
    - Endpoints
@@ -22,7 +24,7 @@ Discljord follows semantic versioning.
    - New caching middlewares to cache threads
  - Initial support for Message Components
  - New function for creating handlers for multiple events, `discljord.events/normalize-handlers`
- - Slash Commands Feature
+ - Application Commands Feature
    - Management Endpoints
      - `get-global/guild-application-commands!`
      - `create-global/guild-application-command!`
@@ -50,11 +52,16 @@ Discljord follows semantic versioning.
  - Keyword argument `:shards` to `discljord.connections/status-update!` to specify which shards to send to
 
 ### Changed
- - Set API version to `v9`
  - Add public vars defining the API version used
- - Removed questionmark from argument for `get-guild`'s `with-counts` for being redundant
+ - Set API version to `v9`
+ - Removed question mark from argument for `get-guild`'s `with-counts` for being redundant
 
 ### Fixed
+ - Some invalid keywords could be constructed during event deserialization
+ - Rate limit checks would crash the messaging component when instrumented
+ - String permissions values passed from Discord failed to parse in permissions functions
+ - Invalid intents were accepted on bot connection
+ - The `ex-info` produced for missing intents in `discljord.connections/connect-bot!` was not thrown
  - Previous user and guilds state was discarded in ready event caching handler
  - The `Content-Type` header was sent on requests with no body
  - Event data with snowflake keys would be conformed to keyword keys
@@ -339,7 +346,7 @@ Discljord follows semantic versioning.
  - README follows new API
  - Project name from `discljord-functional` to `discljord`
 
-[Unreleased]: https://github.com/IGJoshua/discljord/compare/1.2.3..develop
+[1.3.0]: https://github.com/IGJoshua/discljord/compare/1.2.3..1.3.0
 [1.2.3]: https://github.com/IGJoshua/discljord/compare/1.2.2..1.2.3
 [1.2.2]: https://github.com/IGJoshua/discljord/compare/1.2.1..1.2.2
 [1.2.1]: https://github.com/IGJoshua/discljord/compare/1.2.0..1.2.1

@@ -383,24 +383,23 @@
 
 (s/def :command.option/options :discljord.messaging.specs.command/options)
 
+(s/def :discljord.messaging.specs.command/name (string-spec #"\S{1,32}"))
+
+(s/def :discljord.messaging.specs.command/description (string-spec 1 100))
+
 (def command-types
   {:chat-input 1
    :user 2
    :message 3})
 
-(s/def :discljord.messaging.specs.command/type
-  (set (vals command-types)))
-
-(s/def :discljord.messaging.specs.command/name (string-spec #"\S{1,32}"))
-
-(s/def :discljord.messaging.specs.command/description (string-spec 1 100))
+(s/def :discljord.messaging.specs.command/type nat-int?)
 
 (s/def ::command
   (s/and (s/keys :req-un [:discljord.messaging.specs.command/name
                           :discljord.messaging.specs.command/description]
-                 :opt-un [:discljord.messaging.specs.command/type
-                          :discljord.messaging.specs.command/options
-                          :discljord.messaging.specs.command/default-permission])
+                 :opt-un [:discljord.messaging.specs.command/options
+                          :discljord.messaging.specs.command/default-permission
+                          :discljord.messaging.specs.command/type])
          (fn [cmd]
            (<= (->> cmd
                     (tree-seq :options :options)
@@ -449,3 +448,11 @@
 (s/def ::widget (s/keys :req-un [:widget/enabled :widget/channel_id]))
 
 (s/def ::query string?)
+
+(s/def :discljord.messaging.specs.stage/topic (string-spec 1 120))
+(s/def :discljord.messaging.specs.stage/privacy-level integer?)
+
+(s/def ::sticker-id ::ds/snowflake)
+(s/def :discljord.messaging.specs.sticker/name (string-spec 2 30))
+(s/def :discljord.messaging.specs.sticker/description (string-spec 2 100))
+(s/def :discljord.messaging.specs.sticker/tags (string-spec 2 200))

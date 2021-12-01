@@ -142,13 +142,14 @@
   :file is a java.io.File object specifying a file for Discord to attach to the message.
   :attachments is a collection of file-like objects to attach to the message.
   :stream is a map that has a :content of a java.io.InputStream and a :filename of the filename to attach to the message.
-  :embed is a map specifying the embed format for the message (See Discord API)"
+  :embeds is a map specifying the embed format for the message (See Discord API)"
   []
-  [content tts nonce embed file allowed-mentions attachments stream message-reference components])
+  [content tts nonce embeds file allowed-mentions attachments stream message-reference components])
 
 (defn ^:deprecated send-message!
   [conn channel-id msg & {:keys [tts none embed file] :as opts}]
-  (apply create-message! conn channel-id :content msg (into [] cat opts)))
+  (apply create-message! conn channel-id :content msg
+         (into [] cat (assoc (dissoc opts :embed) :embeds [(:embed opts)]))))
 
 (defendpoint create-reaction! ::ds/channel-id
   "Creates a new reaction on the message with the given emoji (either unicode or \"name:id\" for a custom emoji). Returns a promise containing a boolean, telling you if it succeeded."
@@ -750,14 +751,14 @@
   New global commands will be available in all guilds after 1 hour.
   Returns a promise containing the new application command object."
   [application-id ms.command/name ms.command/description]
-  [ms.command/type ms.command/options ms.command/default-permission])
+  [ms.command/options ms.command/default-permission ms.command/type])
 
 (defendpoint edit-global-application-command! nil
   "Updates an existing global slash command by its id.
 
   Returns a promise containing the updated application command object."
   [application-id command-id]
-  [ms.command/name ms.command/description ms.command/options ms.command/default-permission])
+  [ms.command/name ms.command/description ms.command/options ms.command/default-permission ms.command/type])
 
 (defendpoint delete-global-application-command! nil
   "Deletes an existing global slash command by its id.
@@ -784,14 +785,14 @@
 
   Returns a promise containing the new application command object."
   [application-id guild-id ms.command/name ms.command/description]
-  [ms.command/type ms.command/options ms.command/default-permission])
+  [ms.command/options ms.command/default-permission ms.command/type])
 
 (defendpoint edit-guild-application-command! nil
   "Updates an existing guild slash command by its id.
 
   Returns a promise containing the updated application command object."
   [application-id guild-id command-id]
-  [ms.command/name ms.command/description ms.command/options ms.command/default-permission])
+  [ms.command/name ms.command/description ms.command/options ms.command/default-permission ms.command/type])
 
 (defendpoint delete-guild-application-command! nil
   "Deletes an existing guild slash command by its id.
@@ -814,7 +815,7 @@
   [])
 
 (defendpoint get-application-command-permissions! nil
-  "Returns a promose containing the permission settings for a specific application command accessible from the guild."
+  "Returns a promise containing the permission settings for a specific application command accessible from the guild."
   [application-id guild-id command-id]
   [])
 
@@ -884,6 +885,79 @@
   [])
 
 (defendpoint get-current-application-information! nil
-  "Returns  a promise containing the bot's OAuth2 application info."
+  "Returns a promise containing the bot's OAuth2 application info."
   []
+  [])
+
+;; -------------------------------------------------
+;; Stages
+
+(defendpoint create-stage-instance! nil
+  "Creates a new stage instance associated to a stage channel.
+
+  Returns a promise with the stage instance."
+  [channel-id ms.stage/topic]
+  [ms.stage/privacy-level])
+
+(defendpoint get-stage-instance! ::ds/channel-id
+  "Returns a promise containing the stage instance for the given channel."
+  []
+  [])
+
+(defendpoint modify-stage-instance! ::ds/channel-id
+  "Edits a stage instance for the given channel.
+
+  Returns a promise with the modified stage instance."
+  []
+  [ms.stage/topic ms.stage/privacy-level])
+
+(defendpoint delete-stage-instance! ::ds/channel-id
+  "Deletes a stage instance for the given channel.
+
+  Returns a promise of a boolean indicating whether the operation succeeded."
+  []
+  [])
+
+;; -------------------------------------------------
+;; Stickers
+
+(defendpoint get-sticker! nil
+  "Returns a promise containing a sticker object."
+  [sticker-id]
+  [])
+
+(defendpoint list-nitro-sticker-packs! nil
+  "Returns a promise containing a vector of sticker pack objects."
+  []
+  [])
+
+(defendpoint list-guild-stickers! ::ds/guild-id
+  "Returns a promise containing a vector of sticker objects."
+  []
+  [])
+
+(defendpoint get-guild-sticker! ::ds/guild-id
+  "Returns a promise containing a guild-specific sticker object."
+  [sticker-id]
+  [])
+
+(defendpoint create-guild-sticker! ::ds/guild-id
+  "Creates a new sticker on the guild with the given options.
+
+  Returns a promise containing a guild-specific sticker object."
+  [ms.sticker/name ms.sticker/description ms.sticker/tags file]
+  [])
+
+(defendpoint modify-guild-sticker! ::ds/guild-id
+  "Modifies an existing sticker with new options.
+
+  Returns a promise containing the modified sticker object."
+  [sticker-id]
+  [ms.sticker/name ms.sticker/description ms.sticker/tags])
+
+(defendpoint delete-guild-sticker! ::ds/guild-id
+  "Deletes an existing sticker from the guild.
+
+  Returns a promise with a boolean indicating whether the operation succeeded."
+  [sticker-id]
   [])

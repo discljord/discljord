@@ -16,4 +16,4 @@
                                   [ch.qos.logback/logback-classic "1.2.3"]]
                    :plugins [[lein-codox "0.10.7"]]
                    :exclusions [http-kit]
-                   :jvm-opts ["-Dclojure.tools.logging.factory=clojure.tools.logging.impl/slf4j-factory"]}})
+                   :jvm-opts ["--add-opens" "java.base/java.lang=ALL-UNNAMED" "-Dclojure.tools.logging.factory=clojure.tools.logging.impl/slf4j-factory"]}})

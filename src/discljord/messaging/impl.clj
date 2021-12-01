@@ -185,7 +185,10 @@
                                          :content attachment
                                          :filename (.getName ^File attachment)})))]
     (send-message! token (str "/channels/" channel-id "/messages")
-                   prom multipart true (dissoc opts :attachments))))
+                   prom multipart true
+                   (cond-> (dissoc opts :attachments)
+                     (:embed opts) (-> (dissoc :embed)
+                                       (update :embeds (fnil conj []) (:embed opts)))))))
 
 (defdispatch :create-reaction
   [channel-id message-id emoji] [] _ :put status _

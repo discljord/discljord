@@ -2,6 +2,8 @@
 All notable changes to this project will be documented in this file. This change log follows the conventions of [keepachangelog.com](http://keepachangelog.com/).
 Discljord follows semantic versioning.
 
+## [Unreleased]
+
 ## [1.3.0] - 2021-11-30
 ### Added
  - Timestamp formatting utilities in `discljord.formatting`
@@ -346,6 +348,7 @@ Discljord follows semantic versioning.
  - README follows new API
  - Project name from `discljord-functional` to `discljord`
 
+[Unreleased]: https://github.com/IGJoshua/discljord/compare/1.3.0..HEAD
 [1.3.0]: https://github.com/IGJoshua/discljord/compare/1.2.3..1.3.0
 [1.2.3]: https://github.com/IGJoshua/discljord/compare/1.2.2..1.2.3
 [1.2.2]: https://github.com/IGJoshua/discljord/compare/1.2.1..1.2.2

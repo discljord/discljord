@@ -57,6 +57,7 @@ Discljord follows semantic versioning.
  - Removed question mark from argument for `get-guild`'s `with-counts` for being redundant
 
 ### Fixed
+ - Rate limit checks would crash the messaging component when instrumented
  - String permissions values passed from Discord failed to parse in permissions functions
  - Invalid intents were accepted on bot connection
  - The `ex-info` produced for missing intents in `discljord.connections/connect-bot!` was not thrown

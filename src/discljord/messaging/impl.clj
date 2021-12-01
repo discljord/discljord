@@ -1178,8 +1178,8 @@
                :global-limit ::ms/global-limit
                :endpoint ::ms/endpoint
                :event-data any?
-               :bucket string?)
-  :ret string?)
+               :bucket (s/nilable string?))
+  :ret (s/nilable string?))
 
 (defn step-agent
   "Takes a process and an event, and runs the request, respecting rate limits"

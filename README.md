@@ -169,14 +169,14 @@ This example responds to messages by echoing whatever is said by human users in 
     (loop []
       (let [[event-type event-data] (a/<!! event-ch)]
         (when (and (= :message-create event-type)
-                   (= (:channel-id event-data) channel)
+                   (= (:channel-id event-data) channel-id)
                    (not (:bot (:author event-data))))
           (let [message-content (:content event-data)]
             (if (= "!exit" (s/trim (s/lower-case message-content)))
               (do
                 (m/create-message! message-ch channel-id :content "Goodbye!")
                 (c/disconnect-bot! connection-ch))
-              (m/create-message! message-ch channel :content message-content))))
+              (m/create-message! message-ch channel-id :content message-content))))
         (when (= :channel-pins-update event-type)
           (c/disconnect-bot! connection-ch))
         (when-not (= :disconnect event-type)

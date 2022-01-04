@@ -5,7 +5,7 @@
    [clojure.data.json :as json]
    [clojure.string :as str]
    [clojure.tools.logging :as log]
-   [discljord.http :refer [gateway-url]]
+   [discljord.http :refer [gateway-url gateway-version]]
    [discljord.util :refer [json-keyword clean-json-input]]
    [gniazdo.core :as ws]
    [org.httpkit.client :as http])
@@ -206,7 +206,7 @@
   (log/debug "Starting websocket of size" buffer-size "at url" url)
   (let [url (str url
                  (when-not (str/ends-with? url "/") "/")
-                 "?v=6"
+                 "?v=" gateway-version
                  "&encoding=json"
                  (when compress
                    "&compress=zlib-stream"))

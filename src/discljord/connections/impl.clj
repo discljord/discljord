@@ -535,7 +535,8 @@
    :guild-message-typing (bit-shift-left 1 11)
    :direct-messages (bit-shift-left 1 12)
    :direct-message-reactions (bit-shift-left 1 13)
-   :direct-message-typing (bit-shift-left 1 14)})
+   :direct-message-typing (bit-shift-left 1 14)
+   :guild-scheduled-events (bit-shift-left 1 16)})
 (defn- intents->intent-int
   "Takes a set of intents and creates an intents-int to represent that set."
   [intents]

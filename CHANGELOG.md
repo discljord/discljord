@@ -3,6 +3,16 @@ All notable changes to this project will be documented in this file. This change
 Discljord follows semantic versioning.
 
 ## [Unreleased]
+IMPORTANT, this is the first release on the new com.github.discljord group id.
+If you update the version and it doesn't appear, ensure you've updated your
+group id.
+
+### Added
+ - Support for the `guild-scheduled-events` intent
+
+### Fixed
+ - Reflection warning from the util ns
+ - Incorrect gateway version was requested
 
 ## [1.3.0] - 2021-11-30
 ### Added

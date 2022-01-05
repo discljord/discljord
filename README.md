@@ -28,13 +28,13 @@ The `start-bot!` and `stop-bot!` functions help you connect/disconnect to/from t
 Add the following to your project.clj in leiningen:
 
 ```clojure
-[com.github.discljord/discljord "1.3.0"]
+[com.github.discljord/discljord "1.3.1"]
 ```
 
 If you use tools.deps, then add the following to your `:dependencies` key in your `deps.edn`:
 
 ```clojure
-{com.github.discljord/discljord {:mvn/version "1.3.0"}}
+{com.github.discljord/discljord {:mvn/version "1.3.1"}}
 ```
 
 ## Usage

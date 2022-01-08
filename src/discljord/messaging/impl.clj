@@ -111,7 +111,8 @@
        ~params [] ~opts ~method ~status ~body
        ~url
        ~(if delete? `{} `{:body (json/write-str ~opts)})
-       ~(if delete? `(= ~status 204) `(json-body ~body)))))
+       ~(if delete? `(= ~status 204) `(cond->> (json-body ~body)
+                                        (not= 2 (quot ~status 100)) (ex-info (str "Attempted to " ~name " with invalid parameters")))))))
 
 (defdispatch :get-guild-audit-log
   [guild-id] [] _ :get _ body

@@ -1,0 +1,2 @@
+{:hooks {:analyze-call {discljord.messaging/defendpoint hooks.discljord/defendpoint
+                        discljord.messaging/defdispatch hooks.discljord/defdispatch}}}

@@ -79,11 +79,12 @@
 (defn- override
   "Integrates the overrides into the permissions int."
   [perms-int overrides]
-  (let [allow (or (when (seq overrides)
-                    (reduce (comp bit-or util/parse-if-str) 0 (map :allow overrides)))
+  (let [combine-overrides #(bit-or %1 (util/parse-if-str %2))
+        allow (or (when (seq overrides)
+                    (reduce combine-overrides 0 (map :allow overrides)))
                   0)
         deny (or (when (seq overrides)
-                   (reduce #(bit-or %1 (util/parse-if-str %2)) 0 (map :deny overrides)))
+                   (reduce combine-overrides 0 (map :deny overrides)))
                  0)]
     (bit-or
      (bit-and

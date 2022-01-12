@@ -43,3 +43,12 @@
              url-str
              method-params
              promise-val))}))
+
+
+(defn def-message-dispatch [{:keys [node]}]
+  (let [[_ params _ url-str] (rest (:children node))]
+    {:node (api/list-node
+            (list
+             (api/token-node 'let)
+             (api/vector-node [params (api/token-node nil)])
+             url-str))}))

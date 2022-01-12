@@ -55,7 +55,7 @@
   "Returns a set of all permissions included in a given permission integer."
   [perms-int]
   (->> (vals permissions-bit)
-       (filter (comp (complement zero?) (partial bit-and (util/parse-if-str perms-int))))
+       (remove (comp zero? (partial bit-and (util/parse-if-str perms-int))))
        (map permissions-key)
        (set)))
 

@@ -76,15 +76,17 @@
   [perms perms-int]
   (every? #(has-permission-flag? % (util/parse-if-str perms-int)) perms))
 
+(defn- combine-perm-ints [acc n]
+  (bit-or acc (util/parse-if-str n)))
+
 (defn- override
   "Integrates the overrides into the permissions int."
   [perms-int overrides]
-  (let [combine-overrides #(bit-or %1 (util/parse-if-str %2))
-        allow (or (when (seq overrides)
-                    (reduce combine-overrides 0 (map :allow overrides)))
+  (let [allow (or (when (seq overrides)
+                    (reduce combine-perm-ints 0 (map :allow overrides)))
                   0)
         deny (or (when (seq overrides)
-                   (reduce combine-overrides 0 (map :deny overrides)))
+                   (reduce combine-perm-ints 0 (map :deny overrides)))
                  0)]
     (bit-or
      (bit-and
@@ -107,7 +109,7 @@
   ([perms]
    (reduce bit-or 0 (map permissions-bit perms)))
   ([everyone roles]
-   (let [perms-int (reduce (comp bit-or util/parse-if-str) 0 (conj roles everyone))]
+   (let [perms-int (reduce combine-perm-ints 0 (conj roles everyone))]
      (if (has-permission-flag? :administrator perms-int)
        0xFFFFFFFF
        perms-int)))

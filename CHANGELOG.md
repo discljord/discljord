@@ -11,6 +11,7 @@ group id.
  - Support for the `guild-scheduled-events` intent
 
 ### Fixed
+ - Arity exception in permissions namespace
  - Reflection warning from the util ns
  - Incorrect gateway version was requested
 

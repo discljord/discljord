@@ -9,6 +9,7 @@ group id.
 
 ### Added
  - Support for the `guild-scheduled-events` intent
+ - timeout feature: `:communication-disabled-until` parameter on `modify-guild-member!` and `:moderate-members` permission
 
 ### Fixed
  - Arity exception in permissions namespace

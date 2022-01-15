@@ -845,15 +845,13 @@
   [_ application-id name description] [options default-permission type] _ :post status body
   (global-cmd-url application-id)
   (command-params name description options default-permission type)
-  (cond->> (json-body body)
-    (not= 2 (quot status 100)) (ex-info "Attempted to create an invalid global command")))
+  (json-body body))
 
 (defdispatch :edit-global-application-command
   [_ application-id command-id name description] [options default-permission type] _ :patch status body
   (global-cmd-url application-id command-id)
   (command-params name description options default-permission type)
-  (cond->> (json-body body)
-    (not= 2 (quot status 100)) (ex-info "Attempted to edit an invalid global command")))
+  (json-body body))
 
 (defdispatch :delete-global-application-command
   [_ application-id command-id] [] _ :delete status _

@@ -87,7 +87,7 @@
              (if (some? prom-val#)
                (a/>!! prom# (cond->> prom-val#
                               (not= 2 (quot ~status-sym 100))
-                              (ex-info (str "Received an error response from " endpoint-name " (status " status ")"))))
+                              (ex-info (str "Received an error response from " ~endpoint-name " (status " ~status-sym ")"))))
                (a/close! prom#))))
          response#))))
 

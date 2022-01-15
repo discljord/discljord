@@ -45,7 +45,8 @@
    :create-private-threads 0x1000000000
    :use-external-stickers 0x2000000000
    :send-messages-in-threads 0x4000000000
-   :start-embedded-activities 0x8000000000})
+   :start-embedded-activities 0x8000000000
+   :moderate-members 0x0000010000000000})
 
 (def permissions-key
   "Map from binary flag representation to permission name."

@@ -85,7 +85,9 @@
          (when-not (= ~status-sym 429)
            (let [prom-val# ~promise-val]
              (if (some? prom-val#)
-               (a/>!! prom# prom-val#)
+               (a/>!! prom# (cond->> prom-val#
+                              (not= 2 (quot ~status-sym 100))
+                              (ex-info (str "Received an error response from " endpoint-name " (status " status ")"))))
                (a/close! prom#))))
          response#))))
 
@@ -111,8 +113,7 @@
        ~params [] ~opts ~method ~status ~body
        ~url
        ~(if delete? `{} `{:body (json/write-str ~opts)})
-       ~(if delete? `(= ~status 204) `(cond->> (json-body ~body)
-                                        (not= 2 (quot ~status 100)) (ex-info (str "Attempted to " ~name " with invalid parameters")))))))
+       ~(if delete? `(= ~status 204) `(json-body ~body)))))
 
 (defdispatch :get-guild-audit-log
   [guild-id] [] _ :get _ body
@@ -864,8 +865,7 @@
   [_ application-id commands] [] _ :put status body
   (global-cmd-url application-id)
   {:body (json/write-str commands)}
-  (cond->> (json-body body)
-    (not= 2 (quot status 100)) (ex-info "Attempted to overwrite with invalid global commands")))
+  (json-body body))
 
 (defn- guild-cmd-url
   ([application-id guild-id] (str "/applications/" application-id "/guilds/" guild-id "/commands"))
@@ -881,15 +881,13 @@
   [_ application-id guild-id name description] [options default-permission type] _ :post status body
   (guild-cmd-url application-id guild-id)
   (command-params name description options default-permission type)
-  (cond->> (json-body body)
-    (not= 2 (quot status 100)) (ex-info "Attempted to create an invalid guild command")))
+  (json-body body))
 
 (defdispatch :edit-guild-application-command
   [_ application-id guild-id command-id name description] [options default-permission type] _ :patch status body
   (guild-cmd-url application-id guild-id command-id)
   (command-params name description options default-permission type)
-  (cond->> (json-body body)
-    (not= 2 (quot status 100)) (ex-info "Attempted to edit an invalid guild command")))
+  (json-body body))
 
 (defdispatch :delete-guild-application-command
   [_ application-id guild-id command-id] [] _ :delete status _
@@ -901,8 +899,7 @@
   [_ application-id guild-id commands] [] _ :put status body
   (guild-cmd-url application-id guild-id)
   {:body (json/write-str commands)}
-  (cond->> (json-body body)
-    (not= 2 (quot status 100)) (ex-info "Attempted to overwrite with invalid guild commands")))
+  (json-body body))
 
 (defdispatch :get-guild-application-command-permissions
   [_ application-id guild-id] [] _ :get _ body
@@ -920,15 +917,13 @@
   [_ application-id guild-id command-id permissions] [] _ :put status body
   (str (guild-cmd-url application-id guild-id command-id) "/permissions")
   {:body (json/write-str {:permissions permissions})}
-  (cond->> (json-body body)
-    (not= 2 (quot status 100)) (ex-info "Attempted to set invalid command permissions")))
+  (json-body body))
 
 (defdispatch :batch-edit-application-command-permissions
   [_ application-id guild-id permissions] [] _ :put status body
   (str (guild-cmd-url application-id guild-id) "/permissions")
   {:body (json/write-str permissions)}
-  (cond->> (json-body body)
-    (not= 2 (quot status 100)) (ex-info "Attempted to set invalid command permissions")))
+  (json-body body))
 
 (defmethod dispatch-http :create-interaction-response
   [token endpoint [prom interaction-id interaction-token type & {:as opts}]]

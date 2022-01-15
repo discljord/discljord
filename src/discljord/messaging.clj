@@ -422,7 +422,7 @@
 (defendpoint modify-guild-member! ::ds/guild-id
   "Modifies a guild member. Returns a promise containing the modified guild member object."
   [user-id]
-  [nick roles mute deaf channel-id])
+  [nick roles mute deaf channel-id communication-disabled-until])
 
 (defendpoint modify-current-user-nick! ::ds/guild-id
   "Modifies the username of the current user. Returns a promise containing either nil on failure or the new nickname on success."

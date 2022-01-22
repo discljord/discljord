@@ -23,8 +23,8 @@
   :jar {:replace-deps {com.github.seancorfield/depstar {:mvn/version "2.0.216"}}
         :exec-fn hf.depstar/jar
         :exec-args {:jar "discljord.jar" :sync-pom true
-                    :group-id "org.suskalo" :artifact-id "discljord"
-                    :version "1.3.0"}}
+                    :group-id "com.github.discljord" :artifact-id "discljord"
+                    :version "1.3.1"}}
   :install {:replace-deps {slipset/deps-deploy {:mvn/version "0.1.5"}}
             :exec-fn deps-deploy.deps-deploy/deploy
             :exec-args {:installer :local :artifact "discljord.jar"}}

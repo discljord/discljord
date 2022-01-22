@@ -2,13 +2,8 @@
 
 Discljord is a library for the easy creation of Discord Bots in Clojure! It works asynchronously by default, and has built-in support for sharding and rate-limits, with no extra work for the bot creator. Feel free to drop on by our [support server](https://discord.gg/discljord) if you'd like to try it out or need any help.
 
-## Version 1.0.0 Released
-
-With version 1.0.0 of discljord finally coming out, it's finally reaching "feature completion", in that it fits with my initial vision of what the library should provide. It has user-controlled sharding and transparent sharding, full support for the entire REST API, support for gateway communication, and transparent representations of all the events that discord sends.
-
-This does not however mean that the project is going into maintenance mode, but rather than further development will be to keep the project up to date with changes to Discord's API, and also add new features to make development of bots easier and more streamlined.
-
-Current future plans involve adding features for caching information Discord sends to the bot, validating user permissions, creating commands, etc.
+## Group ID Update
+As of version 1.3.1, discljord has been moved to a new group id in clojars: `com.github.discljord`, to reflect the project's new place in its own GitHub Organization and joint maintainership status between @IGJoshua and @JohnnyJayJay. If after upgrading your build tool has trouble finding discljord, ensure you've updated the group id.
 
 ## Quick Start
 
@@ -33,13 +28,13 @@ The `start-bot!` and `stop-bot!` functions help you connect/disconnect to/from t
 Add the following to your project.clj in leiningen:
 
 ```clojure
-[org.suskalo/discljord "1.3.0"]
+[com.github.discljord/discljord "1.3.1"]
 ```
 
 If you use tools.deps, then add the following to your `:dependencies` key in your `deps.edn`:
 
 ```clojure
-{org.suskalo/discljord {:mvn/version "1.3.0"}}
+{com.github.discljord/discljord {:mvn/version "1.3.1"}}
 ```
 
 ## Usage

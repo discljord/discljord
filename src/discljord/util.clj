@@ -60,7 +60,7 @@
   (cond
     (map? j) (into {}
                    (map (fn [[key val]] [(if (and (string? key)
-                                                  (not (Character/isDigit (first key))))
+                                                  (not (Character/isDigit ^Character (first key))))
                                            (json-keyword key)
                                            (clean-json-input key))
                                          (clean-json-input val)]))

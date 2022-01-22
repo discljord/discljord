@@ -5,7 +5,7 @@
    [clojure.data.json :as json]
    [clojure.string :as str]
    [clojure.tools.logging :as log]
-   [discljord.http :refer [gateway-url]]
+   [discljord.http :refer [gateway-url gateway-version]]
    [discljord.util :refer [json-keyword clean-json-input]]
    [gniazdo.core :as ws]
    [org.httpkit.client :as http])
@@ -206,7 +206,7 @@
   (log/debug "Starting websocket of size" buffer-size "at url" url)
   (let [url (str url
                  (when-not (str/ends-with? url "/") "/")
-                 "?v=6"
+                 "?v=" gateway-version
                  "&encoding=json"
                  (when compress
                    "&compress=zlib-stream"))
@@ -535,7 +535,8 @@
    :guild-message-typing (bit-shift-left 1 11)
    :direct-messages (bit-shift-left 1 12)
    :direct-message-reactions (bit-shift-left 1 13)
-   :direct-message-typing (bit-shift-left 1 14)})
+   :direct-message-typing (bit-shift-left 1 14)
+   :guild-scheduled-events (bit-shift-left 1 16)})
 (defn- intents->intent-int
   "Takes a set of intents and creates an intents-int to represent that set."
   [intents]

@@ -16,7 +16,7 @@
 
   For example: (api-url (str \"/channels/\" channel-id))"
   [endpoint]
-  (str "https://discord.com/api/v" gateway-version endpoint))
+  (str "https://discord.com/api/v" rest-version endpoint))
 (s/fdef api-url
   :args (s/cat :url ::ds/url)
   :ret ::ds/url)

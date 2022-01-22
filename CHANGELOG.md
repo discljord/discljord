@@ -2,7 +2,7 @@
 All notable changes to this project will be documented in this file. This change log follows the conventions of [keepachangelog.com](http://keepachangelog.com/).
 Discljord follows semantic versioning.
 
-## [1.3.1]
+## [1.3.1] - 2022-01-22
 IMPORTANT, this is the first release on the new com.github.discljord group id.
 If you update the version and it doesn't appear, ensure you've updated your
 group id.

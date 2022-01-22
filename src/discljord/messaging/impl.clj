@@ -35,7 +35,7 @@
   {"Authorization" token
    "User-Agent"
    (str "DiscordBot ("
-        "https://github.com/IGJoshua/discljord"
+        "https://github.com/discljord/discljord"
         ", "
         "1.3.1"
         ") "

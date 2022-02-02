@@ -315,7 +315,7 @@
   (str "/channels/" channel-id "/threads")
   {:body (json/write-str {:name name
                           :auto_archive_duration auto-archive-duration
-                          :tyoe type})}
+                          :type type})}
   (json-body body))
 
 (defdispatch :join-thread

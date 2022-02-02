@@ -4,6 +4,7 @@ Discljord follows semantic versioning.
 
 ## [Unreleased]
 ### Fixed
+- Fix typo in `modify-guild-role!` endpoint name (`modifiy` -> `modify`)
 - Fix typo in `start-thread-without-message!` which prevented it from working
 
 ## [1.3.1] - 2022-01-22

@@ -3,6 +3,8 @@ All notable changes to this project will be documented in this file. This change
 Discljord follows semantic versioning.
 
 ## [Unreleased]
+### Fixed
+- Fix typo in `start-thread-without-message!` which prevented it from working
 
 ## [1.3.1] - 2022-01-22
 IMPORTANT, this is the first release on the new com.github.discljord group id.

@@ -2,7 +2,9 @@
 All notable changes to this project will be documented in this file. This change log follows the conventions of [keepachangelog.com](http://keepachangelog.com/).
 Discljord follows semantic versioning.
 
-## [1.3.1]
+## [Unreleased]
+
+## [1.3.1] - 2022-01-22
 IMPORTANT, this is the first release on the new com.github.discljord group id.
 If you update the version and it doesn't appear, ensure you've updated your
 group id.
@@ -359,7 +361,8 @@ group id.
  - README follows new API
  - Project name from `discljord-functional` to `discljord`
 
-[Unreleased]: https://github.com/IGJoshua/discljord/compare/1.3.0..HEAD
+[Unreleased]: https://github.com/IGJoshua/discljord/compare/1.3.1..HEAD
+[1.3.1]: https://github.com/IGJoshua/discljord/compare/1.3.0..1.3.1
 [1.3.0]: https://github.com/IGJoshua/discljord/compare/1.2.3..1.3.0
 [1.2.3]: https://github.com/IGJoshua/discljord/compare/1.2.2..1.2.3
 [1.2.2]: https://github.com/IGJoshua/discljord/compare/1.2.1..1.2.2

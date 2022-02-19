@@ -479,7 +479,7 @@
   [roles]
   [])
 
-(defendpoint modifiy-guild-role! ::ds/guild-id
+(defendpoint modify-guild-role! ::ds/guild-id
   "Modifies the given role. Returns a promise containing the modified role object."
   [role-id]
   [name permissions color hoist mentionable])

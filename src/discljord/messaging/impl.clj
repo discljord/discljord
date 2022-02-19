@@ -279,13 +279,13 @@
   {}
   (json-body body))
 
-(defdispatch :add-pinned-channel-message
+(defdispatch :pin-message
   [channel-id message-id] [] _ :put status _
   (str "/channels/" channel-id "/pins/" message-id)
   {}
   (= status 204))
 
-(defdispatch :delete-pinned-channel-message
+(defdispatch :unpin-message
   [channel-id message-id] [] _ :delete status _
   (str "/channels/" channel-id "/pins/" message-id)
   {}

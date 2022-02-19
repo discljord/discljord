@@ -4,6 +4,7 @@ Discljord follows semantic versioning.
 
 ## [Unreleased]
 ### Fixed
+- Fix missing implementation for `add-channel-pinned-message!`, delegate to new endpoints `pin-`/`unpin-message`
 - Fix typo in `modify-guild-role!` endpoint name (`modifiy` -> `modify`)
 - Fix typo in `start-thread-without-message!` which prevented it from working
 

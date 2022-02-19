@@ -279,17 +279,23 @@
   {}
   (json-body body))
 
-(defdispatch :add-pinned-channel-message
+(defdispatch :pin-message
   [channel-id message-id] [] _ :put status _
   (str "/channels/" channel-id "/pins/" message-id)
   {}
   (= status 204))
 
-(defdispatch :delete-pinned-channel-message
+(defdispatch :unpin-message
   [channel-id message-id] [] _ :delete status _
   (str "/channels/" channel-id "/pins/" message-id)
   {}
   (= status 204))
+
+(defmethod dispatch-http :add-channel-pinned-message
+  [token endpoint & args] (apply dispatch-http token (assoc endpoint ::ms/action :pin-message) args))
+
+(defmethod dispatch-http :delete-pinned-channel-message
+  [token endpoint & args] (apply dispatch-http token (assoc endpoint ::ms/action :unpin-message) args))
 
 (defdispatch :group-dm-add-recipient
   [channel-id user-id] [] opts :put _ _

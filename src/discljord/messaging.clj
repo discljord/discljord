@@ -236,6 +236,16 @@
   [message-id]
   [])
 
+(defendpoint pin-message! ::ds/channel-id
+  "Pins the given message to the channel. Returns a promise containing a boolean of if it succeeded."
+  [message-id]
+  [])
+
+(defendpoint unpin-message! ::ds/channel-id
+  "Removes a message from the pinned list in the channel. Returns a promise containing a boolean of if it succeeded."
+  [message-id]
+  [])
+
 (defendpoint group-dm-add-recipient! ::ds/channel-id
   "NOT INTENDED FOR BOT USE. Adds a new recipient to a group DM channel. Requires an access token."
   [user-id]

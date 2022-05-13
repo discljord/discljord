@@ -77,7 +77,7 @@
                                                 "t" "READY"
                                                 "d" {"session_id" "session"}})))
                         nil)))]
-      (fake/with-fake-http ["https://discord.com/api/gateway/bot?v=8&encoding=json"
+      (fake/with-fake-http ["https://discord.com/api/gateway/bot?v=9&encoding=json"
                             (fn [orig-fn opts callback]
                               (if (= (get (:headers opts) "Authorization")
                                      "Bot VALID_TOKEN")

@@ -69,7 +69,7 @@
                            true vec)
         spec-keys (vec (map spec-for opts))
         unqualified-params (cond->> (map (comp symbol name) params) prepend-major-var? (cons major-var))
-        unqualified-opts (mapv (comp keyword name) opts)]
+        unqualified-opts (mapv (comp symbol name) opts)]
     `(do
        (defn ~endpoint-name
          ~doc-str

@@ -709,7 +709,7 @@
 
 (defdispatch :get-guild-scheduled-event-users
   [guild-id event-id] [] opts :get _ body
-  (str "/guilds/" guild-id "/scheduled-events/" event-id)
+  (str "/guilds/" guild-id "/scheduled-events/" event-id "/users")
   {:query-params (conform-to-json opts)}
   (json-body body))
 

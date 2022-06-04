@@ -603,8 +603,8 @@
 
 (defendpoint create-guild-scheduled-event! ::ds/guild-id
   "Creates a guild scheduled event, returns the resulting event object in a promise on success."
-  [name privacy-level scheduled-start-time entity-type]
-  [channel-id entity-metadata scheduled-end-time description image])
+  [ms.event/name privacy-level scheduled-start-time entity-type]
+  [channel-id entity-metadata scheduled-end-time ms.event/description ms.event/image])
 
 (defendpoint get-guild-scheduled-event! ::ds/guild-id
   "Returns a promise containing the scheduled event with the given id for the given guild."
@@ -614,7 +614,8 @@
 (defendpoint modify-guild-scheduled-event! ::ds/guild-id
   "Modifies the given parameters of the scheduled event with the given id for the given guild."
   [event-id]
-  [channel-id entity-metadata name privacy-level scheduled-start-time scheduled-end-time description entity-type status image])
+  [channel-id entity-metadata ms.event/name privacy-level scheduled-start-time scheduled-end-time
+   ms.event/description entity-type ms.event/status ms.event/image])
 
 (defendpoint delete-guild-scheduled-event! ::ds/guild-id
   "Deletes scheduled event with the given id, returning a promise of whether it succeeded."

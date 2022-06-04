@@ -115,7 +115,7 @@
     `(defdispatch ~name
        ~params [] ~opts ~method ~status ~body
        ~url
-       ~(if delete? `{} `{:body (json/write-str ~opts)})
+       ~(if delete? `{} `{:body (json/write-str (conform-to-json ~opts))})
        ~(if delete? `(= ~status 204) `(json-body ~body)))))
 
 (defdispatch :get-guild-audit-log
@@ -671,6 +671,46 @@
   (str "/guilds/" guild-id "/widget.png")
   {:query-params (:style opts)
    :body (json/write-str (dissoc opts :style))}
+  (json-body body))
+
+(defdispatch :list-guild-scheduled-events
+  [guild-id] [] opts :get _ body
+  (str "/guilds/" guild-id "/scheduled-events")
+  {:query-params (conform-to-json opts)}
+  (json-body body))
+
+(defdispatch :create-guild-scheduled-event
+  [guild-id name privacy-level scheduled-start-time entity-type [] opts :post _ body]
+  (str "/guilds/" guild-id "/scheduled-events")
+  {:body (-> opts
+             (assoc :guild-id guild-id :name name
+                    :privacy-level privacy-level
+                    :scheduled-start-time scheduled-start-time
+                    :entity-type entity-type)
+             conform-to-json
+             json/write-str)}
+  (json-body body))
+
+(defdispatch :get-guild-scheduled-event
+  [guild-id event-id] [] opts :get _ body
+  (str "/guilds/" guild-id "/scheduled-events/" event-id)
+  {:query-params (conform-to-json opts)}
+  (json-body body))
+
+(def-message-dispatch :modify-guild-scheduled-event
+  [guild-id event-id]
+  :patch
+  (str "/guilds/" guild-id "/scheduled-events/" event-id))
+
+(def-message-dispatch :delete-guild-scheduled-event
+  [guild-id event-id]
+  :delete
+  (str "/guilds/" guild-id "/scheduled-events/" event-id))
+
+(defdispatch :get-guild-scheduled-event-users
+  [guild-id event-id] [] opts :get _ body
+  (str "/guilds/" guild-id "/scheduled-events/" event-id)
+  {:query-params (conform-to-json opts)}
   (json-body body))
 
 (defdispatch :get-invite

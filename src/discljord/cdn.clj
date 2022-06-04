@@ -2,7 +2,10 @@
   "Namespace with functions to create [cdn urls](https://discord.com/developers/docs/reference#image-formatting) to image data from API entities such as users or guilds."
   (:require
     [clojure.string :refer [starts-with?]]
-    [discljord.util :refer [parse-if-str]]))
+    [clojure.java.io :as io]
+    [discljord.util :refer [parse-if-str]])
+  (:import (java.util Base64)
+           (java.io ByteArrayOutputStream)))
 
 (def base-url "https://cdn.discordapp.com")
 
@@ -76,3 +79,39 @@
   Any power of 2 between 16 and 4096 is a valid size."
   [url size]
   (str url "?size=" size))
+
+(defn- bytes-match? [bytes start end]
+  (every? identity (concat (map == bytes (byte-array start)) (map == (take-last (count end) bytes) (byte-array end)))))
+
+(defn png?
+  "Returns whether the given bytes represent a png file."
+  [bytes]
+  (bytes-match? bytes [0x89 0x50 0x4e 0x47 0x0d 0x0a 0x1a 0x0a] []))
+
+(defn gif?
+  "Returns whether the given bytes represent a gif file."
+  [bytes]
+  (or (bytes-match? bytes [0x47 0x49 0x46 0x38 0x39 0x61] [])
+      (bytes-match? bytes [0x47 0x49 0x46 0x38 0x37 0x61] [])))
+
+(defn jpeg?
+  "Returns whether the given bytes represent a jpeg file."
+  [bytes]
+  (bytes-match? bytes [0xff 0xd8] [0xff 0xd9]))
+
+(defn file-type
+  "Determines file type based on content (as bytes)."
+  [bytes]
+  (cond
+    (png? bytes) "png"
+    (jpeg? bytes) "jpeg"
+    (gif? bytes) "gif"
+    :else nil))
+
+(defn data-uri-image [input]
+  (let [out (ByteArrayOutputStream.)
+        _ (io/copy (io/input-stream input) out)
+        bytes (.toByteArray out)
+        name (file-type bytes)]
+    (when name
+      (str "data:image/" name ";base64," (.. (Base64/getEncoder) (encodeToString bytes))))))

@@ -62,21 +62,19 @@
                     (symbol (name major-var-type)))
         sym-name (name endpoint-name)
         action (keyword (subs sym-name 0 (dec (count sym-name))))
-        opts (conj opts 'user-agent 'audit-reason)
+        opts (conj opts 'user-agent 'audit-reason 'log-error?)
         prepend-major-var? (and major-var (not (contains? (set params) major-var)))
         spec-args (cond->> (map (juxt (comp keyword name) spec-for) params)
                            prepend-major-var? (cons [(keyword major-var) major-var-type])
                            true vec)
         spec-keys (vec (map spec-for opts))
         unqualified-params (cond->> (map (comp symbol name) params) prepend-major-var? (cons major-var))
-        unqualified-opts (mapv (comp keyword name) opts)]
+        unqualified-opts (mapv (comp symbol name) opts)]
     `(do
        (defn ~endpoint-name
          ~doc-str
-         [~'conn ~@unqualified-params ~'& {:keys ~unqualified-opts :as ~'opts}]
-         (let [user-agent# (:user-agent ~'opts)
-               audit-reason# (:audit-reason ~'opts)
-               p# (util/derefable-promise-chan)
+         [~'conn ~@unqualified-params ~'& {:keys ~unqualified-opts :as ~'opts :or {~'log-error? true}}]
+         (let [p# (util/derefable-promise-chan)
                action# {::ms/action ~action}]
            (a/put! ~'conn (into [(cond-> action#
                                          ~major-var-type (assoc ::ms/major-variable
@@ -84,10 +82,9 @@
                                                             ::ms/major-variable-value ~major-var}))
                                  p#
                                  ~@(remove #{major-var} unqualified-params)
-                                 :user-agent user-agent#
-                                 :audit-reason audit-reason#]
+                                 :log-error? ~'log-error?]
                                 cat
-                                (dissoc ~'opts :user-agent)))
+                                (dissoc ~'opts :log-error?)))
            p#))
        (s/fdef ~endpoint-name
          :args (s/cat :conn ::ds/channel

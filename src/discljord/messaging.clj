@@ -599,7 +599,7 @@
 (defendpoint list-guild-scheduled-events! ::ds/guild-id
   "Returns a promise containing a list of scheduled events for the given guild"
   []
-  [with-user-count?])
+  [with-user-count])
 
 (defendpoint create-guild-scheduled-event! ::ds/guild-id
   "Creates a guild scheduled event, returns the resulting event object in a promise on success."
@@ -609,7 +609,7 @@
 (defendpoint get-guild-scheduled-event! ::ds/guild-id
   "Returns a promise containing the scheduled event with the given id for the given guild."
   [event-id]
-  [with-user-count?])
+  [with-user-count])
 
 (defendpoint modify-guild-scheduled-event! ::ds/guild-id
   "Modifies the given parameters of the scheduled event with the given id for the given guild."
@@ -624,7 +624,7 @@
 (defendpoint get-guild-scheduled-event-users! ::ds/guild-id
   "Returns a promise containing a list of event users subscribed to the given event."
   [event-id]
-  [limit with-member? before after])
+  [limit with-member before after])
 
 ;; --------------------------------------------------
 ;; Invite
@@ -632,7 +632,7 @@
 (defendpoint get-invite! nil
   "Returns a promise containing the invite."
   [invite-code]
-  [with-counts?])
+  [with-counts])
 
 (defendpoint delete-invite! nil
   "Deletes the invite. Returns a promise containing the deleted invite."

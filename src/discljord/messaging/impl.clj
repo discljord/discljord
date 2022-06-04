@@ -41,6 +41,10 @@
         ") "
         user-agent)})
 
+(defn log-error-response [endpoint status response-body]
+  (when (not= (mod status 100) 2)
+    (log/error "Encountered error response" status "on" endpoint ":\n" response-body)))
+
 (defmacro defdispatch
   "Defines a dispatch method for the the endpoint with `endpoint-name`.
 
@@ -82,6 +86,7 @@
              ~'_ (log/trace "Response:" response#)
              ~status-sym (:status response#)
              ~body-sym (:body response#)]
+         (log-error-response ~endpoint-name ~status-sym ~body-sym)
          (when-not (= ~status-sym 429)
            (let [prom-val# ~promise-val]
              (if (some? prom-val#)

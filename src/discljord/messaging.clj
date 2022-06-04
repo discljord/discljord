@@ -594,6 +594,39 @@
   [style])
 
 ;; --------------------------------------------------
+;; Scheduled Events
+
+(defendpoint list-guild-scheduled-events! ::ds/guild-id
+  "Returns a promise containing a list of scheduled events for the given guild"
+  []
+  [with-user-count?])
+
+(defendpoint create-guild-scheduled-event! ::ds/guild-id
+  "Creates a guild scheduled event, returns the resulting event object in a promise on success."
+  [name privacy-level scheduled-start-time entity-type]
+  [channel-id entity-metadata scheduled-end-time description image])
+
+(defendpoint get-guild-scheduled-event! ::ds/guild-id
+  "Returns a promise containing the scheduled event with the given id for the given guild."
+  [event-id]
+  [with-user-count?])
+
+(defendpoint modify-guild-scheduled-event! ::ds/guild-id
+  "Modifies the given parameters of the scheduled event with the given id for the given guild."
+  [event-id]
+  [channel-id entity-metadata name privacy-level scheduled-start-time scheduled-end-time description entity-type status image])
+
+(defendpoint delete-guild-scheduled-event! ::ds/guild-id
+  "Deletes scheduled event with the given id, returning a promise of whether it succeeded."
+  [event-id]
+  [])
+
+(defendpoint get-guild-scheduled-event-users! ::ds/guild-id
+  "Returns a promise containing a list of event users subscribed to the given event."
+  [event-id]
+  [limit with-member? before after])
+
+;; --------------------------------------------------
 ;; Invite
 
 (defendpoint get-invite! nil

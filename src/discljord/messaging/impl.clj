@@ -680,7 +680,7 @@
   (json-body body))
 
 (defdispatch :create-guild-scheduled-event
-  [guild-id name privacy-level scheduled-start-time entity-type [] opts :post _ body]
+  [guild-id name privacy-level scheduled-start-time entity-type] [] opts :post _ body
   (str "/guilds/" guild-id "/scheduled-events")
   {:body (-> opts
              (assoc :guild-id guild-id :name name

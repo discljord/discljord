@@ -41,6 +41,10 @@
         ") "
         user-agent)})
 
+(defn maybe-log-error [log-error? endpoint status response-body]
+  (when (and log-error? (not= (mod status 100) 2))
+    (log/error "Encountered error response" status "on" endpoint ":\n" response-body)))
+
 (defmacro defdispatch
   "Defines a dispatch method for the the endpoint with `endpoint-name`.
 
@@ -62,7 +66,7 @@
   (let [token-sym (gensym "token")
         user-agent-sym (gensym "user-agent")]
     `(defmethod dispatch-http ~endpoint-name
-       [~token-sym endpoint# [prom# ~@params & {~user-agent-sym :user-agent audit-reason# :audit-reason
+       [~token-sym endpoint# [prom# ~@params & {~user-agent-sym :user-agent audit-reason# :audit-reason log-error# :log-error?
                                                 :keys [~@opts] :as opts#}]]
        (let [~opts-sym (dissoc opts# :user-agent)
              ~major-var (-> endpoint#
@@ -82,6 +86,7 @@
              ~'_ (log/trace "Response:" response#)
              ~status-sym (:status response#)
              ~body-sym (:body response#)]
+         (maybe-log-error log-error# ~endpoint-name ~status-sym ~body-sym)
          (when-not (= ~status-sym 429)
            (let [prom-val# ~promise-val]
              (if (some? prom-val#)
@@ -149,7 +154,7 @@
   {}
   (json-body body))
 
-(defn- send-message! [token url prom multipart always-expect-content? {:keys [wait ^File file user-agent allowed-mentions stream message-reference] :as opts}]
+(defn- send-message! [token url prom multipart always-expect-content? {:keys [wait ^File file user-agent allowed-mentions stream message-reference log-error?] :as opts}]
   (let [payload (-> opts
                     (dissoc :user-agent :file :stream)
                     conform-to-json
@@ -168,6 +173,7 @@
                (cond->> (json-body raw-body)
                  (not= 2 (quot status 100)) (ex-info "Attempted to send an invalid message payload"))
                (= status 204))]
+    (maybe-log-error log-error? :send-message status raw-body)
     (when-not (= status 429)
       (if (some? body)
         (a/>!! prom body)
@@ -1027,7 +1033,7 @@
   (json-body body))
 
 (defmethod dispatch-http :create-guild-sticker
-  [token endpoint [prom & {:keys [name description tags ^File file user-agent audit-reason]}]]
+  [token endpoint [prom & {:keys [name description tags ^File file user-agent audit-reason log-error?]}]]
   (let [guild-id (-> endpoint
                      ::ms/major-variable
                      ::ms/major-variable-value)
@@ -1048,6 +1054,7 @@
         status (:status response)
         body (cond->> (json-body (:body response))
                (not= 2 (quot status 100)) (ex-info "Invalid sticker"))]
+    (maybe-log-error log-error? :create-guild-sticker status (:body response))
     (when-not (= status 429)
       (if (some? body)
         (a/>!! prom body)

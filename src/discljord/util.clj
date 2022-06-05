@@ -85,7 +85,7 @@
 (defn parse-if-str [input]
   (cond
     (number? input) input
-    (string? input) (let [parsed (edn/read-string input)]
+    (string? input) (let [parsed (Long/parseLong input)]
                       (if (number? parsed)
                         parsed
                         (throw (IllegalArgumentException. "String must represent a valid number"))))

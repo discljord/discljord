@@ -108,7 +108,12 @@
     (gif? bytes) "gif"
     :else nil))
 
-(defn data-uri-image [input]
+(defn data-uri-image
+  "Takes an input image and encodes it as a data uri.
+
+  The `input` may be anything that is accepted by `clojure.java.io/input-stream`.
+  This function returns `nil` if the content type of the input is not supported."
+  [input]
   (let [out (ByteArrayOutputStream.)
         _ (io/copy (io/input-stream input) out)
         bytes (.toByteArray out)

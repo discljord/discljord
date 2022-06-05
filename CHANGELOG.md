@@ -7,6 +7,7 @@ Discljord follows semantic versioning.
 - Every endpoint function can now log error responses at log level ERROR. This is enabled by default, but can be disabled for individual invocations using the new keyword arg `:log-error?` that is available for every endpoint function.
 
 ### Fixed
+- Fix incorrect parsing behaviour by `parse-if-str` for leading 0s
 - Keyword args in endpoint functions were declared incorrectly (`:keys [:a :b :c]` instead of `:keys [a b c]`). This had no semantic effect but has been corrected nonetheless.
 - Fix missing implementation for `add-channel-pinned-message!`, delegate to new endpoints `pin-`/`unpin-message`
 - Fix typo in `modify-guild-role!` endpoint name (`modifiy` -> `modify`)

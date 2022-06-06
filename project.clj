@@ -7,7 +7,7 @@
                  [org.clojure/core.async "1.5.648"]
                  [org.clojure/data.json "2.4.0"]
                  [org.clojure/tools.logging "1.2.4"]
-                 [http-kit/http-kit "2.6.0-RC1"]
+                 [http-kit/http-kit "2.5.3"]
                  [stylefruits/gniazdo "1.2.1"]]
   :target-path "target/%s"
   :jar-name "discljord-%s.jar"

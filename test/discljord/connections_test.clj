@@ -3,6 +3,7 @@
    [clojure.core.async :as a]
    [clojure.data.json :as json]
    [clojure.test :as t]
+   [discljord.http :as ht]
    [discljord.connections :as c]
    [discljord.connections.specs :as cs]
    [discljord.specs :as ds]
@@ -77,7 +78,7 @@
                                                 "t" "READY"
                                                 "d" {"session_id" "session"}})))
                         nil)))]
-      (fake/with-fake-http ["https://discord.com/api/gateway/bot?v=9&encoding=json"
+      (fake/with-fake-http [(str "https://discord.com/api/gateway/bot?v=" ht/gateway-version "&encoding=json")
                             (fn [orig-fn opts callback]
                               (if (= (get (:headers opts) "Authorization")
                                      "Bot VALID_TOKEN")

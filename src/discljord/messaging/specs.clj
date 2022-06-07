@@ -456,3 +456,37 @@
 (s/def :discljord.messaging.specs.sticker/name (string-spec 2 30))
 (s/def :discljord.messaging.specs.sticker/description (string-spec 2 100))
 (s/def :discljord.messaging.specs.sticker/tags (string-spec 2 200))
+
+
+(s/def ::event-id ::ds/snowflake)
+(s/def ::with-user-count boolean?)
+
+(s/def :discljord.messaging.specs.event/name (string-spec 1 100))
+(s/def :discljord.messaging.specs.event/description (string-spec 1 1000))
+(s/def :discljord.messaging.specs.event/image (string-spec #"data:image/(jpeg|png|gif);base64,.+"))
+
+(def event-privacy-levels
+  {:guild-only 2})
+
+(s/def ::privacy-level (set (vals event-privacy-levels)))
+
+(s/def ::scheduled-start-time string?)
+(s/def ::scheduled-end-time string?)
+
+(def event-entity-types
+  {:stage-instance 1
+   :voice 2
+   :external 3})
+
+(s/def ::entity-type (set (vals event-entity-types)))
+(s/def :discljord.messaging.specs.event.metadata/location (string-spec 1 100))
+(s/def ::entity-metadata (s/keys :opt-un [:discljord.messaging.specs.event.metadata/location]))
+
+(def event-statuses
+  {:scheduled 1
+   :active 2
+   :completed 3
+   :canceled 4})
+
+(s/def :discljord.messaging.specs.event/status (set (vals event-statuses)))
+(s/def ::with-member boolean?)

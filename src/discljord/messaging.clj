@@ -627,6 +627,57 @@
   [event-id]
   [limit with-member before after])
 
+
+;; --------------------------------------------------
+;; Guild Template
+
+(defendpoint get-guild-template! nil
+  "Returns a promise containing the guild template identified by the given code"
+  [code]
+  [])
+
+(defendpoint create-guild-from-guild-template! nil
+  "Creates a new guild based on the template identified by the given code.
+
+   Returns a promise containing the resulting guild on success.
+   Only works for bots that are in less than 10 guilds."
+  [code]
+  [])
+
+(defendpoint get-guild-templates! ::ds/guild-id
+  "Returns a promise containing the list of available guild templates."
+  []
+  [])
+
+(defendpoint create-guild-template! ::ds/guild-id
+  "Creates a template for the given guild.
+
+   Returns a promise containing the resulting guild template on success."
+  [name]
+  [description])
+
+(defendpoint sync-guild-template! ::ds/guild-id
+  "Syncs the given template to the current state of the guild.
+
+   Returns a promise containing the updated guild template on success."
+  [code]
+  [])
+
+(defendpoint modify-guild-template! ::ds/guild-id
+  "Modifies the guild template's metadata.
+
+   Returns a promise containing the updated guild template on success."
+  [code]
+  [name description])
+
+(defendpoint delete-guild-template! ::ds/guild-id
+  "Deletes the guild template.
+
+   Returns a promise containing the deleted guild object on success."
+  [code]
+  [])
+
+
 ;; --------------------------------------------------
 ;; Invite
 

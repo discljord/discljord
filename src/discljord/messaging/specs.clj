@@ -490,3 +490,8 @@
 
 (s/def :discljord.messaging.specs.event/status (set (vals event-statuses)))
 (s/def ::with-member boolean?)
+
+
+(s/def :discljord.messaging.specs.template/code string?)
+(s/def :discljord.messaging.specs.template/name (string-spec 1 100))
+(s/def :discljord.messaging.specs.template/description (string-spec 0 120))

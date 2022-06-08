@@ -633,7 +633,7 @@
 
 (defendpoint get-guild-template! nil
   "Returns a promise containing the guild template identified by the given code"
-  [code]
+  [ms.template/code]
   [])
 
 (defendpoint create-guild-from-guild-template! nil
@@ -641,7 +641,7 @@
 
    Returns a promise containing the resulting guild on success.
    Only works for bots that are in less than 10 guilds."
-  [code]
+  [ms.template/code]
   [])
 
 (defendpoint get-guild-templates! ::ds/guild-id
@@ -653,28 +653,28 @@
   "Creates a template for the given guild.
 
    Returns a promise containing the resulting guild template on success."
-  [name]
-  [description])
+  [ms.template/name]
+  [ms.template/description])
 
 (defendpoint sync-guild-template! ::ds/guild-id
   "Syncs the given template to the current state of the guild.
 
    Returns a promise containing the updated guild template on success."
-  [code]
+  [ms.template/code]
   [])
 
 (defendpoint modify-guild-template! ::ds/guild-id
   "Modifies the guild template's metadata.
 
    Returns a promise containing the updated guild template on success."
-  [code]
-  [name description])
+  [ms.template/code]
+  [ms.template/name ms.template/description])
 
 (defendpoint delete-guild-template! ::ds/guild-id
   "Deletes the guild template.
 
    Returns a promise containing the deleted guild object on success."
-  [code]
+  [ms.template/code]
   [])
 
 

@@ -713,6 +713,48 @@
   {:query-params (conform-to-json opts)}
   (json-body body))
 
+(defdispatch :get-guild-template
+  [code] [] _ :get _ body
+  (str "/guilds/templates/" code)
+  {}
+  (json-body body))
+
+(defdispatch :create-guild-from-guild-template
+  [code] [] _ :post _ body
+  (str "/guilds/templates/" code)
+  {}
+  (json-body body))
+
+(defdispatch :get-guild-templates
+  [guild-id] [] _ :get _ body
+  (str "/guilds/" guild-id "/templates")
+  {}
+  (json-body body))
+
+(defdispatch :create-guild-template
+  [guild-id name] [description] _ :post _ body
+  (str "/guilds/" guild-id "/templates")
+  {:body (json/write-str {:name name :description description})}
+  (json-body body))
+
+(defdispatch :sync-guild-template
+  [guild-id code] [] _ :put _ body
+  (str "/guilds/" guild-id "/templates/" code)
+  {}
+  (json-body body))
+
+(defdispatch :modify-guild-template
+  [guild-id code] [] opts :patch _ body
+  (str "/guilds/" guild-id "/templates/" code)
+  {:body (json/write-str opts)}
+  (json-body body))
+
+(defdispatch :delete-guild-template
+  [guild-id code] [] _ :delete _ body
+  (str "/guilds/" guild-id "/templates/" code)
+  {}
+  (json-body body))
+
 (defdispatch :get-invite
   [_ invite-code] [] opts :get _ body
   (str "/invites/" invite-code)

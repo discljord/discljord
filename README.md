@@ -305,6 +305,8 @@ You could have your name added here if you support the project!
 - Johnny JayJay
 - Peter Monks
 - Jungy
+- Ezazel
+- Anders Murphy
 
 ## License
 

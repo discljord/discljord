@@ -934,7 +934,7 @@
   [_ application-id guild-id command-id] [] opts :patch status body
   (guild-cmd-url application-id guild-id command-id)
   (command-params opts)
-  (->> (json-body body)
+  (cond->> (json-body body)
     (not= 2 (quot status 100)) (ex-info "Attempted to edit an invalid guild command")))
 
 (defdispatch :delete-guild-application-command

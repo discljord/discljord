@@ -379,6 +379,9 @@
              (or (<= amount 1)
                  (and (= amount 2) first-required?))))))
 
+(s/def :permission/bit-set-string (s/and string? (fn [str] (every? #(Character/isDigit %) str))))
+(s/def :discljord.messaging.specs.command/default-member-permission :permission/bit-set-string)
+(s/def :discljord.messaging.specs.command/dm-permission boolean?)
 (s/def :discljord.messaging.specs.command/default-permission boolean?)
 
 (s/def :command.option/options :discljord.messaging.specs.command/options)
@@ -386,6 +389,11 @@
 (s/def :discljord.messaging.specs.command/name (string-spec #"\S{1,32}"))
 
 (s/def :discljord.messaging.specs.command/description (string-spec 1 100))
+
+(s/def :discljord.messaging.specs.command/name-localizations (s/and map? #(every? (partial s/valid? :discljord.messaging.specs.command/name) (vals %))))
+(s/def :discljord.messaging.specs.command/description-localizations (s/and map? #(every? (partial s/valid? :discljord.messaging.specs.command/description) (vals %))))
+
+(s/def ::with-localizations boolean?)
 
 (def command-types
   {:chat-input 1
@@ -399,6 +407,10 @@
                           :discljord.messaging.specs.command/description]
                  :opt-un [:discljord.messaging.specs.command/options
                           :discljord.messaging.specs.command/default-permission
+                          :discljord.messaging.specs.command/dm-permission
+                          :discljord.messaging.specs.command/default-member-permission
+                          :discljord.messaging.specs.command/name-localizations
+                          :discljord.messaging.specs.command/description-localizations
                           :discljord.messaging.specs.command/type])
          (fn [cmd]
            (<= (->> cmd

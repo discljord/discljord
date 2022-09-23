@@ -877,7 +877,7 @@
   [application-id guild-id command-id ms.command/permissions]
   [])
 
-(defendpoint batch-edit-application-command-permissions! nil
+(defendpoint ^:deprecated batch-edit-application-command-permissions! nil
   "Batch edits the permission settings for all commands in a guild.
 
   This will overwrite all existing permissions for all commands in the guild.

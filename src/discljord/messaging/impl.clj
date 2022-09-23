@@ -881,11 +881,10 @@
 
 
 (defdispatch :get-global-application-commands
-  [_ application-id] [] _ :get _ body
+  [_ application-id] [] opts :get _ body
   (global-cmd-url application-id)
-  {}
+  {:query-params (conform-to-json opts)}
   (json-body body))
-
 
 (defdispatch :create-global-application-command
   [_ application-id name description] [] opts :post status body
@@ -919,9 +918,9 @@
   ([application-id guild-id command-id] (str (guild-cmd-url application-id guild-id) \/ command-id)))
 
 (defdispatch :get-guild-application-commands
-  [_ application-id guild-id] [] _ :get _ body
+  [_ application-id guild-id] [] opts :get _ body
   (guild-cmd-url application-id guild-id)
-  {}
+  {:query-params (conform-to-json opts)}
   (json-body body))
 
 (defdispatch :create-guild-application-command

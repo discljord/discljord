@@ -784,7 +784,7 @@
 (defendpoint get-global-application-commands! nil
   "Returns a promise containing a vector of application command objects."
   [application-id]
-  [])
+  [with-localizations])
 
 (defendpoint create-global-application-command! nil
   "Creates or updates a global slash command.
@@ -824,7 +824,7 @@
 (defendpoint get-guild-application-commands! nil
   "Returns a promise containing a vector of application command objects."
   [application-id guild-id]
-  [])
+  [with-localizations])
 
 (defendpoint create-guild-application-command! nil
   "Creates or updates a guild slash command.

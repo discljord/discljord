@@ -871,17 +871,18 @@
   [])
 
 (defendpoint edit-application-command-permissions! nil
-  "Sets the permission settings for the given command in the guild.
+  "NOT INTENDED FOR BOT USE. Sets the permission settings for the given command in the guild.
 
   Returns a promise containing the updated permission settings in a map with some additional information."
   [application-id guild-id command-id ms.command/permissions]
   [])
 
 (defendpoint ^:deprecated batch-edit-application-command-permissions! nil
-  "Batch edits the permission settings for all commands in a guild.
+  "Deprecated - This endpoint does not work anymore.
 
-  This will overwrite all existing permissions for all commands in the guild.
-  Returns a promise containing the updated permission settings."
+  The successor to its functionality is the `default-member-permission` parameter that can be set for commands.
+  More fine-grained permission settings are up to users now -
+  they can configure command permissions in their Discord server settings."
   [application-id guild-id ms.command.guild/permissions-array]
   [])
 

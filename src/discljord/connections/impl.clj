@@ -73,25 +73,34 @@
 (defmethod handle-websocket-event :disconnect
   [{:keys [websocket] :as shard} [_ stop-code msg]]
   (if shard
-    {:shard (if stop-code
-              (do
-                (when websocket
-                  (log/debug "Websocket was not closed during disconnect event, now closing")
-                  (ws/close websocket 4000 "Closing before reconnect"))
-                (assoc (dissoc shard :websocket)
-                       :stop-code stop-code
-                       :disconnect-msg msg))
-              shard)
-     :effects [(cond
-                 (re-shard-stop-code? stop-code) [:re-shard]
-                 (and *stop-on-fatal-code*
-                      (fatal-code? stop-code))   [:disconnect-all]
-                 (user-error-code? stop-code)  (do
-                                                 (log/fatal (str "Received stop code " stop-code
-                                                                 " which can only occur on user error."
-                                                                 " Disconecting bot."))
-                                                 [:disconnect-all])
-                 :otherwise                      [:reconnect])]}
+    (let [effect (cond
+                   (re-shard-stop-code? stop-code)
+                   [:re-shard]
+
+                   (and *stop-on-fatal-code*
+                        (fatal-code? stop-code))
+                   [:disconnect-all]
+
+                   (user-error-code? stop-code)
+                   (do
+                     (log/fatal (str "Received stop code " stop-code
+                                     " which can only occur on user error."
+                                     " Disconnecting bot."))
+                     [:disconnect-all])
+
+                   :else [:reconnect])]
+      {:shard (if stop-code
+                (do
+                  (when websocket
+                    (log/debug "Websocket was not closed during disconnect event, now closing")
+                    (ws/close websocket 4000 "Closing before reconnect"))
+                  (cond-> (assoc (dissoc shard :websocket)
+                                 :stop-code stop-code
+                                 :disconnect-msg msg)
+                    (not= (first effect) :reconnect)
+                    (dissoc :resume-gateway-url)))
+                shard)
+       :effects [effect]})
     {:shard nil
      :effects []}))
 
@@ -144,7 +153,8 @@
                          :invalid-session
                          :unresumable)
                  :session-id (:session-id event)
-                 :ready true)
+                 :ready true
+                 :resume-gateway-url (:resume-gateway-url event))
    :effects [[:send-discord-event event-type event]]})
 
 (defmethod handle-discord-event :resumed
@@ -355,12 +365,12 @@
    :effects []})
 
 (defmethod handle-connection-event! :connect
-  [{:keys [heartbeat-ch event-ch compress] :as shard} url _]
+  [{:keys [heartbeat-ch event-ch compress resume-gateway-url] :as shard} url _]
   (log/info "Connecting shard" (:id shard))
   (when heartbeat-ch
     (a/close! heartbeat-ch))
   (let [event-ch (a/chan 100)
-        websocket (try (connect-websocket! buffer-size url event-ch compress)
+        websocket (try (connect-websocket! buffer-size (or resume-gateway-url url) event-ch compress)
                        (catch Exception err
                          (log/warn "Failed to connect a websocket" err)
                          nil))]

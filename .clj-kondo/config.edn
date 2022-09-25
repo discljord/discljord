@@ -1,3 +1,6 @@
 {:hooks {:analyze-call {discljord.messaging/defendpoint hooks.discljord/defendpoint
                         discljord.messaging.impl/defdispatch hooks.discljord/defdispatch
-                        discljord.messaging.impl/def-message-dispatch hooks.discljord/def-message-dispatch}}}
+                        discljord.messaging.impl/def-message-dispatch hooks.discljord/def-message-dispatch}}
+ :linters {:unused-binding {:exclude-destructured-as true
+                            :exclude-destructured-keys-in-fn-args true
+                            :exclude-defmulti-args true}}}

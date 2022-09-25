@@ -6,7 +6,7 @@
    [clojure.string :as str]
    [clojure.tools.logging :as log]
    [discljord.http :refer [gateway-url gateway-version]]
-   [discljord.util :refer [json-keyword clean-json-input]]
+   [discljord.util :refer [json-keyword clean-json-input parse-if-str]]
    [gniazdo.core :as ws]
    [org.httpkit.client :as http])
   (:import
@@ -59,7 +59,7 @@
   false)
 
 (def fatal-code?
-  "Set of stop codes which after recieving, discljord will disconnect all shards."
+  "Set of stop codes which after receiving, discljord will disconnect all shards."
   #{4001 4002 4003 4004 4005 4008 4010})
 
 (def user-error-code?
@@ -261,13 +261,13 @@
 
 (defmulti handle-shard-communication!
   "Processes a communication `event` on the given `shard` for side effects.
-  Returns a map with the new :shard and bot-evel :effects to process."
+  Returns a map with the new :shard and bot-level :effects to process."
   (fn [shard url event]
     (first event)))
 
 (defmethod handle-shard-communication! :default
   [shard url event]
-  (log/warn "Unknown communication event recieved on a shard" event)
+  (log/warn "Unknown communication event received on a shard" event)
   {:shard shard
    :effects []})
 
@@ -333,7 +333,7 @@
    :effects []})
 
 (defmulti handle-connection-event!
-  "Handles events which connect or disconnect the shard, returning effects."
+  "Handles events which connect or disconnect the shard, returning bot effects."
   (fn [shard url [event-type & event-data]]
     event-type))
 
@@ -832,7 +832,7 @@
 
 (defn get-shard-from-guild
   [guild-id guild-count]
-  (mod (bit-shift-right (Long. ^String guild-id) 22) guild-count))
+  (mod (bit-shift-right (parse-if-str guild-id) 22) guild-count))
 
 (defmethod handle-communication! :guild-request-members
   [shards shard-chs [_ & {:keys [guild-id]} :as event]]

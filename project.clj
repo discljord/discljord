@@ -7,13 +7,13 @@
                  [org.clojure/core.async "1.5.648"]
                  [org.clojure/data.json "2.4.0"]
                  [org.clojure/tools.logging "1.2.4"]
-                 [http-kit/http-kit "2.5.3"]
+                 [http-kit/http-kit "2.6.0"]
                  [stylefruits/gniazdo "1.2.1"]]
   :target-path "target/%s"
   :jar-name "discljord-%s.jar"
   :deploy-branches ["master" "release" "hotfix"]
   :profiles {:dev {:dependencies [[http-kit.fake/http-kit.fake "0.2.2"]
-                                  [ch.qos.logback/logback-classic "1.2.11"]]
+                                  [ch.qos.logback/logback-classic "1.4.1"]]
                    :plugins [[lein-codox "0.10.8"]]
                    :exclusions [http-kit]
                    :jvm-opts ["--add-opens" "java.base/java.lang=ALL-UNNAMED" "-Dclojure.tools.logging.factory=clojure.tools.logging.impl/slf4j-factory"]}})

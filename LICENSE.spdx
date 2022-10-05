@@ -1,0 +1,19 @@
+##### Document Information
+SPDXVersion: SPDX-2.3
+DataLicense: CC0-1.0
+SPDXID: SPDXRef-DOCUMENT
+LicenseListVersion: 3.18
+#Update DocumentComment if you make further changes to this document
+DocumentComment: This document only gives licensing information about the package it was created for, not its dependencies.
+Creator: Tool: spdx-guide-0.2.2
+Creator: Person: JohnnyJayJay (johnnyjayjay02@gmail.com)
+DocumentName: discljord
+DocumentNamespace: https://spdx.org/spdxdocs/discljord-3f3be8e5-6825-4aad-868b-e3df3b3944f3
+
+
+##### Package Information
+SPDXID: SPDXRef-Package-discljord
+PackageName: discljord
+PackageSupplier: Person: Joshua Suskalo (joshua@suskalo.org)
+DownloadLocation: git+git@github.com:discljord/discljord.git
+DeclaredLicense: EPL-1.0

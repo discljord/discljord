@@ -8,7 +8,7 @@
 
  :aliases
  {:dev {:extra-paths ["dev"]
-        :extra-deps {ch.qos.logback/logback-classic {:mvn/version "1.4.4"}}
+        :extra-deps {ch.qos.logback/logback-classic {:mvn/version "1.4.5"}}
         :jvm-opts ["-Dclojure.tools.logging.factory=clojure.tools.logging.impl/slf4j-factory"]}
   :test {:extra-paths ["test"]
          :extra-deps {http-kit.fake/http-kit.fake {:mvn/version "0.2.2"}

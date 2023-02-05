@@ -42,7 +42,7 @@
         user-agent)})
 
 (defn maybe-log-error [log-error? endpoint status response-body]
-  (when (and log-error? (not= (mod status 100) 2))
+  (when (and log-error? (not (<= 200 status 299)) (not= status 304))
     (log/error "Encountered error response" status "on" endpoint ":\n" response-body)))
 
 (defmacro defdispatch

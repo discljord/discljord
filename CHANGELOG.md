@@ -29,6 +29,7 @@ group id.
  - Arity exception in permissions namespace
  - Reflection warning from the util ns
  - Incorrect gateway version was requested
+ - Exceptional values from invalid message updates
 
 ## [1.3.0] - 2021-11-30
 ### Added

@@ -6,6 +6,7 @@ Discljord follows semantic versioning.
 ### Added
 - New application command parameters in various endpoints regarding: localization, default-member-permission, dm-permission
 - Endpoints for guild scheduled events
+- Endpoints for guild templates
 - New `cdn` functions for generating base64-encoded data uri images
 - Every endpoint function can now log error responses at log level ERROR. This is enabled by default, but can be disabled for individual invocations using the new keyword arg `:log-error?` that is available for every endpoint function.
 

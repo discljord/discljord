@@ -4,11 +4,16 @@ Discljord follows semantic versioning.
 
 ## [Unreleased]
 ### Added
+- New application command parameters in various endpoints regarding: localization, default-member-permission, dm-permission
 - Endpoints for guild scheduled events
 - New `cdn` functions for generating base64-encoded data uri images
 - Every endpoint function can now log error responses at log level ERROR. This is enabled by default, but can be disabled for individual invocations using the new keyword arg `:log-error?` that is available for every endpoint function.
 
+### Changed
+- Deprecated `batch-edit-application-command-permissions!` because it doesn't work anymore
+
 ### Fixed
+- `edit-{global|guild}-application-command!` endpoints incorrectly expecting name and description as mandatory arguments
 - `with-counts?` parameter in `get-invite!` -> `with-counts`
 - Fix incorrect parsing behaviour by `parse-if-str` for leading 0s
 - Keyword args in endpoint functions were declared incorrectly (`:keys [:a :b :c]` instead of `:keys [a b c]`). This had no semantic effect but has been corrected nonetheless.

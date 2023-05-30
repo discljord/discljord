@@ -835,7 +835,7 @@
 (defendpoint get-global-application-commands! nil
   "Returns a promise containing a vector of application command objects."
   [application-id]
-  [])
+  [with-localizations])
 
 (defendpoint create-global-application-command! nil
   "Creates or updates a global slash command.
@@ -843,14 +843,19 @@
   New global commands will be available in all guilds after 1 hour.
   Returns a promise containing the new application command object."
   [application-id ms.command/name ms.command/description]
-  [ms.command/options ms.command/default-permission ms.command/type])
+  [ms.command/name-localizations ms.command/description-localizations
+   ms.command/options ms.command/default-member-permissions ms.command/dm-permission
+   ms.command/default-permission ms.command/type])
 
 (defendpoint edit-global-application-command! nil
   "Updates an existing global slash command by its id.
 
   Returns a promise containing the updated application command object."
   [application-id command-id]
-  [ms.command/name ms.command/description ms.command/options ms.command/default-permission ms.command/type])
+  [ms.command/name ms.command/description
+   ms.command/name-localizations ms.command/description-localizations
+   ms.command/options ms.command/default-member-permissions ms.command/dm-permission
+   ms.command/default-permission ms.command/type])
 
 (defendpoint delete-global-application-command! nil
   "Deletes an existing global slash command by its id.
@@ -870,21 +875,26 @@
 (defendpoint get-guild-application-commands! nil
   "Returns a promise containing a vector of application command objects."
   [application-id guild-id]
-  [])
+  [with-localizations])
 
 (defendpoint create-guild-application-command! nil
   "Creates or updates a guild slash command.
 
   Returns a promise containing the new application command object."
   [application-id guild-id ms.command/name ms.command/description]
-  [ms.command/options ms.command/default-permission ms.command/type])
+  [ms.command/name-localizations ms.command/description-localizations
+   ms.command/options ms.command/default-member-permissions
+   ms.command/default-permission ms.command/type])
 
 (defendpoint edit-guild-application-command! nil
   "Updates an existing guild slash command by its id.
 
   Returns a promise containing the updated application command object."
   [application-id guild-id command-id]
-  [ms.command/name ms.command/description ms.command/options ms.command/default-permission ms.command/type])
+  [ms.command/name ms.command/description
+   ms.command/name-localizations ms.command/description-localizations
+   ms.command/options ms.command/default-member-permissions
+   ms.command/default-permission ms.command/type])
 
 (defendpoint delete-guild-application-command! nil
   "Deletes an existing guild slash command by its id.
@@ -912,17 +922,18 @@
   [])
 
 (defendpoint edit-application-command-permissions! nil
-  "Sets the permission settings for the given command in the guild.
+  "NOT INTENDED FOR BOT USE. Sets the permission settings for the given command in the guild.
 
   Returns a promise containing the updated permission settings in a map with some additional information."
   [application-id guild-id command-id ms.command/permissions]
   [])
 
-(defendpoint batch-edit-application-command-permissions! nil
-  "Batch edits the permission settings for all commands in a guild.
+(defendpoint ^:deprecated batch-edit-application-command-permissions! nil
+  "Deprecated - This endpoint does not work anymore.
 
-  This will overwrite all existing permissions for all commands in the guild.
-  Returns a promise containing the updated permission settings."
+  The successor to its functionality is the `default-member-permission` parameter that can be set for commands.
+  More fine-grained permission settings are up to users now -
+  they can configure command permissions in their Discord server settings."
   [application-id guild-id ms.command.guild/permissions-array]
   [])
 

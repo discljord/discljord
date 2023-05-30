@@ -914,12 +914,8 @@
   [webhook-id webhook-token message-id] :delete
   (webhook-url webhook-id webhook-token message-id))
 
-(defn- command-params [name description options default-perm type]
-  {:body (json/write-str (cond-> {:name name
-                                  :description description}
-                                 options (assoc :options options)
-                                 (some? default-perm) (assoc :default_permission default-perm)
-                                 type (assoc :type type)))})
+(defn- command-params [opts]
+  {:body (json/write-str (conform-to-json opts))})
 
 (defn- global-cmd-url
   ([application-id] (str "/applications/" application-id "/commands"))
@@ -927,23 +923,22 @@
 
 
 (defdispatch :get-global-application-commands
-  [_ application-id] [] _ :get _ body
+  [_ application-id] [] opts :get _ body
   (global-cmd-url application-id)
-  {}
+  {:query-params (conform-to-json opts)}
   (json-body body))
 
-
 (defdispatch :create-global-application-command
-  [_ application-id name description] [options default-permission type] _ :post status body
+  [_ application-id name description] [] opts :post status body
   (global-cmd-url application-id)
-  (command-params name description options default-permission type)
+  (command-params (assoc opts :name name :description description))
   (cond->> (json-body body)
     (not= 2 (quot status 100)) (ex-info "Attempted to create an invalid global command")))
 
 (defdispatch :edit-global-application-command
-  [_ application-id command-id name description] [options default-permission type] _ :patch status body
+  [_ application-id command-id] [] opts :patch status body
   (global-cmd-url application-id command-id)
-  (command-params name description options default-permission type)
+  (command-params opts)
   (cond->> (json-body body)
     (not= 2 (quot status 100)) (ex-info "Attempted to edit an invalid global command")))
 
@@ -965,22 +960,22 @@
   ([application-id guild-id command-id] (str (guild-cmd-url application-id guild-id) \/ command-id)))
 
 (defdispatch :get-guild-application-commands
-  [_ application-id guild-id] [] _ :get _ body
+  [_ application-id guild-id] [] opts :get _ body
   (guild-cmd-url application-id guild-id)
-  {}
+  {:query-params (conform-to-json opts)}
   (json-body body))
 
 (defdispatch :create-guild-application-command
-  [_ application-id guild-id name description] [options default-permission type] _ :post status body
+  [_ application-id guild-id name description] [] opts :post status body
   (guild-cmd-url application-id guild-id)
-  (command-params name description options default-permission type)
+  (command-params (assoc opts :name name :description description))
   (cond->> (json-body body)
     (not= 2 (quot status 100)) (ex-info "Attempted to create an invalid guild command")))
 
 (defdispatch :edit-guild-application-command
-  [_ application-id guild-id command-id name description] [options default-permission type] _ :patch status body
+  [_ application-id guild-id command-id] [] opts :patch status body
   (guild-cmd-url application-id guild-id command-id)
-  (command-params name description options default-permission type)
+  (command-params opts)
   (cond->> (json-body body)
     (not= 2 (quot status 100)) (ex-info "Attempted to edit an invalid guild command")))
 

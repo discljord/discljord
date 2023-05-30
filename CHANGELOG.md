@@ -11,6 +11,8 @@ Discljord follows semantic versioning.
 - Every endpoint function can now log error responses at log level ERROR. This is enabled by default, but can be disabled for individual invocations using the new keyword arg `:log-error?` that is available for every endpoint function.
 
 ### Changed
+- Tokens are now redacted in messaging trace logging
+- Request parameters in messaging logging are now displayed in `prn-str` format for better readability
 - Deprecated `batch-edit-application-command-permissions!` because it doesn't work anymore
 
 ### Fixed

@@ -3,7 +3,7 @@
         org.clojure/core.async {:mvn/version "1.6.673"}
         org.clojure/data.json {:mvn/version "2.4.0"}
         org.clojure/tools.logging {:mvn/version "1.2.4"}
-        http-kit/http-kit {:mvn/version "2.6.0"}
+        http-kit/http-kit {:mvn/version "2.7.0"}
         stylefruits/gniazdo {:mvn/version "1.2.2"}}
 
  :aliases

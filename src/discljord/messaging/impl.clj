@@ -79,7 +79,8 @@
              request-params# (merge-with merge
                                          method-params#
                                          {:headers headers#})
-             ~'_ (log/trace "Making request to" ~major-var "with params" request-params#)
+             request-params-output# (prn-str (assoc-in request-params# [:headers "Authorization"] "REDACTED"))
+             ~'_ (log/trace "Making request to" ~major-var "with params" request-params-output#)
              response# @(~(symbol "org.httpkit.client" (name method))
                          (api-url ~url-str)
                          request-params#)

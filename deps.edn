@@ -1,32 +1,37 @@
 {:paths ["src"]
  :deps {org.clojure/clojure {:mvn/version "1.11.1"}
-        org.clojure/core.async {:mvn/version "1.5.648"}
+        org.clojure/core.async {:mvn/version "1.6.681"}
         org.clojure/data.json {:mvn/version "2.4.0"}
         org.clojure/tools.logging {:mvn/version "1.2.4"}
-        http-kit/http-kit {:mvn/version "2.6.0"}
-        stylefruits/gniazdo {:mvn/version "1.2.1"}}
+        http-kit/http-kit {:mvn/version "2.7.0"}
+        stylefruits/gniazdo {:mvn/version "1.2.2"}}
 
  :aliases
  {:dev {:extra-paths ["dev"]
-        :extra-deps {ch.qos.logback/logback-classic {:mvn/version "1.4.1"}}
+        :extra-deps {ch.qos.logback/logback-classic {:mvn/version "1.4.11"}}
         :jvm-opts ["-Dclojure.tools.logging.factory=clojure.tools.logging.impl/slf4j-factory"]}
   :test {:extra-paths ["test"]
          :extra-deps {http-kit.fake/http-kit.fake {:mvn/version "0.2.2"}
                       org.clojure/test.check {:mvn/version "1.1.1"}}}
-  :runner {:extra-paths ["test"]
-           :extra-deps {io.github.cognitect-labs/test-runner {:git/tag "v0.5.1" :git/sha "dfb30dd"}}
-           :main-opts ["-m" "cognitect.test-runner"]
-           :exec-fn cognitect.test-runner.api/test}
+  :runner
+  {:extra-deps {com.cognitect/test-runner
+                {:git/url "https://github.com/cognitect-labs/test-runner"
+                 :sha "7284cda41fb9edc0f3bc6b6185cfb7138fc8a023"}}
+   :main-opts ["-m" "cognitect.test-runner"
+               "-d" "test"]}
 
   :jar {:replace-deps {com.github.seancorfield/depstar {:mvn/version "2.1.303"}}
         :exec-fn hf.depstar/jar
         :exec-args {:jar "discljord.jar" :sync-pom true
                     :group-id "com.github.discljord" :artifact-id "discljord"
                     :version "1.3.1"}}
-  :install {:replace-deps {slipset/deps-deploy {:mvn/version "RELEASE"}}
+  :install {:replace-deps {slipset/deps-deploy {:mvn/version "0.2.1"}}
             :exec-fn deps-deploy.deps-deploy/deploy
             :exec-args {:installer :local :artifact "discljord.jar"}}
-  :deploy {:replace-deps {slipset/deps-deploy {:mvn/version "RELEASE"}}
+  :deploy {:replace-deps {slipset/deps-deploy {:mvn/version "0.2.1"}}
            :exec-fn deps-deploy.deps-deploy/deploy
            :exec-args {:installer :remote :artifact "discljord.jar"
-                       :sign-releases? true}}}}
+                       :sign-releases? true}}
+  :outdated {;; Note that it is `:deps`, not `:extra-deps`
+             :deps {com.github.liquidz/antq {:mvn/version "RELEASE"}}
+             :main-opts ["-m" "antq.core"]}}}

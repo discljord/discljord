@@ -24,6 +24,12 @@ Discljord follows semantic versioning.
 - Fix typo in `modify-guild-role!` endpoint name (`modifiy` -> `modify`)
 - Fix typo in `start-thread-without-message!` which prevented it from working
 - Fix [issue #108 - dependencies have slowly fallen out of date](https://github.com/discljord/discljord/issues/108)
+  - `clojure`: `1.11.1`
+  - `core.async`: `1.6.681`
+  - `data.json`: `2.4.0`
+  - `tools.logging`: `1.2.4`
+  - `http-kit`: `2.7.0`
+  - `gniazdo`: `1.2.2`
 
 ## [1.3.1] - 2022-01-22
 IMPORTANT, this is the first release on the new com.github.discljord group id.

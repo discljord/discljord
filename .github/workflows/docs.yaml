@@ -1,0 +1,48 @@
+name: Codox pages deployment
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  codox:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Clojure
+        run: curl https://download.clojure.org/install/linux-install-1.11.1.1347.sh -o install-clj.sh && chmod +x install-clj.sh && sudo ./install-clj.sh
+      - name: Cache clojure deps
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.m2/repository
+            ~/.gitlibs
+            ~/.deps.clj
+          key: cljdeps-${{ hashFiles('deps.edn') }}
+          restore-keys: cljdeps-
+      - name: Build docs
+        run: clojure -X:codox
+        working-directory: ${{ github.workspace }}
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: target/doc
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2

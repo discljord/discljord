@@ -4,6 +4,7 @@ Discljord follows semantic versioning.
 
 ## [Unreleased]
 ### Added
+- New activity types: `:competing`, `:custom`
 - New application command parameters in various endpoints regarding: localization, default-member-permission, dm-permission
 - Endpoints for guild scheduled events
 - Endpoints for guild templates

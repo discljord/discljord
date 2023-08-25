@@ -214,8 +214,10 @@
 
   Keyword Arguments:
   name: a string which will display as the bot's status message, required
-  type: keywords :game, :stream, :music, or :watch which change how the status message displays, as \"Playing\", \"Streaming\", \"Listening to\", or \"Watching\" respectively, defaults to :game. You can also pass the number of the discord status type directly if it isn't listed here.
-  url: link to display with the :stream type, currently only urls starting with https://twitch.tv/ will work, defaults to nil"
+  type: keywords :game, :stream, :music, :watch, :custom or :competing which change how the status message displays,
+  as \"Playing\", \"Streaming\", \"Listening to\", \"Watching\", a custom status or \"Competing in\" respectively, defaults to :game.
+  You can also pass the number of the discord status type directly if it isn't listed here.
+  url: link to display with the :stream type, currently only urls starting with https://twitch.tv/ or https://youtube.com/ will work, defaults to nil"
   [& {:keys [name type url] :or {type :game} :as args}]
   (let [args (into {} (filter (fn [[key val]] val) args))
         args (if (:type args)
@@ -227,7 +229,9 @@
                  :game 0
                  :stream 1
                  :music 2
-                 :watch 3))]
+                 :watch 3
+                 :custom 4
+                 :competing 5))]
     (assert (:name args) "A name should be provided to an activity")
     (assoc args :type type)))
 (s/fdef create-activity

@@ -42,7 +42,7 @@
         user-agent)})
 
 (defn maybe-log-error [log-error? endpoint status response-body]
-  (when (and log-error? (not= (mod status 100) 2))
+  (when (and log-error? (not= (quot status 100) 2) (not= status 304))
     (log/error "Encountered error response" status "on" endpoint ":\n" response-body)))
 
 (defmacro defdispatch
@@ -79,7 +79,8 @@
              request-params# (merge-with merge
                                          method-params#
                                          {:headers headers#})
-             ~'_ (log/trace "Making request to" ~major-var "with params" request-params#)
+             request-params-output# (prn-str (assoc-in request-params# [:headers "Authorization"] "REDACTED"))
+             ~'_ (log/trace "Making request to" ~major-var "with params" request-params-output#)
              response# @(~(symbol "org.httpkit.client" (name method))
                          (api-url ~url-str)
                          request-params#)
@@ -713,6 +714,48 @@
   {:query-params (conform-to-json opts)}
   (json-body body))
 
+(defdispatch :get-guild-template
+  [code] [] _ :get _ body
+  (str "/guilds/templates/" code)
+  {}
+  (json-body body))
+
+(defdispatch :create-guild-from-guild-template
+  [code] [] _ :post _ body
+  (str "/guilds/templates/" code)
+  {}
+  (json-body body))
+
+(defdispatch :get-guild-templates
+  [guild-id] [] _ :get _ body
+  (str "/guilds/" guild-id "/templates")
+  {}
+  (json-body body))
+
+(defdispatch :create-guild-template
+  [guild-id name] [description] _ :post _ body
+  (str "/guilds/" guild-id "/templates")
+  {:body (json/write-str {:name name :description description})}
+  (json-body body))
+
+(defdispatch :sync-guild-template
+  [guild-id code] [] _ :put _ body
+  (str "/guilds/" guild-id "/templates/" code)
+  {}
+  (json-body body))
+
+(defdispatch :modify-guild-template
+  [guild-id code] [] opts :patch _ body
+  (str "/guilds/" guild-id "/templates/" code)
+  {:body (json/write-str opts)}
+  (json-body body))
+
+(defdispatch :delete-guild-template
+  [guild-id code] [] _ :delete _ body
+  (str "/guilds/" guild-id "/templates/" code)
+  {}
+  (json-body body))
+
 (defdispatch :get-invite
   [_ invite-code] [] opts :get _ body
   (str "/invites/" invite-code)
@@ -872,12 +915,8 @@
   [webhook-id webhook-token message-id] :delete
   (webhook-url webhook-id webhook-token message-id))
 
-(defn- command-params [name description options default-perm type]
-  {:body (json/write-str (cond-> {:name name
-                                  :description description}
-                                 options (assoc :options options)
-                                 (some? default-perm) (assoc :default_permission default-perm)
-                                 type (assoc :type type)))})
+(defn- command-params [opts]
+  {:body (json/write-str (conform-to-json opts))})
 
 (defn- global-cmd-url
   ([application-id] (str "/applications/" application-id "/commands"))
@@ -885,23 +924,22 @@
 
 
 (defdispatch :get-global-application-commands
-  [_ application-id] [] _ :get _ body
+  [_ application-id] [] opts :get _ body
   (global-cmd-url application-id)
-  {}
+  {:query-params (conform-to-json opts)}
   (json-body body))
 
-
 (defdispatch :create-global-application-command
-  [_ application-id name description] [options default-permission type] _ :post status body
+  [_ application-id name description] [] opts :post status body
   (global-cmd-url application-id)
-  (command-params name description options default-permission type)
+  (command-params (assoc opts :name name :description description))
   (cond->> (json-body body)
     (not= 2 (quot status 100)) (ex-info "Attempted to create an invalid global command")))
 
 (defdispatch :edit-global-application-command
-  [_ application-id command-id name description] [options default-permission type] _ :patch status body
+  [_ application-id command-id] [] opts :patch status body
   (global-cmd-url application-id command-id)
-  (command-params name description options default-permission type)
+  (command-params opts)
   (cond->> (json-body body)
     (not= 2 (quot status 100)) (ex-info "Attempted to edit an invalid global command")))
 
@@ -923,22 +961,22 @@
   ([application-id guild-id command-id] (str (guild-cmd-url application-id guild-id) \/ command-id)))
 
 (defdispatch :get-guild-application-commands
-  [_ application-id guild-id] [] _ :get _ body
+  [_ application-id guild-id] [] opts :get _ body
   (guild-cmd-url application-id guild-id)
-  {}
+  {:query-params (conform-to-json opts)}
   (json-body body))
 
 (defdispatch :create-guild-application-command
-  [_ application-id guild-id name description] [options default-permission type] _ :post status body
+  [_ application-id guild-id name description] [] opts :post status body
   (guild-cmd-url application-id guild-id)
-  (command-params name description options default-permission type)
+  (command-params (assoc opts :name name :description description))
   (cond->> (json-body body)
     (not= 2 (quot status 100)) (ex-info "Attempted to create an invalid guild command")))
 
 (defdispatch :edit-guild-application-command
-  [_ application-id guild-id command-id name description] [options default-permission type] _ :patch status body
+  [_ application-id guild-id command-id] [] opts :patch status body
   (guild-cmd-url application-id guild-id command-id)
-  (command-params name description options default-permission type)
+  (command-params opts)
   (cond->> (json-body body)
     (not= 2 (quot status 100)) (ex-info "Attempted to edit an invalid guild command")))
 

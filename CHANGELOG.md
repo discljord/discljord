@@ -4,17 +4,26 @@ Discljord follows semantic versioning.
 
 ## [Unreleased]
 ### Added
+- New application command parameters in various endpoints regarding: localization, default-member-permission, dm-permission
 - Endpoints for guild scheduled events
+- Endpoints for guild templates
 - New `cdn` functions for generating base64-encoded data uri images
 - Every endpoint function can now log error responses at log level ERROR. This is enabled by default, but can be disabled for individual invocations using the new keyword arg `:log-error?` that is available for every endpoint function.
 
+### Changed
+- Tokens are now redacted in messaging trace logging
+- Request parameters in messaging logging are now displayed in `prn-str` format for better readability
+- Deprecated `batch-edit-application-command-permissions!` because it doesn't work anymore
+
 ### Fixed
+- `edit-{global|guild}-application-command!` endpoints incorrectly expecting name and description as mandatory arguments
 - `with-counts?` parameter in `get-invite!` -> `with-counts`
 - Fix incorrect parsing behaviour by `parse-if-str` for leading 0s
 - Keyword args in endpoint functions were declared incorrectly (`:keys [:a :b :c]` instead of `:keys [a b c]`). This had no semantic effect but has been corrected nonetheless.
 - Fix missing implementation for `add-channel-pinned-message!`, delegate to new endpoints `pin-`/`unpin-message`
 - Fix typo in `modify-guild-role!` endpoint name (`modifiy` -> `modify`)
 - Fix typo in `start-thread-without-message!` which prevented it from working
+- Fix [issue #108 - dependencies have slowly fallen out of date](https://github.com/discljord/discljord/issues/108)
 
 ## [1.3.1] - 2022-01-22
 IMPORTANT, this is the first release on the new com.github.discljord group id.

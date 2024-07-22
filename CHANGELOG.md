@@ -12,6 +12,7 @@ Discljord follows semantic versioning.
 - Every endpoint function can now log error responses at log level ERROR. This is enabled by default, but can be disabled for individual invocations using the new keyword arg `:log-error?` that is available for every endpoint function.
 
 ### Changed
+- Replaced gniazdo and http-kit client with hato (**Requires >= Java 11 now!**)
 - Bumped Discord API version to v10
 - Tokens are now redacted in messaging trace logging
 - Request parameters in messaging logging are now displayed in `prn-str` format for better readability

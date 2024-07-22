@@ -7,8 +7,8 @@
    [discljord.connections :as c]
    [discljord.connections.specs :as cs]
    [discljord.specs :as ds]
+   [clojure.pprint :refer [pprint]]
    [discljord.util :refer [clean-json-input json-keyword]]
-   [org.httpkit.fake :as fake]
    [org.httpkit.server :as s :refer [with-channel
                                      run-server
                                      send!
@@ -77,9 +77,10 @@
                                                 "t" "READY"
                                                 "d" {"session_id" "session"}})))
                         nil)))]
+      ;; FIXME replace fake with something else (we don't use the http-kit client anymore)
       (fake/with-fake-http [(str "https://discord.com/api/gateway/bot?v=" ht/gateway-version "&encoding=json")
                             (fn [orig-fn opts callback]
-                              (if (= (get (:headers opts) "Authorization")
+                              (if (= (get (:headers opts) "authorization")
                                      "Bot VALID_TOKEN")
                                 {:status 200 :body (json/write-str
                                                     {"url" "ws://localhost:9009" "shards" 1

@@ -12,7 +12,6 @@
   :jar-name "discljord-%s.jar"
   :deploy-branches ["master" "release" "hotfix"]
   :profiles {:dev {:dependencies [[http-kit "2.7.0"]
-                                  [http-kit.fake/http-kit.fake "0.2.2"]
                                   [ch.qos.logback/logback-classic "1.4.1"]]
                    :plugins [[lein-codox "0.10.8"]]
                    :exclusions [http-kit]

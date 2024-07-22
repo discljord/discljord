@@ -10,8 +10,7 @@
         :extra-deps {ch.qos.logback/logback-classic {:mvn/version "1.4.11"}}
         :jvm-opts ["-Dclojure.tools.logging.factory=clojure.tools.logging.impl/slf4j-factory"]}
   :test {:extra-paths ["test"]
-         :extra-deps {http-kit.fake/http-kit.fake {:mvn/version "0.2.2"}
-                      http-kit/http-kit {:mvn/version "2.7.0"}
+         :extra-deps {http-kit/http-kit {:mvn/version "2.7.0"}
                       org.clojure/test.check {:mvn/version "1.1.1"}}}
   :runner
   {:extra-deps {com.cognitect/test-runner

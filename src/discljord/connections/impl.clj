@@ -7,17 +7,15 @@
    [clojure.tools.logging :as log]
    [discljord.http :refer [gateway-url gateway-version]]
    [discljord.util :refer [json-keyword clean-json-input]]
-   [gniazdo.core :as ws]
+   [hato.websocket :as ws]
    [org.httpkit.client :as http])
   (:import
+   (java.net.http WebSocket WebSocket$Listener)
    (java.io
     ByteArrayOutputStream)
+   (java.nio ByteBuffer)
    (java.util.zip
-    Inflater)
-   (org.eclipse.jetty.websocket.client
-    WebSocketClient)
-   (org.eclipse.jetty.util.ssl
-    SslContextFactory)))
+    Inflater)))
 
 (def buffer-size
   "The maximum size of the websocket buffer"
@@ -77,7 +75,7 @@
               (do
                 (when websocket
                   (log/debug "Websocket was not closed during disconnect event, now closing")
-                  (ws/close websocket 4000 "Closing before reconnect"))
+                  @(ws/close! websocket 4000 "Closing before reconnect"))
                 (assoc (dissoc shard :websocket)
                        :stop-code stop-code
                        :disconnect-msg msg))
@@ -191,6 +189,8 @@
   {:shard (assoc shard :ack true)
    :effects []})
 
+(set! *warn-on-reflection* true)
+
 (defn connect-websocket!
   "Connect a websocket to the `url` that puts all events onto the `event-ch`.
   Events are represented as vectors with a keyword for the event type and then
@@ -210,47 +210,63 @@
                  "&encoding=json"
                  (when compress
                    "&compress=zlib-stream"))
-        client (WebSocketClient. (doto (SslContextFactory.)
-                                   (.setEndpointIdentificationAlgorithm "HTTPS")))
         inflater (Inflater.)
-        out-buffer (byte-array byte-array-buffer-size)]
-    (doto (.getPolicy client)
-      (.setMaxTextMessageSize buffer-size)
-      (.setMaxBinaryMessageSize buffer-size))
-    (doto client
-      (.start))
-    (try (ws/connect
-          url
-          :client client
-          ::ws/cleanup #(.stop client)
-          :on-connect (fn [_]
-                        (log/trace "Websocket connected")
-                        (a/put! event-ch [:connect]))
-          :on-close (fn [stop-code msg]
-                      (log/debug "Websocket closed with code:" stop-code "and message:" msg)
-                      (a/put! event-ch [:disconnect stop-code msg]))
-          :on-error (fn [err]
-                      (log/warn "Websocket errored" err)
-                      (a/put! event-ch [:error err]))
-          :on-receive (fn [msg]
-                        (log/trace "Websocket received message:" msg)
-                        (a/put! event-ch [:message msg]))
-          :on-binary (fn [buf start len]
-                       (.setInput inflater buf start len)
-                       (let [acc (ByteArrayOutputStream.)
-                             msg (loop [off start
-                                        rem len]
-                                   (if (pos? rem)
-                                     (let [bytes-read (.inflate inflater out-buffer 0 byte-array-buffer-size)]
-                                       (.write acc out-buffer 0 bytes-read)
-                                       (recur (mod (+ off bytes-read)
-                                                   (count buf))
-                                              (- rem bytes-read)))
-                                     (String. (.toByteArray acc) "UTF-8")))]
-                         (log/trace "Websocket received binary message:" msg)
-                         (a/put! event-ch [:message msg]))))
+        out-buffer (byte-array byte-array-buffer-size)
+        ;; reusable buffers for storing partial messages
+        text-buffer (StringBuilder.)
+        binary-buffer (ByteArrayOutputStream.)]
+    (try @(ws/websocket
+           url
+           :listener
+           (reify WebSocket$Listener
+
+             (onOpen [_this _]
+               (log/trace "Websocket connected")
+               (a/put! event-ch [:connect]))
+
+             (onClose [_this _ stop-code msg]
+               (log/debug "Websocket closed with code:" stop-code "and message:" msg)
+               (a/put! event-ch [:disconnect stop-code msg])
+               nil)
+
+             (onError [_this _ err]
+               (log/warn "Websocket errored" err)
+               (a/put! event-ch [:error err]))
+
+             (onText [_this ws data last?]
+              ;; write newly received text to text-buffer
+               (.append text-buffer ^CharSequence data)
+               (when last?
+                 (let [msg (.toString text-buffer)]
+                   (log/trace "Websocket received message:" msg)
+                   (a/put! event-ch [:message msg]))
+                 (.setLength text-buffer 0))
+               (.request ^WebSocket ws 1)
+               nil)
+
+             (onBinary [_this ws data last?]
+              ;; write newly received bytes to binary-buffer
+               (while (.hasRemaining ^ByteBuffer data)
+                 (let [remaining (.remaining ^ByteBuffer data)
+                       to-read (min remaining byte-array-buffer-size)]
+                   (.get ^ByteBuffer data out-buffer 0 to-read)
+                   (.write binary-buffer out-buffer 0 to-read)))
+
+               (when last?
+                 (let [uncompressed-acc (ByteArrayOutputStream.)]
+                   (.setInput inflater (.toByteArray binary-buffer))
+                   (while (not (.finished inflater))
+                     (let [bytes-read (.inflate inflater out-buffer 0 byte-array-buffer-size)]
+                       (.write uncompressed-acc out-buffer 0 bytes-read)))
+                   (let [msg (String. (.toByteArray uncompressed-acc) "UTF-8")]
+                     (log/trace "Websocket received binary message:" msg)
+                     (a/put! event-ch [:message msg])))
+                 (.reset binary-buffer))
+
+               (.request ^WebSocket ws 1)
+               nil)))
+
          (catch Exception e
-           (.stop client)
            (throw (ex-info "Failed to connect a websocket" {} e))))))
 
 (defmulti handle-shard-fx!
@@ -284,8 +300,7 @@
           (log/trace "Sending message to retrieve guild members from guild"
                      guild-id "over shard" (:id shard)
                      "with query" query)
-          (ws/send-msg (:websocket shard)
-                       msg))
+          @(ws/send! (:websocket shard) msg))
         (log/error "Message for guild-request-members was too large on shard" (:id shard)
                    "Check to make sure that your query is of a reasonable size."))))
   {:shard shard
@@ -304,8 +319,7 @@
     (if-not (> (count msg) 4096)
       (do
         (log/trace "Sending status update over shard" (:id shard))
-        (ws/send-msg (:websocket shard)
-                     msg))
+        @(ws/send! (:websocket shard) msg))
       (log/error "Message for status-update was too large."
                  "Use create-activity to create a valid activity"
                  "and select a reasonably-sized status message.")))
@@ -325,8 +339,7 @@
     (if-not (> (count msg) 4096)
       (do
         (log/trace "Sending voice-state-update over shard" (:id shard))
-        (ws/send-msg (:websocket shard)
-                     msg))
+        @(ws/send! (:websocket shard) msg))
       (log/error "Message for voice-state-update was too large."
                  "This should not occur if you are using valid types for the keys.")))
   {:shard shard
@@ -344,8 +357,8 @@
   (a/close! communication-ch)
   (if websocket
     (if stop-code
-      (ws/close websocket stop-code reason)
-      (ws/close websocket))
+      @(ws/close! websocket stop-code reason)
+      @(ws/close! websocket))
     (log/debug "Websocket for shard" (:id shard)
                "already closed at time of disconnection"))
   (log/info "Disconnecting shard"
@@ -389,9 +402,9 @@
         heartbeat-fn (fn []
                        (if (:ack shard)
                          (try (log/trace "Sending heartbeat payload on shard" (:id shard))
-                              (ws/send-msg websocket
-                                           (json/write-str {:op 1
-                                                            :d (:seq shard)}))
+                              @(ws/send! websocket
+                                         (json/write-str {:op 1
+                                                          :d (:seq shard)}))
                               {:shard (dissoc shard :ack)
                                :effects []}
                               (catch java.util.concurrent.ExecutionException e
@@ -403,7 +416,7 @@
                                   (throw e))))
                          (do
                            (if websocket
-                             (ws/close websocket 4000 "Zombie Heartbeat")
+                             @(ws/close! websocket 4000 "Zombie Heartbeat")
                              (log/debug "Websocket for shard" (:id shard)
                                         "already closed during zombie heartbeat check"))
                            (log/info "Reconnecting due to zombie heartbeat on shard" (:id shard))
@@ -563,9 +576,9 @@
                     (assoc payload "intents" (intents->intent-int intents))
                     payload)]
       (log/trace "Identify payload:" (assoc payload "token" "REDACTED"))
-      (ws/send-msg (:websocket shard)
-                   (json/write-str {:op 2
-                                    :d payload})))))
+      @(ws/send! (:websocket shard)
+                 (json/write-str {:op 2
+                                  :d payload})))))
 
 (defmethod handle-shard-fx! :identify
   [heartbeat-ch url token shard event]
@@ -586,11 +599,11 @@
   [heartbeat-ch url token shard event]
   (log/debug "Sending resume payload for shard" (:id shard)
              "with session" (:session-id shard) "and seq" (:seq shard))
-  (ws/send-msg (:websocket shard)
-               (json/write-str {:op 6
-                                :d {"token" token
-                                    "session_id" (:session-id shard)
-                                    "seq" (:seq shard)}}))
+  @(ws/send! (:websocket shard)
+             (json/write-str {:op 6
+                              :d {"token" token
+                                  "session_id" (:session-id shard)
+                                  "seq" (:seq shard)}}))
   {:shard shard
    :effects []})
 
@@ -601,7 +614,7 @@
   (when (:heartbeat-ch shard)
     (a/close! (:heartbeat-ch shard)))
   (if websocket
-    (ws/close websocket 4000 "Reconnection requested")
+    @(ws/close! websocket 4000 "Reconnection requested")
     (log/debug "Websocket for shard" (:id shard)
                "already closed at the time of a reconnect"))
   (let [retries (or (:retries shard) 0)
@@ -630,7 +643,7 @@
   [heartbeat-ch url token {:keys [websocket] :as shard} [_ err]]
   (log/error err "Error encountered on shard" (:id shard))
   (if websocket
-    (ws/close websocket 4000 "Error encountered on the shard")
+    @(ws/close! websocket 4000 "Error encountered on the shard")
     (log/debug "Websocket for shard" (:id shard)
                "already closed at the time of an error"))
   {:shard (dissoc shard :websocket)
@@ -650,7 +663,7 @@
 (defmethod handle-shard-fx! :disconnect
   [heartbeat-ch url token {:keys [websocket] :as shard} _]
   (if websocket
-    (ws/close websocket)
+    @(ws/close! websocket)
     (log/debug "Websocket for shard" (:id shard)
                "already closed at the time of a disconnect effect"))
   {:shard (dissoc shard :websocket)

@@ -8,7 +8,7 @@
                  [org.clojure/data.json "2.4.0"]
                  [org.clojure/tools.logging "1.2.4"]
                  [http-kit/http-kit "2.6.0"]
-                 [stylefruits/gniazdo "1.2.1"]]
+                 [hato "1.0.0"]]
   :target-path "target/%s"
   :jar-name "discljord-%s.jar"
   :deploy-branches ["master" "release" "hotfix"]

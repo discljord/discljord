@@ -8,7 +8,6 @@
    [discljord.connections.specs :as cs]
    [discljord.specs :as ds]
    [discljord.util :refer [clean-json-input json-keyword]]
-   [gniazdo.core :as ws]
    [org.httpkit.fake :as fake]
    [org.httpkit.server :as s :refer [with-channel
                                      run-server

@@ -470,9 +470,9 @@
   [url token]
   (if-let [result
            (try
-             (when-let [response (:body @(http/get url
-                                                   {:headers
-                                                    {"Authorization" token}}))]
+             (when-let [response (:body (http/get url
+                                                  {:headers
+                                                   {"Authorization" token}}))]
                (when-let [json-body (clean-json-input (json/read-str response))]
                  {:url (:url json-body)
                   :shard-count (:shards json-body)

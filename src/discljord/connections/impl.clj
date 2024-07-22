@@ -217,54 +217,54 @@
         binary-buffer (ByteArrayOutputStream.)]
     (try @(ws/websocket
            url
-           :listener
-           (reify WebSocket$Listener
+           {:listener
+            (reify WebSocket$Listener
 
-             (onOpen [_this _]
-               (log/trace "Websocket connected")
-               (a/put! event-ch [:connect]))
+              (onOpen [_this _]
+                (log/trace "Websocket connected")
+                (a/put! event-ch [:connect]))
 
-             (onClose [_this _ stop-code msg]
-               (log/debug "Websocket closed with code:" stop-code "and message:" msg)
-               (a/put! event-ch [:disconnect stop-code msg])
-               nil)
+              (onClose [_this _ stop-code msg]
+                (log/debug "Websocket closed with code:" stop-code "and message:" msg)
+                (a/put! event-ch [:disconnect stop-code msg])
+                nil)
 
-             (onError [_this _ err]
-               (log/warn "Websocket errored" err)
-               (a/put! event-ch [:error err]))
+              (onError [_this _ err]
+                (log/warn "Websocket errored" err)
+                (a/put! event-ch [:error err]))
 
-             (onText [_this ws data last?]
-              ;; write newly received text to text-buffer
-               (.append text-buffer ^CharSequence data)
-               (when last?
-                 (let [msg (.toString text-buffer)]
-                   (log/trace "Websocket received message:" msg)
-                   (a/put! event-ch [:message msg]))
-                 (.setLength text-buffer 0))
-               (.request ^WebSocket ws 1)
-               nil)
+              (onText [_this ws data last?]
+                ;; write newly received text to text-buffer
+                (.append text-buffer ^CharSequence data)
+                (when last?
+                  (let [msg (.toString text-buffer)]
+                    (log/trace "Websocket received message:" msg)
+                    (a/put! event-ch [:message msg]))
+                  (.setLength text-buffer 0))
+                (.request ^WebSocket ws 1)
+                nil)
 
-             (onBinary [_this ws data last?]
-              ;; write newly received bytes to binary-buffer
-               (while (.hasRemaining ^ByteBuffer data)
-                 (let [remaining (.remaining ^ByteBuffer data)
-                       to-read (min remaining byte-array-buffer-size)]
-                   (.get ^ByteBuffer data out-buffer 0 to-read)
-                   (.write binary-buffer out-buffer 0 to-read)))
+              (onBinary [_this ws data last?]
+                ;; write newly received bytes to binary-buffer
+                (while (.hasRemaining ^ByteBuffer data)
+                  (let [remaining (.remaining ^ByteBuffer data)
+                        to-read (min remaining byte-array-buffer-size)]
+                    (.get ^ByteBuffer data out-buffer 0 to-read)
+                    (.write binary-buffer out-buffer 0 to-read)))
 
-               (when last?
-                 (let [uncompressed-acc (ByteArrayOutputStream.)]
-                   (.setInput inflater (.toByteArray binary-buffer))
-                   (while (not (.finished inflater))
-                     (let [bytes-read (.inflate inflater out-buffer 0 byte-array-buffer-size)]
-                       (.write uncompressed-acc out-buffer 0 bytes-read)))
-                   (let [msg (String. (.toByteArray uncompressed-acc) "UTF-8")]
-                     (log/trace "Websocket received binary message:" msg)
-                     (a/put! event-ch [:message msg])))
-                 (.reset binary-buffer))
+                (when last?
+                  (let [uncompressed-acc (ByteArrayOutputStream.)]
+                    (.setInput inflater (.toByteArray binary-buffer))
+                    (while (not (.finished inflater))
+                      (let [bytes-read (.inflate inflater out-buffer 0 byte-array-buffer-size)]
+                        (.write uncompressed-acc out-buffer 0 bytes-read)))
+                    (let [msg (String. (.toByteArray uncompressed-acc) "UTF-8")]
+                      (log/trace "Websocket received binary message:" msg)
+                      (a/put! event-ch [:message msg])))
+                  (.reset binary-buffer))
 
-               (.request ^WebSocket ws 1)
-               nil)))
+                (.request ^WebSocket ws 1)
+                nil))})
 
          (catch Exception e
            (throw (ex-info "Failed to connect a websocket" {} e))))))

@@ -9,7 +9,8 @@
    [discljord.messaging.specs :as ms]
    [discljord.specs :as ds]
    [discljord.util :refer [bot-token clean-json-input]]
-   [org.httpkit.client :as http]
+   [hato.client :as http]
+   [hato.middleware :refer [url-encode]]
    [clojure.tools.logging :as log])
   (:import
    (java.io File)
@@ -75,13 +76,13 @@
              method-params# ~method-params
              headers# (cond-> (auth-headers ~token-sym ~user-agent-sym)
                         (:body method-params#) (assoc "Content-Type" "application/json")
-                        audit-reason# (assoc "X-Audit-Log-Reason" (http/url-encode audit-reason#)))
+                        audit-reason# (assoc "X-Audit-Log-Reason" (url-encode audit-reason#)))
              request-params# (merge-with merge
                                          method-params#
                                          {:headers headers#})
              request-params-output# (prn-str (assoc-in request-params# [:headers "Authorization"] "REDACTED"))
              ~'_ (log/trace "Making request to" ~major-var "with params" request-params-output#)
-             response# @(~(symbol "org.httpkit.client" (name method))
+             response# @(~(symbol "hato.client" (name method))
                          (api-url ~url-str)
                          request-params#)
              ~'_ (log/trace "Response:" response#)
@@ -163,11 +164,11 @@
         multipart (cond-> (conj multipart {:name "payload_json" :content payload})
                     file (conj {:name "file" :content file :filename (.getName file)})
                     stream (conj (assoc stream :name "file")))
-        response @(http/post (api-url url)
-                             {:query-params (when (some? wait) {:wait wait})
-                              :headers (assoc (auth-headers token user-agent)
-                                              "Content-Type" "multipart/form-data")
-                              :multipart multipart})
+        response (http/post (api-url url)
+                            {:query-params (when (some? wait) {:wait wait})
+                             :headers (assoc (auth-headers token user-agent)
+                                             "Content-Type" "multipart/form-data")
+                             :multipart multipart})
         status (:status response)
         raw-body (:body response)
         body (if (or always-expect-content? (= status 200))
@@ -1124,11 +1125,11 @@
                    {:name "file"
                     :content file
                     :filename (.getName file)}]
-        response @(http/post (api-url (str "/guilds/" guild-id "/stickers"))
-                             {:headers (cond-> (assoc (auth-headers token user-agent)
-                                                      "Content-Type" "multipart/form-data")
-                                         audit-reason (assoc "X-Audit-Log-Reason" audit-reason))
-                              :multipart multipart})
+        response (http/post (api-url (str "/guilds/" guild-id "/stickers"))
+                            {:headers (cond-> (assoc (auth-headers token user-agent)
+                                                     "Content-Type" "multipart/form-data")
+                                        audit-reason (assoc "X-Audit-Log-Reason" audit-reason))
+                             :multipart multipart})
         status (:status response)
         body (cond->> (json-body (:body response))
                (not= 2 (quot status 100)) (ex-info "Invalid sticker"))]

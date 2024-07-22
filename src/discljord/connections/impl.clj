@@ -8,7 +8,7 @@
    [discljord.http :refer [gateway-url gateway-version]]
    [discljord.util :refer [json-keyword clean-json-input]]
    [hato.websocket :as ws]
-   [org.httpkit.client :as http])
+   [hato.client :as http])
   (:import
    (java.net.http WebSocket WebSocket$Listener)
    (java.io

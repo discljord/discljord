@@ -1,6 +1,6 @@
 (ns discljord.formatting
   "Contains utility functions to help with Discord message formatting."
-  (:require [clojure.string :refer [split-lines join]]))
+  (:require [clojure.string :refer [split-lines join escape]]))
 
 (def user-mention
   "Regex pattern that matches user or member mentions.
@@ -140,3 +140,14 @@
    (str "<t:" unix-timestamp \>))
   ([unix-timestamp style]
    (str "<t:" unix-timestamp \: (timestamp-styles style) \>)))
+
+(defn discord-escape
+  "Escapes `s` (a `String`) for use in a Discord message or embed."
+  [s]
+  (when s
+    (escape s {\* "\\*"
+               \` "\\`"
+               \~ "\\~"
+               \_ "\\_"
+               \< "\\<"
+               \> "\\>"})))
